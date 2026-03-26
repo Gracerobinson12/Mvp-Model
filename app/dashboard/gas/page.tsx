@@ -155,8 +155,7 @@ function simulatePrices(base:number) {
 }
 const trendIcon  = (t:string) => t==="down"?"↓":t==="up"?"↑":"→"
 const trendColor = (t:string,T:Theme) => t==="down"?T.green:t==="up"?"#ff453a":T.text3
-const cheapestSt = (sts:Station[],g:string) => [...sts].sort((a,b)=>a[gk(g)]-b[gk(g)])[0]
-
+const cheapestSt = (sts:Station[],g:string) => [...sts].sort((a:any,b:any)=>a[gk(g)]-b[gk(g)])[0]
 // ── Pin HTML ──────────────────────────────────────────────────────────────────
 function makePin(price:number,isBest:boolean,isSel:boolean,isDark:boolean):string {
   const bg  = isSel  ? "linear-gradient(135deg,#ff3b30,#ff6b35)"
