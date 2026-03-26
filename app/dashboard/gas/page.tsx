@@ -1,5 +1,5 @@
-'use client'
 // @ts-nocheck
+'use client'
 import RouteGasFinder from '@/components/gas/RouteGasFinder'
 import { useEffect, useState, useRef, useCallback } from "react"
 import {
