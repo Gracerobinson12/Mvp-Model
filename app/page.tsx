@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+// Coming soon gate — flip NEXT_PUBLIC_COMING_SOON in Vercel to toggle
+import ComingSoon from '@/components/ComingSoon'
+const COMING_SOON = process.env.NEXT_PUBLIC_COMING_SOON === 'true'
 // ── Logo Components ────────────────────────────────────────────────────────────
 function GratiaLogo() {
   return (
