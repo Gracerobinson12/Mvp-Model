@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+import { Suspense } from 'react'
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Step 1 (email/password) is REMOVED — user already signed up via the modal
 // Steps are now: 1=AccountType, 2=UserType, 3=MoneyHook, 4=Location/Alerts, 5=PlanReveal
@@ -136,7 +138,7 @@ const PLANS = {
     bullets:['Industry-specific regulatory feed','Tariff intelligence for your sector','Assets & liabilities dashboard','Monthly deduction summary','Balance sheet PDF export'] },
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router     = useRouter()
   const params     = useSearchParams()
   const prefill    = params.get('prefill') || ''
@@ -555,5 +557,19 @@ export default function OnboardingPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',
+        justifyContent:'center',background:'#f0eff4',
+        fontFamily:"'DM Sans',sans-serif",color:'rgba(26,26,46,.5)',fontSize:14}}>
+        Loading...
+      </div>
+    }>
+      <OnboardingContent/>
+    </Suspense>
   )
 }
