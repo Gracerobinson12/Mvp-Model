@@ -4,9 +4,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-// ── Coming Soon Gate ───────────────────────────────────────────────────────────
-// Set NEXT_PUBLIC_COMING_SOON=true in Vercel to show the gate
-// Set to false (or remove) to show the full landing page
 const COMING_SOON_ENV = process.env.NEXT_PUBLIC_COMING_SOON === 'true'
 const ACCESS_CODE     = 'GRATIA2025'
 
@@ -18,10 +15,9 @@ function ComingSoonGate() {
   const [joined,  setJoined]  = useState(false)
   const [show,    setShow]    = useState(false)
 
-  // Check localStorage — if already unlocked, show landing page
   useEffect(() => {
     if (localStorage.getItem('gratia_access') === 'true') {
-      setShow(false) // will render landing page instead
+      setShow(false)
     } else {
       setShow(true)
     }
@@ -31,7 +27,6 @@ function ComingSoonGate() {
     if (code.trim().toUpperCase() === ACCESS_CODE) {
       setLoading(true)
       localStorage.setItem('gratia_access', 'true')
-      // Reload page — now localStorage is set, LandingPage renders
       window.location.reload()
     } else {
       setError('Invalid access code. Try again.')
@@ -48,7 +43,7 @@ function ComingSoonGate() {
     setEmail('')
   }
 
-  if (!show) return null // will fall through to landing page
+  if (!show) return null
 
   return (
     <>
@@ -65,7 +60,6 @@ function ComingSoonGate() {
 
       <div style={{position:'relative',zIndex:1,minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px'}}>
 
-        {/* Logo */}
         <div style={{marginBottom:48,animation:'fadeUp .8s ease .1s both',textAlign:'center'}}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 270" height="32" style={{display:'block'}}>
             <text x="60" y="250" fontFamily="'Arial Black',Arial,sans-serif" fontSize="180" fontWeight="900" fill="white" letterSpacing="-8">GRAT</text>
@@ -77,7 +71,6 @@ function ComingSoonGate() {
           </div>
         </div>
 
-        {/* Card */}
         <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:28,padding:'44px 40px',maxWidth:460,width:'100%',backdropFilter:'blur(40px)',WebkitBackdropFilter:'blur(40px)',boxShadow:'0 32px 80px rgba(0,0,0,.4)',animation:'fadeUp .8s ease .2s both',textAlign:'center'}}>
 
           <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,59,48,.12)',border:'1px solid rgba(255,59,48,.25)',borderRadius:100,padding:'6px 16px',fontSize:11,fontWeight:700,letterSpacing:2,color:'#ff6b5b',textTransform:'uppercase',marginBottom:24}}>
@@ -92,7 +85,6 @@ function ComingSoonGate() {
             GratIA Core is in private beta. Enter your access code to get in, or join the waitlist.
           </p>
 
-          {/* Access code */}
           <div style={{marginBottom:12}}>
             <div style={{display:'flex',gap:8,marginBottom:8}}>
               <input type="text" placeholder="Enter access code" value={code}
@@ -106,13 +98,11 @@ function ComingSoonGate() {
             {error && <div style={{fontSize:12,color:'#ff6b5b',textAlign:'left',marginTop:4}}>{error}</div>}
           </div>
 
-          {/* Divider */}
           <div style={{display:'flex',alignItems:'center',gap:12,margin:'24px 0',color:'rgba(255,255,255,.2)',fontSize:12}}>
             <div style={{flex:1,height:1,background:'rgba(255,255,255,.1)'}}/>or join the waitlist
             <div style={{flex:1,height:1,background:'rgba(255,255,255,.1)'}}/>
           </div>
 
-          {/* Waitlist */}
           {!joined ? (
             <div style={{display:'flex',gap:8}}>
               <input type="email" placeholder="your@email.com" value={email}
@@ -135,7 +125,6 @@ function ComingSoonGate() {
           </p>
         </div>
 
-        {/* Module pills */}
         <div style={{display:'flex',gap:16,marginTop:48,flexWrap:'wrap',justifyContent:'center',animation:'fadeUp .8s ease .4s both'}}>
           {[{icon:'⛽',label:'Gas Tracker'},{icon:'📋',label:'Regulatory'},{icon:'🌐',label:'Tariff Intel'},{icon:'🧾',label:'Deductions'},{icon:'📊',label:'Assets'}].map(m=>(
             <div key={m.label} style={{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:100,padding:'8px 16px',fontSize:12,fontWeight:500,color:'rgba(255,255,255,.4)'}}>
@@ -152,7 +141,6 @@ function ComingSoonGate() {
   )
 }
 
-// ── Logo Components ────────────────────────────────────────────────────────────
 function GratiaLogo() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 270" height="32" style={{display:'block',flexShrink:0}}>
@@ -172,7 +160,6 @@ function GCIcon({ size = 36 }: { size?: number }) {
   )
 }
 
-// ── Signup Modal ───────────────────────────────────────────────────────────────
 function QuickSignupModal({ onClose }: { onClose: () => void }) {
   const router = useRouter()
   const [step,       setStep]      = useState<'gate'|'type'|'details'>('gate')
@@ -213,15 +200,26 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       if (signUpError) throw signUpError
       const userId = data.user?.id
       if (!userId) throw new Error('No user ID returned')
-      const trialDays  = promoValid ? promoDays : 7
+      const trialDays   = promoValid ? promoDays : 7
       const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
-      const { error: profileError } = await supabase.from('profiles').upsert({ id: userId, email, user_type: userCat, account_type: userCat==='business'?'business':'personal', plan:'free', onboarded: userCat==='gas', trial_ends_at: trialEndsAt })
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: userId, email,
+        user_type:     userCat,
+        account_type:  userCat === 'business' ? 'business' : 'personal',
+        plan:          'free',
+        onboarded:     userCat === 'gas',
+        trial_ends_at: trialEndsAt,
+      })
       if (profileError) throw profileError
       if (promoValid && promoCode) {
         await supabase.from('promo_redemptions').insert({ user_id: userId, code: promoCode })
         await supabase.rpc('increment_promo_uses', { code_input: promoCode })
       }
-      await fetch('/api/send-welcome', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, userType: userCat, trialDays }) }).catch(()=>{})
+      await fetch('/api/send-welcome', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email, userType: userCat, trialDays }),
+      }).catch(()=>{})
+      // Gas only → straight to tracker, others → onboarding for extra info
       if (userCat === 'gas') router.push('/dashboard/gas')
       else router.push(`/onboarding?prefill=${userCat}`)
     } catch (e: any) {
@@ -230,7 +228,12 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const inp = (extra = {}) => ({ width:'100%', padding:'13px 16px', background:'#f8f7fc', border:`1.5px solid ${error?'#ff453a':'rgba(0,0,0,.1)'}`, borderRadius:14, fontSize:15, color:'#1a1a2e', outline:'none', fontFamily:"'DM Sans',sans-serif", ...extra })
+  const inp = (extra = {}) => ({
+    width:'100%', padding:'13px 16px', background:'#f8f7fc',
+    border:'1.5px solid rgba(0,0,0,.1)',
+    borderRadius:14, fontSize:15, color:'#1a1a2e',
+    outline:'none', fontFamily:"'DM Sans',sans-serif", ...extra,
+  })
 
   return (
     <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',padding:24}}>
@@ -248,9 +251,14 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
               </div>
             ))}
           </div>
-          <input type="email" placeholder="Your email address" value={email} onChange={e=>{setEmail(e.target.value);setError('')}} onKeyDown={e=>e.key==='Enter'&&handleContinue()} autoFocus style={{...inp(),marginBottom:error?6:10,border:`1.5px solid ${error?'#ff453a':'rgba(0,0,0,.1)'}`}}/>
+          <input type="email" placeholder="Your email address" value={email}
+            onChange={e=>{setEmail(e.target.value);setError('')}}
+            onKeyDown={e=>e.key==='Enter'&&handleContinue()} autoFocus
+            style={{...inp(),marginBottom:error?6:10,border:`1.5px solid ${error?'#ff453a':'rgba(0,0,0,.1)'}`}}/>
           {error && <div style={{fontSize:12,color:'#ff453a',marginBottom:10}}>{error}</div>}
-          <button onClick={handleContinue} style={{width:'100%',padding:14,background:email.trim()?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(255,59,48,.2)',color:'#fff',border:'none',borderRadius:100,fontSize:15,fontWeight:700,cursor:email.trim()?'pointer':'not-allowed',fontFamily:"'DM Sans',sans-serif"}}>Continue — it's free →</button>
+          <button onClick={handleContinue} style={{width:'100%',padding:14,background:email.trim()?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(255,59,48,.2)',color:'#fff',border:'none',borderRadius:100,fontSize:15,fontWeight:700,cursor:email.trim()?'pointer':'not-allowed',fontFamily:"'DM Sans',sans-serif"}}>
+            Continue — it's free →
+          </button>
           <div style={{display:'flex',alignItems:'center',gap:10,margin:'14px 0',color:'rgba(26,26,46,.3)',fontSize:12}}>
             <div style={{flex:1,height:1,background:'rgba(0,0,0,.08)'}}/>or<div style={{flex:1,height:1,background:'rgba(0,0,0,.08)'}}/>
           </div>
@@ -263,7 +271,8 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
           <p style={{fontSize:13,color:'rgba(26,26,46,.5)',marginBottom:20}}>We use this to show you the right tools.</p>
           <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
             {USER_TYPES.map(t=>(
-              <button key={t.id} onClick={()=>{setUserCat(t.id);setStep('details')}} style={{display:'flex',alignItems:'center',gap:14,padding:'13px 16px',background:'#f8f7fc',border:'1.5px solid rgba(0,0,0,.08)',borderRadius:14,cursor:'pointer',textAlign:'left',fontFamily:"'DM Sans',sans-serif"}}>
+              <button key={t.id} onClick={()=>{setUserCat(t.id);setStep('details')}}
+                style={{display:'flex',alignItems:'center',gap:14,padding:'13px 16px',background:'#f8f7fc',border:'1.5px solid rgba(0,0,0,.08)',borderRadius:14,cursor:'pointer',textAlign:'left',fontFamily:"'DM Sans',sans-serif"}}>
                 <div style={{width:42,height:42,borderRadius:12,background:`${t.color}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}}>{t.icon}</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:600,color:'#1a1a2e',marginBottom:2}}>{t.label}</div>
@@ -286,17 +295,31 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
             {userCat==='freelancer'&& "✓ Full access for 7 days free · Deduction dashboard · $7.99/mo after"}
             {userCat==='business'  && "✓ Full access for 7 days free · All compliance modules · $14.99/mo after"}
           </div>
+
+          {/* ── FIXED: autoComplete="off" stops browser filling email into promo field ── */}
           <div style={{marginBottom:14}}>
             <div style={{display:'flex',gap:8}}>
-              <input type="text" placeholder="Promo code (optional)" value={promoCode} onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoValid(null)}} style={{flex:1,padding:'11px 14px',background:'#f8f7fc',border:`1.5px solid ${promoValid===true?'#30d158':promoValid===false?'#ff453a':'rgba(0,0,0,.1)'}`,borderRadius:12,fontSize:14,color:'#1a1a2e',outline:'none',fontFamily:"'DM Sans',sans-serif",letterSpacing:2,textTransform:'uppercase'}}/>
+              <input
+                type="text"
+                placeholder="Promo code (optional)"
+                value={promoCode}
+                autoComplete="off"
+                name="promo-code-field"
+                onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoValid(null)}}
+                style={{flex:1,padding:'11px 14px',background:'#f8f7fc',border:`1.5px solid ${promoValid===true?'#30d158':promoValid===false?'#ff453a':'rgba(0,0,0,.1)'}`,borderRadius:12,fontSize:14,color:'#1a1a2e',outline:'none',fontFamily:"'DM Sans',sans-serif",letterSpacing:2,textTransform:'uppercase'}}/>
               <button onClick={validatePromo} style={{padding:'11px 16px',background:'rgba(0,0,0,.06)',border:'none',borderRadius:12,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",color:'#1a1a2e',whiteSpace:'nowrap'}}>Apply</button>
             </div>
             {promoValid===true  && <div style={{fontSize:12,color:'#30d158',marginTop:6,fontWeight:600}}>✓ Code applied — {promoDays} days free!</div>}
             {promoValid===false && <div style={{fontSize:12,color:'#ff453a',marginTop:6}}>Invalid or expired code</div>}
           </div>
-          <input type="password" placeholder="Create a password (8+ characters)" value={password} onChange={e=>{setPassword(e.target.value);setError('')}} onKeyDown={e=>e.key==='Enter'&&password.length>=8&&handleCreate()} autoFocus style={{...inp(),border:`1.5px solid ${error?'#ff453a':'rgba(0,0,0,.1)'}`,marginBottom:error?6:10}}/>
+
+          <input type="password" placeholder="Create a password (8+ characters)" value={password}
+            onChange={e=>{setPassword(e.target.value);setError('')}}
+            onKeyDown={e=>e.key==='Enter'&&password.length>=8&&handleCreate()} autoFocus
+            style={{...inp(),border:`1.5px solid ${error?'#ff453a':'rgba(0,0,0,.1)'}`,marginBottom:error?6:10}}/>
           {error && <div style={{fontSize:12,color:'#ff453a',marginBottom:10}}>{error}</div>}
-          <button onClick={handleCreate} disabled={password.length<8||loading} style={{width:'100%',padding:14,background:password.length>=8&&!loading?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(255,59,48,.2)',color:'#fff',border:'none',borderRadius:100,fontSize:15,fontWeight:700,cursor:password.length>=8&&!loading?'pointer':'not-allowed',fontFamily:"'DM Sans',sans-serif",marginBottom:12}}>
+          <button onClick={handleCreate} disabled={password.length<8||loading}
+            style={{width:'100%',padding:14,background:password.length>=8&&!loading?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(255,59,48,.2)',color:'#fff',border:'none',borderRadius:100,fontSize:15,fontWeight:700,cursor:password.length>=8&&!loading?'pointer':'not-allowed',fontFamily:"'DM Sans',sans-serif",marginBottom:12}}>
             {loading?'Creating your account...':userCat==='gas'?'Start Free Trial →':'Create account & continue →'}
           </button>
           <button onClick={()=>setStep('type')} style={{background:'none',border:'none',color:'rgba(26,26,46,.4)',fontSize:13,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",padding:0}}>← Back</button>
@@ -307,7 +330,6 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Landing Page ───────────────────────────────────────────────────────────────
 function LandingPage() {
   const [showModal, setShowModal] = useState(false)
   return (
@@ -539,22 +561,18 @@ function LandingPage() {
   )
 }
 
-// ── Main export — toggles between coming soon and landing ─────────────────────
 export default function Home() {
   const [accessGranted, setAccessGranted] = useState(false)
   const [checked,       setChecked]       = useState(false)
 
   useEffect(() => {
-    // Check localStorage client-side
     const hasAccess = localStorage.getItem('gratia_access') === 'true'
     setAccessGranted(hasAccess)
     setChecked(true)
   }, [])
 
-  // Don't render anything until we've checked localStorage
   if (!checked) return null
 
-  // Show coming soon if env var is true AND user hasn't unlocked
   if (COMING_SOON_ENV && !accessGranted) {
     return <ComingSoonGate/>
   }
