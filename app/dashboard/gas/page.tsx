@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client'
 import RouteGasFinder from '@/components/gas/RouteGasFinder'
+import { usePaywall, PaywallScreen } from '@/components/PaywallGate'
 import { useEffect, useState, useRef, useCallback } from "react"
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
@@ -73,7 +74,6 @@ const PLANS = [
 ]
 
 // ── Themes ────────────────────────────────────────────────────────────────────
-// LIGHT is now the default
 const LIGHT = {
   bg:           "#f2f2f7",
   bgGrad:       "radial-gradient(ellipse 80% 60% at 10% 0%,rgba(255,59,48,.07) 0%,transparent 60%)",
@@ -156,6 +156,7 @@ function simulatePrices(base:number) {
 const trendIcon  = (t:string) => t==="down"?"↓":t==="up"?"↑":"→"
 const trendColor = (t:string,T:Theme) => t==="down"?T.green:t==="up"?"#ff453a":T.text3
 const cheapestSt = (sts:Station[],g:string) => [...sts].sort((a:any,b:any)=>a[gk(g)]-b[gk(g)])[0]
+
 // ── Pin HTML ──────────────────────────────────────────────────────────────────
 function makePin(price:number,isBest:boolean,isSel:boolean,isDark:boolean):string {
   const bg  = isSel  ? "linear-gradient(135deg,#ff3b30,#ff6b35)"
@@ -254,7 +255,6 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
         animation:    'settingsIn .35s cubic-bezier(.34,1.56,.64,1)',
       }}>
 
-        {/* Header */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding:'20px 22px 16px',
@@ -273,10 +273,7 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
           }}>✕</button>
         </div>
 
-        {/* Tab nav */}
-        <div style={{
-          display:'flex', gap:4, padding:'14px 22px 0',
-        }}>
+        <div style={{ display:'flex', gap:4, padding:'14px 22px 0' }}>
           {[
             {id:'account',  label:'Account'},
             {id:'location', label:'Location'},
@@ -289,7 +286,6 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
               background:   tab===t.id ? T.accent : T.inputBg,
               color:        tab===t.id ? '#fff' : T.text2,
               border:       tab===t.id ? 'none' : `1px solid ${T.inputBdr}`,
-              boxShadow:    tab===t.id ? '0 2px 8px rgba(255,59,48,.3)' : 'none',
               transition:   'all .2s',
             }}>{t.label}</button>
           ))}
@@ -297,10 +293,7 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
 
         <div style={{padding:'20px 22px 28px'}}>
 
-          {/* ── ACCOUNT TAB ── */}
           {tab === 'account' && <>
-
-            {/* Current email */}
             <div style={{
               display:'flex', alignItems:'center', gap:10,
               padding:'12px 14px',
@@ -313,65 +306,31 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
                 background:'linear-gradient(135deg,#ff3b30,#ff6b35)',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:16, flexShrink:0,
-                boxShadow:'0 4px 10px rgba(255,59,48,.3)',
               }}>👤</div>
               <div>
                 <div style={{fontSize:13, fontWeight:600, color:T.text}}>{email}</div>
-                <div style={{fontSize:11, color:T.text3, marginTop:2}}>Free plan · Member since 2025</div>
+                <div style={{fontSize:11, color:T.text3, marginTop:2}}>Member since 2025</div>
               </div>
             </div>
 
-            {/* Change email */}
             <div style={{marginBottom:24}}>
-              <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:10}}>
-                Change Email
-              </div>
-              <input
-                type="email"
-                placeholder="New email address"
-                value={newEmail}
-                onChange={e=>setNewEmail(e.target.value)}
-                style={inputStyle}
-              />
-              <button
-                onClick={()=>{ if(newEmail.includes('@')){ setEmail(newEmail); setNewEmail(''); setSavedEmail(true); setTimeout(()=>setSavedEmail(false),2500) } }}
-                style={{
-                  padding:'10px 20px',
-                  background: newEmail.includes('@') ? 'linear-gradient(135deg,#ff3b30,#ff6b35)' : T.inputBg,
-                  color: newEmail.includes('@') ? '#fff' : T.text3,
-                  border:'none', borderRadius:100, fontSize:13, fontWeight:600,
-                  cursor: newEmail.includes('@') ? 'pointer' : 'not-allowed',
-                  fontFamily:"'Outfit',sans-serif",
-                  transition:'all .2s',
-                }}
-              >
+              <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:10}}>Change Email</div>
+              <input type="email" placeholder="New email address" value={newEmail} onChange={e=>setNewEmail(e.target.value)} style={inputStyle}/>
+              <button onClick={()=>{ if(newEmail.includes('@')){ setEmail(newEmail); setNewEmail(''); setSavedEmail(true); setTimeout(()=>setSavedEmail(false),2500) } }}
+                style={{ padding:'10px 20px', background: newEmail.includes('@') ? 'linear-gradient(135deg,#ff3b30,#ff6b35)' : T.inputBg, color: newEmail.includes('@') ? '#fff' : T.text3, border:'none', borderRadius:100, fontSize:13, fontWeight:600, cursor: newEmail.includes('@') ? 'pointer' : 'not-allowed', fontFamily:"'Outfit',sans-serif" }}>
                 {savedEmail ? '✓ Email updated!' : 'Update Email'}
               </button>
             </div>
 
             <div style={{height:1, background:T.divider, marginBottom:24}}/>
 
-            {/* Change password */}
             <div style={{marginBottom:24}}>
-              <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:10}}>
-                Change Password
-              </div>
+              <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:10}}>Change Password</div>
               <input type="password" placeholder="Current password" value={curPass} onChange={e=>setCurPass(e.target.value)} style={inputStyle}/>
               <input type="password" placeholder="New password (8+ characters)" value={newPass} onChange={e=>setNewPass(e.target.value)} style={inputStyle}/>
               <input type="password" placeholder="Confirm new password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} style={{...inputStyle, marginBottom:12}}/>
-              <button
-                onClick={()=>{ if(newPass.length>=8 && newPass===confirmPass){ setCurPass(''); setNewPass(''); setConfirmPass(''); setSavedPass(true); setTimeout(()=>setSavedPass(false),2500) } }}
-                style={{
-                  padding:'10px 20px',
-                  background: newPass.length>=8 && newPass===confirmPass
-                    ? 'linear-gradient(135deg,#ff3b30,#ff6b35)' : T.inputBg,
-                  color: newPass.length>=8 && newPass===confirmPass ? '#fff' : T.text3,
-                  border:'none', borderRadius:100, fontSize:13, fontWeight:600,
-                  cursor: newPass.length>=8 && newPass===confirmPass ? 'pointer' : 'not-allowed',
-                  fontFamily:"'Outfit',sans-serif",
-                  transition:'all .2s',
-                }}
-              >
+              <button onClick={()=>{ if(newPass.length>=8 && newPass===confirmPass){ setCurPass(''); setNewPass(''); setConfirmPass(''); setSavedPass(true); setTimeout(()=>setSavedPass(false),2500) } }}
+                style={{ padding:'10px 20px', background: newPass.length>=8 && newPass===confirmPass ? 'linear-gradient(135deg,#ff3b30,#ff6b35)' : T.inputBg, color: newPass.length>=8 && newPass===confirmPass ? '#fff' : T.text3, border:'none', borderRadius:100, fontSize:13, fontWeight:600, cursor: newPass.length>=8 && newPass===confirmPass ? 'pointer' : 'not-allowed', fontFamily:"'Outfit',sans-serif" }}>
                 {savedPass ? '✓ Password updated!' : 'Update Password'}
               </button>
               {newPass && confirmPass && newPass !== confirmPass && (
@@ -381,120 +340,42 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
 
             <div style={{height:1, background:T.divider, marginBottom:24}}/>
 
-            {/* Sign out */}
-            <button
-              onClick={()=>{ window.location.href='/login' }}
-              style={{
-                width:'100%', padding:12,
-                background:'transparent',
-                color:'#ff453a',
-                border:`1px solid rgba(255,69,58,.25)`,
-                borderRadius:100, fontSize:14, fontWeight:600,
-                cursor:'pointer', fontFamily:"'Outfit',sans-serif",
-              }}
-            >
+            <button onClick={()=>{ window.location.href='/login' }}
+              style={{ width:'100%', padding:12, background:'transparent', color:'#ff453a', border:`1px solid rgba(255,69,58,.25)`, borderRadius:100, fontSize:14, fontWeight:600, cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
               Sign Out
             </button>
           </>}
 
-          {/* ── LOCATION TAB ── */}
           {tab === 'location' && <>
-            <div style={{
-              background:T.inputBg, border:`1px solid ${T.inputBdr}`,
-              borderRadius:14, padding:'14px 16px', marginBottom:20,
-              fontSize:13, color:T.text2, lineHeight:1.6,
-            }}>
-              {userCoords
-                ? `📍 Current location: ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)}`
-                : '📍 No location set yet'}
+            <div style={{ background:T.inputBg, border:`1px solid ${T.inputBdr}`, borderRadius:14, padding:'14px 16px', marginBottom:20, fontSize:13, color:T.text2, lineHeight:1.6 }}>
+              {userCoords ? `📍 Current location: ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)}` : '📍 No location set yet'}
             </div>
 
-            <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:14}}>
-              Update Your Location
-            </div>
+            <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:14}}>Update Your Location</div>
 
-            {/* GPS button */}
-            <button
-              onClick={handleUpdateLocation}
-              disabled={locUpdating}
-              style={{
-                width:'100%', padding:14,
-                background: locUpdating ? T.inputBg : 'linear-gradient(135deg,#ff3b30,#ff6b35)',
-                color: locUpdating ? T.text2 : '#fff',
-                border:'none', borderRadius:14, fontSize:14, fontWeight:700,
-                cursor: locUpdating ? 'not-allowed' : 'pointer',
-                fontFamily:"'Outfit',sans-serif",
-                marginBottom:10,
-                boxShadow: locUpdating ? 'none' : '0 4px 14px rgba(255,59,48,.35)',
-                transition:'all .2s',
-                display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-              }}
-            >
+            <button onClick={handleUpdateLocation} disabled={locUpdating}
+              style={{ width:'100%', padding:14, background: locUpdating ? T.inputBg : 'linear-gradient(135deg,#ff3b30,#ff6b35)', color: locUpdating ? T.text2 : '#fff', border:'none', borderRadius:14, fontSize:14, fontWeight:700, cursor: locUpdating ? 'not-allowed' : 'pointer', fontFamily:"'Outfit',sans-serif", marginBottom:10, boxShadow: locUpdating ? 'none' : '0 4px 14px rgba(255,59,48,.35)', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
               {locUpdating ? '⟳ Detecting location...' : '📍 Use My Current Location'}
             </button>
 
             {locMsg && (
-              <div style={{
-                fontSize:12, color: locMsg.startsWith('✓') ? T.green : '#ff9f0a',
-                marginBottom:16, padding:'8px 12px',
-                background: locMsg.startsWith('✓') ? `${T.green}12` : 'rgba(255,159,10,.1)',
-                borderRadius:10, border: `1px solid ${locMsg.startsWith('✓') ? `${T.green}22` : 'rgba(255,159,10,.2)'}`,
-              }}>{locMsg}</div>
+              <div style={{ fontSize:12, color: locMsg.startsWith('✓') ? T.green : '#ff9f0a', marginBottom:16, padding:'8px 12px', background: locMsg.startsWith('✓') ? `${T.green}12` : 'rgba(255,159,10,.1)', borderRadius:10 }}>{locMsg}</div>
             )}
 
-            <div style={{
-              display:'flex', alignItems:'center', gap:12,
-              margin:'6px 0 16px', color:T.text3, fontSize:12,
-            }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12, margin:'6px 0 16px', color:T.text3, fontSize:12 }}>
               <div style={{flex:1, height:1, background:T.divider}}/> or <div style={{flex:1, height:1, background:T.divider}}/>
             </div>
 
-            {/* ZIP code */}
-            <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:10}}>
-              Enter ZIP Code
-            </div>
+            <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:10}}>Enter ZIP Code</div>
             <div style={{display:'flex', gap:8}}>
-              <input
-                type="text"
-                placeholder="e.g. 30309"
-                maxLength={5}
-                style={{
-                  flex:1, padding:'11px 14px',
-                  background:T.inputBg, border:`1px solid ${T.inputBdr}`,
-                  borderRadius:12, fontSize:18, fontWeight:700,
-                  color:T.accent, outline:'none',
-                  fontFamily:"'Outfit',sans-serif", letterSpacing:3,
-                }}
-              />
-              <button style={{
-                padding:'11px 20px',
-                background:'linear-gradient(135deg,#ff3b30,#ff6b35)',
-                color:'#fff', border:'none', borderRadius:12,
-                fontSize:13, fontWeight:700, cursor:'pointer',
-                fontFamily:"'Outfit',sans-serif",
-                whiteSpace:'nowrap',
-              }}>
+              <input type="text" placeholder="e.g. 30309" maxLength={5}
+                style={{ flex:1, padding:'11px 14px', background:T.inputBg, border:`1px solid ${T.inputBdr}`, borderRadius:12, fontSize:18, fontWeight:700, color:T.accent, outline:'none', fontFamily:"'Outfit',sans-serif", letterSpacing:3 }}/>
+              <button style={{ padding:'11px 20px', background:'linear-gradient(135deg,#ff3b30,#ff6b35)', color:'#fff', border:'none', borderRadius:12, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}>
                 Search →
               </button>
             </div>
-
-            <div style={{
-              marginTop:20, padding:'14px 16px',
-              background:T.inputBg, borderRadius:14,
-              border:`1px solid ${T.inputBdr}`,
-            }}>
-              <div style={{fontSize:11, fontWeight:600, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:10}}>
-                Location Privacy
-              </div>
-              {['We never store your exact GPS coordinates','Location is used only to find nearby gas stations','You can update or clear your location anytime','ZIP code lookup does not require GPS access'].map((t,i)=>(
-                <div key={i} style={{display:'flex', gap:8, fontSize:12, color:T.text2, marginBottom:i<3?7:0}}>
-                  <span style={{color:T.green, flexShrink:0}}>✓</span>{t}
-                </div>
-              ))}
-            </div>
           </>}
 
-          {/* ── PLAN TAB ── */}
           {tab === 'plan' && <>
             <div style={{fontSize:11, fontWeight:700, letterSpacing:1, color:T.text3, textTransform:'uppercase', marginBottom:16}}>
               Current Plan: <span style={{color:T.accent}}>{PLANS.find(p=>p.id===currentPlan)?.name || 'Free'}</span>
@@ -505,43 +386,21 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
                 const isCurrent = plan.id === currentPlan
                 const isSelected = plan.id === selectedPlan
                 return (
-                  <div
-                    key={plan.id}
-                    onClick={()=>setSelectedPlan(plan.id)}
-                    style={{
-                      border:`2px solid ${isSelected ? '#ff3b30' : T.inputBdr}`,
-                      borderRadius:18, padding:18,
-                      cursor:'pointer',
-                      background: isSelected ? 'rgba(255,59,48,.04)' : T.inputBg,
-                      transition:'all .2s',
-                      position:'relative',
-                    }}
-                  >
+                  <div key={plan.id} onClick={()=>setSelectedPlan(plan.id)}
+                    style={{ border:`2px solid ${isSelected ? '#ff3b30' : T.inputBdr}`, borderRadius:18, padding:18, cursor:'pointer', background: isSelected ? 'rgba(255,59,48,.04)' : T.inputBg, transition:'all .2s', position:'relative' }}>
                     {plan.recommended && (
-                      <div style={{
-                        position:'absolute', top:-10, left:16,
-                        background:'linear-gradient(135deg,#ff3b30,#ff6b35)',
-                        color:'#fff', fontSize:9, fontWeight:700,
-                        padding:'3px 10px', borderRadius:100, letterSpacing:1,
-                        boxShadow:'0 2px 8px rgba(255,59,48,.35)',
-                      }}>⭐ RECOMMENDED</div>
+                      <div style={{ position:'absolute', top:-10, left:16, background:'linear-gradient(135deg,#ff3b30,#ff6b35)', color:'#fff', fontSize:9, fontWeight:700, padding:'3px 10px', borderRadius:100, letterSpacing:1 }}>⭐ RECOMMENDED</div>
                     )}
-
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12}}>
                       <div>
                         <div style={{fontSize:16, fontWeight:800, letterSpacing:-.3, color:T.text, marginBottom:2}}>{plan.name}</div>
-                        {isCurrent && (
-                          <div style={{fontSize:10, fontWeight:600, color:T.green, letterSpacing:.5}}>✓ CURRENT PLAN</div>
-                        )}
+                        {isCurrent && <div style={{fontSize:10, fontWeight:600, color:T.green, letterSpacing:.5}}>✓ CURRENT PLAN</div>}
                       </div>
                       <div style={{textAlign:'right'}}>
-                        <div style={{fontSize:22, fontWeight:900, letterSpacing:-1, color:plan.id==='free'?T.text2:'#ff3b30', lineHeight:1}}>
-                          {plan.price}
-                        </div>
+                        <div style={{fontSize:22, fontWeight:900, letterSpacing:-1, color:plan.id==='free'?T.text2:'#ff3b30', lineHeight:1}}>{plan.price}</div>
                         <div style={{fontSize:11, color:T.text3}}>{plan.period}</div>
                       </div>
                     </div>
-
                     <div style={{display:'flex', flexDirection:'column', gap:5}}>
                       {plan.bullets.map((b,i)=>(
                         <div key={i} style={{display:'flex', gap:7, fontSize:12, color:T.text2}}>
@@ -560,21 +419,9 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
             </div>
 
             {selectedPlan !== currentPlan && (
-              <button
-                onClick={()=>{ onChangePlan(selectedPlan) }}
-                style={{
-                  width:'100%', padding:14,
-                  background:'linear-gradient(135deg,#ff3b30,#ff6b35)',
-                  color:'#fff', border:'none', borderRadius:100,
-                  fontSize:15, fontWeight:700, cursor:'pointer',
-                  fontFamily:"'Outfit',sans-serif",
-                  boxShadow:'0 4px 16px rgba(255,59,48,.35)',
-                  marginBottom:10,
-                }}
-              >
-                {selectedPlan === 'free'
-                  ? 'Downgrade to Free'
-                  : `Upgrade to ${PLANS.find(p=>p.id===selectedPlan)?.name} →`}
+              <button onClick={()=>{ onChangePlan(selectedPlan) }}
+                style={{ width:'100%', padding:14, background:'linear-gradient(135deg,#ff3b30,#ff6b35)', color:'#fff', border:'none', borderRadius:100, fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(255,59,48,.35)', marginBottom:10 }}>
+                {selectedPlan === 'free' ? 'Downgrade to Free' : `Upgrade to ${PLANS.find(p=>p.id===selectedPlan)?.name} →`}
               </button>
             )}
 
@@ -595,33 +442,9 @@ function LocationModal({onAllow,onDeny,T}:{onAllow:()=>void,onDeny:()=>void,T:Th
     <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.65)",backdropFilter:"blur(14px)",padding:24}}>
       <div style={{background:T.modalBg,border:`1px solid ${T.modalBdr}`,borderRadius:28,padding:"36px 32px",maxWidth:380,width:"100%",backdropFilter:"blur(40px)",boxShadow:"0 24px 80px rgba(0,0,0,.45)",textAlign:"center",animation:"popIn .4s cubic-bezier(.34,1.56,.64,1)"}}>
         <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#ff3b30,#ff6b35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,margin:"0 auto 20px",boxShadow:"0 0 32px rgba(255,59,48,.4)"}}>📍</div>
-        <div style={{display:"inline-block",background:T.pillBg,border:`1px solid ${T.pillBdr}`,borderRadius:100,padding:"4px 14px",fontSize:10,fontWeight:600,letterSpacing:2,color:T.accent,textTransform:"uppercase",marginBottom:14}}>
-          CompliCoreOS · Location Access
-        </div>
         <h2 style={{fontSize:26,fontWeight:800,letterSpacing:-.5,color:T.text,marginBottom:10,lineHeight:1.2}}>Find Gas Prices<br/>Near You</h2>
-        <p style={{fontSize:14,color:T.text2,lineHeight:1.6,marginBottom:16}}>
+        <p style={{fontSize:14,color:T.text2,lineHeight:1.6,marginBottom:22}}>
           We use your location to show real-time gas prices at stations near you and calculate your actual mileage deductions.
-        </p>
-        <div style={{background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:14,padding:"14px 16px",marginBottom:22,textAlign:"left"}}>
-          <div style={{fontSize:10,fontWeight:600,letterSpacing:1,color:T.text3,textTransform:"uppercase",marginBottom:10}}>What we do with your location</div>
-          {[
-            {icon:"✓",text:"Show gas stations within 5 miles",ok:true},
-            {icon:"✓",text:"Calculate real driving distances",ok:true},
-            {icon:"✓",text:"Auto-fill your area for prices",ok:true},
-            {icon:"✗",text:"We never store your exact location",ok:false},
-            {icon:"✗",text:"We never sell location data",ok:false},
-            {icon:"✗",text:"We never track you in background",ok:false},
-          ].map((item,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-              <span style={{fontSize:11,fontWeight:700,color:item.ok?T.green:"#ff453a",minWidth:12}}>{item.icon}</span>
-              <span style={{fontSize:12,color:item.ok?T.text2:T.text3}}>{item.text}</span>
-            </div>
-          ))}
-        </div>
-        <p style={{fontSize:11,color:T.text3,marginBottom:20,lineHeight:1.5}}>
-          Your browser will show its own permission prompt. You can change this anytime in browser settings. By allowing, you agree to our{" "}
-          <a href="/privacy" style={{color:T.accent}}>Privacy Policy</a> and{" "}
-          <a href="/terms" style={{color:T.accent}}>Terms of Service</a>.
         </p>
         <button onClick={onAllow} style={{width:"100%",padding:14,background:"linear-gradient(135deg,#ff3b30,#ff6b35)",color:"#fff",border:"none",borderRadius:100,fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:10,boxShadow:"0 0 24px rgba(255,59,48,.4)",fontFamily:"system-ui"}}>
           Allow Location Access
@@ -667,13 +490,13 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,T,mapKey}:{
     L.tileLayer(T.tileUrl,{maxZoom:19}).addTo(map)
     L.control.zoom({position:"bottomright"}).addTo(map)
     if(userCoords) {
-      L.marker([center.lat,center.lng],{icon:L.divIcon({className:"",iconSize:[24,24],iconAnchor:[12,12],html:`<div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.22),0 4px 12px rgba(255,59,48,.5);animation:userPulse 2s ease-in-out infinite"></div>`})}).addTo(map).bindPopup(`<div style="font-family:system-ui;font-size:12px;color:${T.accent};font-weight:600">📍 Your Location</div>`)
+      L.marker([center.lat,center.lng],{icon:L.divIcon({className:"",iconSize:[24,24],iconAnchor:[12,12],html:`<div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.22),0 4px 12px rgba(255,59,48,.5)"></div>`})}).addTo(map)
     }
     const best = cheapestSt(stations,grade)
     stations.forEach(st=>{
       if(!st.lat&&!st.lng) return
       const m = L.marker([st.lat,st.lng],{icon:L.divIcon({className:"",iconSize:[80,52],iconAnchor:[40,52],html:makePin(st[gk(grade)],st.id===best?.id,false,T.isDark)})}).addTo(map).on("click",()=>onSelect(st.id))
-      m.bindPopup(`<div style="font-family:system-ui;min-width:160px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:6px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:8px">📍 ${st.address}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${GRADES.map(g=>`<div style="background:rgba(0,0,0,.04);border-radius:6px;padding:4px 6px"><div style="font-size:8px;color:rgba(26,26,46,.4);text-transform:uppercase;letter-spacing:1px">${g}</div><div style="font-size:14px;font-weight:700;color:${g===grade?'#ff3b30':'#1a1a2e'}">$${st[gk(g)].toFixed(2)}</div></div>`).join("")}</div><div style="margin-top:8px;font-size:10px;color:rgba(26,26,46,.4)">${st.distance} mi away · ${st.updated}</div></div>`)
+      m.bindPopup(`<div style="font-family:system-ui;min-width:160px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:6px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:8px">📍 ${st.address}</div><div style="font-size:10px;color:rgba(26,26,46,.4)">${st.distance} mi away · ${st.updated}</div></div>`)
       mksRef.current[st.id] = m
     })
     mapRef.current = map
@@ -702,7 +525,6 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,T,mapKey}:{
   return (
     <>
       <style>{`
-        @keyframes userPulse{0%,100%{box-shadow:0 0 0 5px rgba(255,59,48,.22),0 4px 12px rgba(255,59,48,.5)}50%{box-shadow:0 0 0 10px rgba(255,59,48,.08),0 4px 12px rgba(255,59,48,.3)}}
         .leaflet-popup-content-wrapper{background:${T.modalBg}!important;border:1px solid ${T.surfaceHLBdr}!important;border-radius:14px!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;color:${T.text}!important;backdrop-filter:blur(20px)!important}
         .leaflet-popup-content{margin:12px 14px!important}
         .leaflet-popup-tip{background:${T.modalBg}!important}
@@ -718,7 +540,17 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,T,mapKey}:{
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function GasPage() {
-  // ── Light mode is now default ─────────────────────────────────────────────
+
+  // ── PAYWALL CHECK — must be first ─────────────────────────────────────────
+  const { allowed, checking } = usePaywall('driver')
+  if (checking) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f2f7',fontFamily:"'Outfit',system-ui,sans-serif",color:'rgba(0,0,0,.4)',fontSize:14}}>
+      Loading...
+    </div>
+  )
+  if (!allowed) return <PaywallScreen planRequired="driver"/>
+  // ─────────────────────────────────────────────────────────────────────────
+
   const [isDark,       setIsDark]       = useState(false)
   const [grade,        setGrade]        = useState("Regular")
   const [sortBy,       setSortBy]       = useState("price")
@@ -775,7 +607,6 @@ export default function GasPage() {
     setUserCoords({lat,lng});setMapKey(`zip-${zip}-${Date.now()}`);fetchData(lat,lng)
   },[fetchData])
 
-  // Update location from settings panel
   const handleUpdateLocation = useCallback(()=>{
     if(!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
@@ -842,60 +673,28 @@ export default function GasPage() {
 
       <div style={{background:T.bg,backgroundImage:T.bgGrad,minHeight:"100vh",fontFamily:"'Outfit',system-ui,sans-serif",color:T.text,padding:22,transition:"background .4s,color .3s"}}>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-              <Link href="/" style={{fontSize:11,color:T.text3,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>
-                ← Back
-              </Link>
+              <Link href="/" style={{fontSize:11,color:T.text3,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>← Back</Link>
             </div>
-            <div style={{fontSize:10,fontWeight:600,letterSpacing:"2.5px",color:T.accent,textTransform:"uppercase",marginBottom:4}}>
-              ⛽ Personal Dashboard · Fuel Module
-            </div>
-            <div style={{fontSize:40,fontWeight:900,letterSpacing:-2,lineHeight:1}}>
-              GAS <span style={{color:T.accent}}>PRICES</span>
-            </div>
+            <div style={{fontSize:10,fontWeight:600,letterSpacing:"2.5px",color:T.accent,textTransform:"uppercase",marginBottom:4}}>⛽ Personal Dashboard · Fuel Module</div>
+            <div style={{fontSize:40,fontWeight:900,letterSpacing:-2,lineHeight:1}}>GAS <span style={{color:T.accent}}>PRICES</span></div>
           </div>
 
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
-
-              {/* Update location button */}
-              <button onClick={handleUpdateLocation} style={{
-                display:"flex",alignItems:"center",gap:6,
-                padding:"7px 14px",cursor:"pointer",
-                color:T.text2,fontSize:12,fontWeight:600,
-                fontFamily:"'Outfit',sans-serif",transition:"all .2s",
-                background:T.surface,border:`1px solid ${T.surfaceBdr}`,
-                borderRadius:20,backdropFilter:"blur(24px)",
-              }}>
+              <button onClick={handleUpdateLocation} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}>
                 📍 Update Location
               </button>
-
-              {/* Dark/light toggle */}
-              <button onClick={()=>setIsDark(d=>!d)} style={{
-                display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,
-                fontFamily:"'Outfit',sans-serif",transition:"all .2s",
-                background:T.surface,border:`1px solid ${T.surfaceBdr}`,
-                borderRadius:20,backdropFilter:"blur(24px)",
-              }}>
+              <button onClick={()=>setIsDark(d=>!d)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}>
                 <span style={{fontSize:14}}>{isDark?"☀️":"🌙"}</span>
               </button>
-
-              {/* Settings button */}
-              <button onClick={()=>setShowSettings(true)} style={{
-                display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,
-                fontFamily:"'Outfit',sans-serif",transition:"all .2s",
-                background:T.surface,border:`1px solid ${T.surfaceBdr}`,
-                borderRadius:20,backdropFilter:"blur(24px)",
-              }}>
+              <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}>
                 ⚙️ Settings
               </button>
             </div>
-
             <div style={{display:"flex",alignItems:"center",gap:6,background:T.pillBg,border:`1px solid ${T.pillBdr}`,borderRadius:100,padding:"6px 14px",fontSize:10,fontWeight:600,letterSpacing:1,color:T.accent}}>
               <div style={{width:7,height:7,background:T.accent,borderRadius:"50%",animation:"lp 1.4s ease-in-out infinite",boxShadow:`0 0 5px ${T.accent}`}}/>
               {loading?"FETCHING...":"LIVE · EIA DATA"}
@@ -904,24 +703,18 @@ export default function GasPage() {
           </div>
         </div>
 
-        {/* Loading bar */}
         {loading&&(
           <div style={{height:2,background:T.inputBg,borderRadius:1,overflow:"hidden",marginBottom:16,position:"relative"}}>
             <div style={{position:"absolute",height:"100%",width:"40%",background:`linear-gradient(90deg,transparent,${T.accent},transparent)`,borderRadius:1,animation:"loadSlide 1.2s ease-in-out infinite"}}/>
           </div>
         )}
 
-        {/* Location nudge */}
         {!userCoords&&!modal&&(
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:T.pillBg,border:`1px solid ${T.pillBdr}`,borderRadius:14,padding:"10px 16px",marginBottom:16,flexWrap:"wrap",gap:8}}>
             <span style={{fontSize:12,color:T.text2}}>📍 Using sample data — enable location for real prices near you</span>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={handleAllow} style={{padding:"6px 16px",background:`linear-gradient(135deg,${T.accent},#ff6b35)`,color:"#fff",border:"none",borderRadius:100,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>
-                Allow Location
-              </button>
-              <button onClick={()=>setModal("zip")} style={{padding:"6px 14px",...glass({cursor:"pointer",color:T.text2,fontSize:12,fontWeight:500,fontFamily:"'Outfit',sans-serif"})}}>
-                Use ZIP
-              </button>
+              <button onClick={handleAllow} style={{padding:"6px 16px",background:`linear-gradient(135deg,${T.accent},#ff6b35)`,color:"#fff",border:"none",borderRadius:100,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>Allow Location</button>
+              <button onClick={()=>setModal("zip")} style={{padding:"6px 14px",...glass({cursor:"pointer",color:T.text2,fontSize:12,fontWeight:500,fontFamily:"'Outfit',sans-serif"})}}>Use ZIP</button>
             </div>
           </div>
         )}
@@ -929,16 +722,7 @@ export default function GasPage() {
         {/* Grade tabs */}
         <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
           {GRADES.map(g=>(
-            <button key={g} onClick={()=>setGrade(g)} style={{
-              padding:"8px 20px",borderRadius:100,fontSize:13,fontWeight:600,
-              cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:.3,
-              transition:"all .25s cubic-bezier(.34,1.56,.64,1)",
-              background:grade===g?"linear-gradient(135deg,#ff3b30,#ff6b35)":T.surface,
-              color:grade===g?"#fff":T.text2,
-              border:grade===g?"none":`1px solid ${T.surfaceBdr}`,
-              boxShadow:grade===g?`0 0 18px rgba(255,59,48,.35),0 4px 12px rgba(255,59,48,.2)`:"none",
-              transform:grade===g?"scale(1.03)":"scale(1)",
-            }}>{g}</button>
+            <button key={g} onClick={()=>setGrade(g)} style={{padding:"8px 20px",borderRadius:100,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:.3,transition:"all .25s cubic-bezier(.34,1.56,.64,1)",background:grade===g?"linear-gradient(135deg,#ff3b30,#ff6b35)":T.surface,color:grade===g?"#fff":T.text2,border:grade===g?"none":`1px solid ${T.surfaceBdr}`,boxShadow:grade===g?`0 0 18px rgba(255,59,48,.35),0 4px 12px rgba(255,59,48,.2)`:"none",transform:grade===g?"scale(1.03)":"scale(1)"}}>{g}</button>
           ))}
         </div>
 
@@ -980,9 +764,7 @@ export default function GasPage() {
 
           <div style={{...glass({display:"flex",flexDirection:"column",overflow:"hidden",padding:0})}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",borderBottom:`1px solid ${T.surfaceBdr}`,flexShrink:0}}>
-              <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2}}>
-                {stations[0]?.lat?`${stations.length} Stations Found`:"Nearby Stations"}
-              </div>
+              <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2}}>{stations[0]?.lat?`${stations.length} Stations Found`:"Nearby Stations"}</div>
               <div style={{display:"flex",gap:3}}>
                 {["price","distance"].map(s=>(
                   <button key={s} onClick={()=>setSortBy(s)} style={{fontSize:9,fontWeight:600,padding:"3px 9px",borderRadius:7,cursor:"pointer",letterSpacing:.5,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:sortBy===s?`rgba(255,59,48,.14)`:T.inputBg,color:sortBy===s?T.accent:T.text3,border:`1px solid ${sortBy===s?"rgba(255,59,48,.28)":T.inputBdr}`}}>{s}</button>
@@ -1012,9 +794,8 @@ export default function GasPage() {
           </div>
         </div>
 
-        {/* Selected station */}
         {sel&&(
-          <div style={{background:T.surfaceHL,border:`1px solid ${T.surfaceHLBdr}`,borderRadius:20,padding:"16px 20px",marginBottom:13,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:14,animation:"fadeUp .3s cubic-bezier(.34,1.56,.64,1)",position:"relative",overflow:"hidden",boxShadow:`0 0 0 1px rgba(255,59,48,.08),0 8px 24px rgba(255,59,48,.1)`}}>
+          <div style={{background:T.surfaceHL,border:`1px solid ${T.surfaceHLBdr}`,borderRadius:20,padding:"16px 20px",marginBottom:13,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:14,animation:"fadeUp .3s cubic-bezier(.34,1.56,.64,1)",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(255,59,48,.5),transparent)"}}/>
             <div>
               <div style={{fontSize:9,fontWeight:600,letterSpacing:2,color:T.accent,textTransform:"uppercase",marginBottom:3}}>Selected Station</div>
@@ -1035,7 +816,6 @@ export default function GasPage() {
           </div>
         )}
 
-        {/* Route Gas Finder */}
         <RouteGasFinder userCoords={userCoords} basePrice={bestPrice} isDark={isDark}/>
 
         {/* Chart + Calculator */}
@@ -1075,9 +855,7 @@ export default function GasPage() {
           <div style={{...glass({padding:"20px 22px"})}}>
             <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
               Mileage & Deduction
-              <span style={{fontSize:9,fontWeight:600,background:"rgba(10,132,255,.12)",color:"#0a84ff",padding:"2px 8px",borderRadius:6,letterSpacing:.5,border:"1px solid rgba(10,132,255,.2)"}}>
-                IRS 2025 · $0.70/mi
-              </span>
+              <span style={{fontSize:9,fontWeight:600,background:"rgba(10,132,255,.12)",color:"#0a84ff",padding:"2px 8px",borderRadius:6,letterSpacing:.5,border:"1px solid rgba(10,132,255,.2)"}}>IRS 2025 · $0.70/mi</span>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11,margin:"0 0 14px"}}>
               {[{label:"Miles / Week",val:miles,set:setMiles,unit:"mi/wk"},{label:"Tank Size",val:tank,set:setTank,unit:"gal"}].map(f=>(
