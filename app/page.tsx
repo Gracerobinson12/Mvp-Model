@@ -537,7 +537,7 @@ function LandingPage() {
           <div className="cta-card">
             <div className="section-label">Get Started Today</div>
             <h2>Your intelligence<br/><span>starts here</span></h2>
-            <p>Take 60 seconds to set up your profile. 7 days free — no card needed. $4.99/mo after trial, cancel anytime.</p>
+            <p>Take 60 seconds to set up your profile. 7 days free. $4.99/mo after trial, cancel anytime.</p>
             <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
               <button onClick={() => setShowModal(true)} className="btn-primary" style={{fontSize:16,padding:"16px 36px",border:'none'}}>Start Free Trial →</button>
               <Link href="/login" className="btn-secondary" style={{fontSize:16,padding:"16px 28px"}}>Log In</Link>
@@ -554,7 +554,7 @@ function LandingPage() {
             <a href="/about" className="footer-link">About</a>
             <a href="/contact" className="footer-link">Contact</a>
           </div>
-          <div className="footer-copy">© 2025 GratIA Core LLC. All rights reserved.</div>
+          <div className="footer-copy">© 2026 GratIA Core LLC. All rights reserved.</div>
         </footer>
       </div>
     </>

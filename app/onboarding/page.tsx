@@ -1,6 +1,6 @@
 'use client'
 // @ts-nocheck
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -136,7 +136,7 @@ const PLANS = {
     bullets:['Industry-specific regulatory feed','Tariff intelligence for your sector','Assets & liabilities dashboard','Monthly deduction summary','Balance sheet PDF export'] },
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router     = useRouter()
   const params     = useSearchParams()
   const prefill    = params.get('prefill') || ''
@@ -555,5 +555,17 @@ export default function OnboardingPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f0eff4',fontFamily:"'DM Sans',sans-serif",color:'rgba(26,26,46,.5)',fontSize:14}}>
+        Loading...
+      </div>
+    }>
+      <OnboardingContent/>
+    </Suspense>
   )
 }
