@@ -306,17 +306,9 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,T,mapKey}:{statio
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function GasPage() {
+function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
 
-  // ── PAYWALL CHECK ─────────────────────────────────────────────────────────
-  const { allowed, checking, daysLeft } = usePaywall('driver')
-  if (checking) return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f2f7',fontFamily:"'Outfit',system-ui,sans-serif",color:'rgba(0,0,0,.4)',fontSize:14}}>
-      Loading...
-    </div>
-  )
-  if (!allowed) return <PaywallScreen planRequired="driver"/>
-  // ─────────────────────────────────────────────────────────────────────────
+  // daysLeft passed in from wrapper
 
   const [isDark,setIsDark]=useState(false)
   const [grade,setGrade]=useState("Regular")
@@ -574,4 +566,18 @@ export default function GasPage() {
       </div>
     </>
   )
+}
+
+export default function GasPage() {
+  const { allowed, checking, daysLeft } = usePaywall('driver')
+
+  if (checking) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f2f7',fontFamily:"'Outfit',system-ui,sans-serif",color:'rgba(0,0,0,.4)',fontSize:14}}>
+      Loading...
+    </div>
+  )
+
+  if (!allowed) return <PaywallScreen planRequired="driver"/>
+
+  return <GasPageContent daysLeft={daysLeft}/>
 }
