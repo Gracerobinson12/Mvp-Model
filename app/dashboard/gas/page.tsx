@@ -9,6 +9,8 @@ import {
   ResponsiveContainer, ReferenceLine
 } from "recharts"
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Station = {
@@ -108,8 +110,10 @@ function ChartTip({active,payload,label,T}:{active?:boolean,payload?:any,label?:
 }
 
 function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChangePlan}:{onClose:()=>void,T:Theme,userCoords:Coords|null,onUpdateLocation:()=>void,currentPlan:string,onChangePlan:(p:string)=>void}) {
+  const router = useRouter()
   const [tab,setTab]=useState<'account'|'location'|'plan'>('account')
-  const [email,setEmail]=useState('user@example.com')
+  const [email,setEmail]=useState('')
+  const [memberSince,setMemberSince]=useState('2025')
   const [newEmail,setNewEmail]=useState('')
   const [curPass,setCurPass]=useState('')
   const [newPass,setNewPass]=useState('')
@@ -119,6 +123,62 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
   const [locUpdating,setLocUpdating]=useState(false)
   const [locMsg,setLocMsg]=useState('')
   const [selectedPlan,setSelectedPlan]=useState(currentPlan)
+  const [trialDaysLeft,setTrialDaysLeft]=useState<number|null>(null)
+  const [zipInput,setZipInput]=useState('')
+
+  // Load real user data from Supabase
+  useEffect(()=>{
+    const loadUser = async () => {
+      const { data:{ user } } = await supabase.auth.getUser()
+      if (!user) return
+      setEmail(user.email || '')
+      setMemberSince(new Date(user.created_at).getFullYear().toString())
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('trial_ends_at, plan')
+        .eq('id', user.id)
+        .single()
+      if (profile?.trial_ends_at) {
+        const days = Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000*60*60*24))
+        setTrialDaysLeft(Math.max(0, days))
+      }
+      if (profile?.plan) setSelectedPlan(profile.plan)
+    }
+    loadUser()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
+  const handleUpdateEmail = async () => {
+    if (!newEmail.includes('@')) return
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    if (!error) {
+      setEmail(newEmail)
+      setNewEmail('')
+      setSavedEmail(true)
+      setTimeout(() => setSavedEmail(false), 2500)
+    }
+  }
+
+  const handleUpdatePassword = async () => {
+    if (newPass.length < 8 || newPass !== confirmPass) return
+    const { error } = await supabase.auth.updateUser({ password: newPass })
+    if (!error) {
+      setCurPass(''); setNewPass(''); setConfirmPass('')
+      setSavedPass(true)
+      setTimeout(() => setSavedPass(false), 2500)
+    }
+  }
+
+  const handleZipSearch = () => {
+    if (zipInput.length === 5) {
+      onUpdateLocation()
+      setLocMsg(`✓ Searching stations near ${zipInput}...`)
+    }
+  }
 
   const inputStyle={width:'100%',padding:'11px 14px',background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:12,fontSize:14,color:T.text,outline:'none',fontFamily:"'Outfit',system-ui,sans-serif",marginBottom:10,transition:'border-color .2s'}
 
@@ -148,12 +208,12 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
           {tab==='account' && <>
             <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:14,marginBottom:22}}>
               <div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>👤</div>
-              <div><div style={{fontSize:13,fontWeight:600,color:T.text}}>{email}</div><div style={{fontSize:11,color:T.text3,marginTop:2}}>Member since 2025</div></div>
+              <div><div style={{fontSize:13,fontWeight:600,color:T.text}}>{email||'Loading...'}</div><div style={{fontSize:11,color:T.text3,marginTop:2}}>Member since {memberSince} · {trialDaysLeft!==null?`${trialDaysLeft} days left in trial`:'Active'}</div></div>
             </div>
             <div style={{marginBottom:24}}>
               <div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:T.text3,textTransform:'uppercase',marginBottom:10}}>Change Email</div>
               <input type="email" placeholder="New email address" value={newEmail} onChange={e=>setNewEmail(e.target.value)} style={inputStyle}/>
-              <button onClick={()=>{if(newEmail.includes('@')){setEmail(newEmail);setNewEmail('');setSavedEmail(true);setTimeout(()=>setSavedEmail(false),2500)}}} style={{padding:'10px 20px',background:newEmail.includes('@')?'linear-gradient(135deg,#ff3b30,#ff6b35)':T.inputBg,color:newEmail.includes('@')?'#fff':T.text3,border:'none',borderRadius:100,fontSize:13,fontWeight:600,cursor:newEmail.includes('@')?'pointer':'not-allowed',fontFamily:"'Outfit',sans-serif"}}>
+              <button onClick={handleUpdateEmail} style={{padding:'10px 20px',background:newEmail.includes('@')?'linear-gradient(135deg,#ff3b30,#ff6b35)':T.inputBg,color:newEmail.includes('@')?'#fff':T.text3,border:'none',borderRadius:100,fontSize:13,fontWeight:600,cursor:newEmail.includes('@')?'pointer':'not-allowed',fontFamily:"'Outfit',sans-serif"}}>
                 {savedEmail?'✓ Email updated!':'Update Email'}
               </button>
             </div>
@@ -163,13 +223,13 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
               <input type="password" placeholder="Current password" value={curPass} onChange={e=>setCurPass(e.target.value)} style={inputStyle}/>
               <input type="password" placeholder="New password (8+ characters)" value={newPass} onChange={e=>setNewPass(e.target.value)} style={inputStyle}/>
               <input type="password" placeholder="Confirm new password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} style={{...inputStyle,marginBottom:12}}/>
-              <button onClick={()=>{if(newPass.length>=8&&newPass===confirmPass){setCurPass('');setNewPass('');setConfirmPass('');setSavedPass(true);setTimeout(()=>setSavedPass(false),2500)}}} style={{padding:'10px 20px',background:newPass.length>=8&&newPass===confirmPass?'linear-gradient(135deg,#ff3b30,#ff6b35)':T.inputBg,color:newPass.length>=8&&newPass===confirmPass?'#fff':T.text3,border:'none',borderRadius:100,fontSize:13,fontWeight:600,cursor:newPass.length>=8&&newPass===confirmPass?'pointer':'not-allowed',fontFamily:"'Outfit',sans-serif"}}>
+              <button onClick={handleUpdatePassword} style={{padding:'10px 20px',background:newPass.length>=8&&newPass===confirmPass?'linear-gradient(135deg,#ff3b30,#ff6b35)':T.inputBg,color:newPass.length>=8&&newPass===confirmPass?'#fff':T.text3,border:'none',borderRadius:100,fontSize:13,fontWeight:600,cursor:newPass.length>=8&&newPass===confirmPass?'pointer':'not-allowed',fontFamily:"'Outfit',sans-serif"}}>
                 {savedPass?'✓ Password updated!':'Update Password'}
               </button>
               {newPass&&confirmPass&&newPass!==confirmPass&&<div style={{fontSize:12,color:'#ff453a',marginTop:8}}>Passwords don't match</div>}
             </div>
             <div style={{height:1,background:T.divider,marginBottom:24}}/>
-            <button onClick={()=>{window.location.href='/login'}} style={{width:'100%',padding:12,background:'transparent',color:'#ff453a',border:`1px solid rgba(255,69,58,.25)`,borderRadius:100,fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>Sign Out</button>
+            <button onClick={handleSignOut} style={{width:'100%',padding:12,background:'transparent',color:'#ff453a',border:`1px solid rgba(255,69,58,.25)`,borderRadius:100,fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>Sign Out</button>
           </>}
 
           {tab==='location' && <>
@@ -571,18 +631,32 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
 
 export default function GasPage() {
   const { allowed, checking, daysLeft } = usePaywall('driver')
-  const [tasteExpired, setTasteExpired] = React.useState(false)
-  const [inTasteMode, setInTasteMode]   = React.useState(false)
+  const [tasteExpired, setTasteExpired] = React.useState(() => {
+    // Persist expired state in localStorage so it survives re-renders
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('gratia_taste_expired') === 'true'
+    }
+    return false
+  })
+  const [inTasteMode, setInTasteMode] = React.useState(false)
 
-  // Check if this is a brand new gas-only signup (within last 2 minutes)
   React.useEffect(() => {
     const signupTime = localStorage.getItem('gratia_signup_time')
     if (signupTime) {
       const elapsed = Date.now() - parseInt(signupTime)
       if (elapsed < 2 * 60 * 1000) {
         setInTasteMode(true)
+      } else {
+        // Signup time expired — clear it
+        localStorage.removeItem('gratia_signup_time')
       }
     }
+  }, [])
+
+  const handleTasteExpire = React.useCallback(() => {
+    localStorage.setItem('gratia_taste_expired', 'true')
+    localStorage.removeItem('gratia_signup_time')
+    setTasteExpired(true)
   }, [])
 
   if (checking) return (
@@ -591,18 +665,16 @@ export default function GasPage() {
     </div>
   )
 
-  // Trial expired AND taste mode expired → full paywall
-  if (!allowed && (!inTasteMode || tasteExpired)) return <PaywallScreen planRequired="driver"/>
+  // Show paywall if: not on trial AND (not in taste mode OR taste expired)
+  if (!allowed && (!inTasteMode || tasteExpired)) {
+    return <PaywallScreen planRequired="driver"/>
+  }
 
   return (
     <>
       <GasPageContent daysLeft={daysLeft}/>
-      {/* 30-second taste timer for new gas signups */}
       {inTasteMode && !tasteExpired && (
-        <TasteTimer onExpire={() => {
-          setTasteExpired(true)
-          localStorage.removeItem('gratia_signup_time')
-        }}/>
+        <TasteTimer onExpire={handleTasteExpire}/>
       )}
     </>
   )
