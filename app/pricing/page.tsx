@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 function GratiaLogo() {
   return (
@@ -113,9 +114,53 @@ const FAQS = [
 ]
 
 export default function PricingPage() {
-  const router = useRouter()
-  const [annual, setAnnual] = useState(false)
-  const [openFaq, setOpenFaq] = useState(null)
+  const router   = useRouter()
+  const [annual,    setAnnual]    = useState(false)
+  const [openFaq,   setOpenFaq]   = useState(null)
+  const [loadingId, setLoadingId] = useState<string|null>(null)
+
+  const handleSubscribe = async (planId: string) => {
+    setLoadingId(planId)
+    try {
+      // Check if user is logged in
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        // Not logged in — send to signup
+        router.push('/')
+        return
+      }
+
+      // Logged in — go straight to Stripe checkout
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('user_type')
+        .eq('id', user.id)
+        .single()
+
+      const userType = planId === 'driver' ? 'driver'
+                     : planId === 'freelancer' ? 'freelancer'
+                     : 'business'
+
+      const res = await fetch('/api/create-checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          userId:   user.id,
+          email:    user.email,
+          userType: profile?.user_type || userType,
+        }),
+      })
+
+      const { url, error } = await res.json()
+      if (error) throw new Error(error)
+      if (url) window.location.href = url
+
+    } catch (e: any) {
+      alert(e.message || 'Something went wrong. Please try again.')
+    }
+    setLoadingId(null)
+  }
 
   const displayPrice = (price) => annual ? (price * 10).toFixed(2) : price.toFixed(2)
   const savings = (price) => (price * 12 - price * 10).toFixed(2)
@@ -252,10 +297,11 @@ export default function PricingPage() {
                 </div>
 
                 <button
-                  onClick={()=>router.push('/')}
+                  onClick={()=>handleSubscribe(plan.id)}
+                  disabled={loadingId===plan.id}
                   className="cta-btn"
-                  style={{background:plan.popular?plan.gradient:'rgba(0,0,0,.06)',color:plan.popular?'#fff':'var(--ink)',boxShadow:plan.popular?`0 4px 16px ${plan.color}44`:'none'}}>
-                  Start 7-Day Free Trial →
+                  style={{background:plan.popular?plan.gradient:'rgba(0,0,0,.06)',color:plan.popular?'#fff':'var(--ink)',boxShadow:plan.popular?`0 4px 16px ${plan.color}44`:'none',opacity:loadingId===plan.id?.7:1}}>
+                  {loadingId===plan.id?'Redirecting...':'Start 7-Day Free Trial →'}
                 </button>
 
                 <p style={{fontSize:11,color:'var(--ink-3)',textAlign:'center',marginTop:10}}>
@@ -362,9 +408,10 @@ export default function PricingPage() {
               Join founders, drivers, freelancers, and business owners saving thousands with GratIA Core.
             </p>
             <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-              <button onClick={()=>router.push('/')}
-                style={{padding:'16px 36px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:18,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 4px 16px rgba(255,59,48,.35)'}}>
-                Start 7-Day Free Trial →
+              <button onClick={()=>handleSubscribe('driver')}
+                disabled={loadingId==='driver'}
+                style={{padding:'16px 36px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:18,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 4px 16px rgba(255,59,48,.35)',opacity:loadingId==='driver'?.7:1}}>
+                {loadingId==='driver'?'Redirecting...':'Start 7-Day Free Trial →'}
               </button>
               <Link href="/login"
                 style={{padding:'16px 28px',background:'rgba(255,255,255,.8)',color:'var(--ink)',border:'1px solid rgba(255,255,255,.95)',borderRadius:18,fontSize:15,fontWeight:600,textDecoration:'none',fontFamily:"'DM Sans',sans-serif",display:'inline-flex',alignItems:'center'}}>
