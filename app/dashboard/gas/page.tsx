@@ -1,7 +1,8 @@
 // @ts-nocheck
 'use client'
 import RouteGasFinder from '@/components/gas/RouteGasFinder'
-import { usePaywall, PaywallScreen, TrialBanner } from '@/components/PaywallGate'
+import React from 'react'
+import { usePaywall, PaywallScreen, TrialBanner, TasteTimer } from '@/components/PaywallGate'
 import { useEffect, useState, useRef, useCallback } from "react"
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
@@ -570,6 +571,19 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
 
 export default function GasPage() {
   const { allowed, checking, daysLeft } = usePaywall('driver')
+  const [tasteExpired, setTasteExpired] = React.useState(false)
+  const [inTasteMode, setInTasteMode]   = React.useState(false)
+
+  // Check if this is a brand new gas-only signup (within last 2 minutes)
+  React.useEffect(() => {
+    const signupTime = localStorage.getItem('gratia_signup_time')
+    if (signupTime) {
+      const elapsed = Date.now() - parseInt(signupTime)
+      if (elapsed < 2 * 60 * 1000) {
+        setInTasteMode(true)
+      }
+    }
+  }, [])
 
   if (checking) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f2f7',fontFamily:"'Outfit',system-ui,sans-serif",color:'rgba(0,0,0,.4)',fontSize:14}}>
@@ -577,7 +591,19 @@ export default function GasPage() {
     </div>
   )
 
-  if (!allowed) return <PaywallScreen planRequired="driver"/>
+  // Trial expired AND taste mode expired → full paywall
+  if (!allowed && (!inTasteMode || tasteExpired)) return <PaywallScreen planRequired="driver"/>
 
-  return <GasPageContent daysLeft={daysLeft}/>
+  return (
+    <>
+      <GasPageContent daysLeft={daysLeft}/>
+      {/* 30-second taste timer for new gas signups */}
+      {inTasteMode && !tasteExpired && (
+        <TasteTimer onExpire={() => {
+          setTasteExpired(true)
+          localStorage.removeItem('gratia_signup_time')
+        }}/>
+      )}
+    </>
+  )
 }

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -220,7 +220,11 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
         body: JSON.stringify({ email, userType: userCat, trialDays }),
       }).catch(()=>{})
       // Gas only → straight to tracker, others → onboarding for extra info
-      if (userCat === 'gas') router.push('/dashboard/gas')
+      if (userCat === 'gas') {
+        // Store signup time so gas tracker shows 30-sec taste preview
+        localStorage.setItem('gratia_signup_time', Date.now().toString())
+        router.push('/dashboard/gas')
+      }
       else router.push(`/onboarding?prefill=${userCat}`)
     } catch (e: any) {
       setError(e?.message || 'Something went wrong. Please try again.')
@@ -478,15 +482,19 @@ function LandingPage() {
             <p className="section-sub" style={{margin:"0 auto"}}>Each module is personalized to your type and connects to the others automatically.</p>
           </div>
           <div className="modules-grid">
-            <div className="module-card featured active" onClick={() => setShowModal(true)}>
+            <div className="module-card featured active" style={{cursor:'default',gridColumn:'span 2'}}>
               <div className="card-top">
                 <div className="card-icon" style={{background:"linear-gradient(135deg,#ff3b30,#ff6b35)"}}>⛽</div>
                 <div className="card-status-live"><div className="live-dot"/>LIVE</div>
               </div>
               <div className="card-title">Gas Price Tracker</div>
-              <div className="card-desc">Real-time gas prices at stations near you. Compare grades, track 7-day trends, and calculate your exact IRS mileage deduction — updated every hour.</div>
-              <div className="card-meta">$3.07 near you right now · ↓ Prices falling</div>
-              <br/><span className="card-cta">Start Free Trial →</span>
+              <div className="card-desc" style={{marginBottom:16}}>Real-time gas prices at stations near you. Compare grades, track trends, and calculate your IRS mileage deduction.</div>
+
+              {/* ── Live Preview ── */}
+              <GasTrackerPreview/>
+
+              <br/>
+              <span className="card-cta" onClick={() => setShowModal(true)} style={{cursor:'pointer'}}>Start Free Trial →</span>
             </div>
             {[
               {icon:"📋",color:"linear-gradient(135deg,#0a84ff,#30a0ff)",title:"Regulatory Updates",desc:"IRS changes, OSHA rules, labor laws filtered to your industry.",meta:"IRS · OSHA · DOL · FDA"},
@@ -537,7 +545,7 @@ function LandingPage() {
           <div className="cta-card">
             <div className="section-label">Get Started Today</div>
             <h2>Your intelligence<br/><span>starts here</span></h2>
-            <p>Take 60 seconds to set up your profile. 7 days free. $4.99/mo after trial, cancel anytime.</p>
+            <p>Take 60 seconds to set up your profile. 7 days free — no card needed. $4.99/mo after trial, cancel anytime.</p>
             <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
               <button onClick={() => setShowModal(true)} className="btn-primary" style={{fontSize:16,padding:"16px 36px",border:'none'}}>Start Free Trial →</button>
               <Link href="/login" className="btn-secondary" style={{fontSize:16,padding:"16px 28px"}}>Log In</Link>
@@ -554,7 +562,7 @@ function LandingPage() {
             <a href="/about" className="footer-link">About</a>
             <a href="/contact" className="footer-link">Contact</a>
           </div>
-          <div className="footer-copy">© 2026 GratIA Core LLC. All rights reserved.</div>
+          <div className="footer-copy">© 2025 GratIA Core LLC. All rights reserved.</div>
         </footer>
       </div>
     </>

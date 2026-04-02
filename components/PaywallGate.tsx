@@ -1,7 +1,7 @@
 'use client'
 // components/PaywallGate.tsx
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -159,5 +159,108 @@ export function PaywallScreen({ planRequired = 'driver' }: { planRequired?: stri
         </div>
       </div>
     </>
+  )
+}
+
+// ── Taste Timer — 30 second preview before paywall ────────────
+export function TasteTimer({ onExpire }: { onExpire: () => void }) {
+  const [seconds, setSeconds] = React.useState(30)
+  const [visible, setVisible] = React.useState(true)
+
+  React.useEffect(() => {
+    const t = setInterval(() => {
+      setSeconds(s => {
+        if (s <= 1) {
+          clearInterval(t)
+          onExpire()
+          return 0
+        }
+        return s - 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  if (!visible) return null
+
+  const pct = (seconds / 30) * 100
+  const urgent = seconds <= 10
+
+  return (
+    <div style={{
+      position:   'fixed',
+      bottom:     24,
+      left:       '50%',
+      transform:  'translateX(-50%)',
+      zIndex:     9998,
+      background: urgent ? 'rgba(255,59,48,.97)' : 'rgba(26,26,46,.97)',
+      backdropFilter: 'blur(20px)',
+      border:     `1px solid ${urgent ? 'rgba(255,59,48,.4)' : 'rgba(255,255,255,.1)'}`,
+      borderRadius: 100,
+      padding:    '12px 20px',
+      display:    'flex',
+      alignItems: 'center',
+      gap:        14,
+      boxShadow:  '0 8px 32px rgba(0,0,0,.3)',
+      fontFamily: "'DM Sans',system-ui,sans-serif",
+      minWidth:   320,
+      animation:  'tasteSlideUp .4s cubic-bezier(.34,1.56,.64,1)',
+    }}>
+      <style>{`@keyframes tasteSlideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
+
+      {/* Progress ring */}
+      <div style={{position:'relative',width:36,height:36,flexShrink:0}}>
+        <svg width="36" height="36" style={{transform:'rotate(-90deg)'}}>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="3"/>
+          <circle cx="18" cy="18" r="14" fill="none"
+            stroke={urgent?'#fff':'#ff3b30'}
+            strokeWidth="3"
+            strokeDasharray={`${2*Math.PI*14}`}
+            strokeDashoffset={`${2*Math.PI*14*(1-pct/100)}`}
+            strokeLinecap="round"
+            style={{transition:'stroke-dashoffset 1s linear'}}
+          />
+        </svg>
+        <div style={{
+          position:'absolute',inset:0,display:'flex',
+          alignItems:'center',justifyContent:'center',
+          fontSize:11,fontWeight:800,color:'#fff',
+        }}>{seconds}</div>
+      </div>
+
+      <div style={{flex:1}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#fff',marginBottom:2}}>
+          {urgent ? '⚡ Preview ending soon!' : '⛽ Free preview — enjoy GratIA Core'}
+        </div>
+        <div style={{fontSize:11,color:'rgba(255,255,255,.6)'}}>
+          {urgent ? 'Subscribe to keep full access' : `${seconds}s left · No card required to explore`}
+        </div>
+      </div>
+
+      <button
+        onClick={onExpire}
+        style={{
+          padding:'8px 16px',
+          background:'linear-gradient(135deg,#ff3b30,#ff6b35)',
+          color:'#fff',
+          border:'none',
+          borderRadius:100,
+          fontSize:12,
+          fontWeight:700,
+          cursor:'pointer',
+          fontFamily:"'DM Sans',sans-serif",
+          whiteSpace:'nowrap',
+          flexShrink:0,
+          boxShadow: urgent ? '0 0 16px rgba(255,255,255,.3)' : 'none',
+        }}>
+        Subscribe →
+      </button>
+
+      <button
+        onClick={()=>setVisible(false)}
+        style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',cursor:'pointer',fontSize:16,padding:'4px',flexShrink:0,lineHeight:1}}>
+        ✕
+      </button>
+    </div>
   )
 }
