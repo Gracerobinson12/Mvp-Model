@@ -334,6 +334,50 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Gas Tracker Live Preview ──────────────────────────────────
+function GasTrackerPreview() {
+  const [activeStation, setActiveStation] = useState(0)
+  const stations = [
+    { name:'QuikTrip', price:3.04, dist:'0.4 mi', trend:'down',   color:'#30d158' },
+    { name:'Shell',    price:3.09, dist:'0.7 mi', trend:'down',   color:'#30d158' },
+    { name:'Circle K', price:3.15, dist:'1.1 mi', trend:'stable', color:'#ff9f0a' },
+    { name:'BP',       price:3.21, dist:'1.4 mi', trend:'up',     color:'#ff453a' },
+  ]
+  useEffect(() => {
+    const t = setInterval(() => setActiveStation(s => (s + 1) % stations.length), 1600)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div style={{background:'rgba(0,0,0,.04)',border:'1px solid rgba(0,0,0,.08)',borderRadius:14,overflow:'hidden',marginBottom:10}}>
+      <div style={{display:'flex',borderBottom:'1px solid rgba(0,0,0,.06)'}}>
+        {[{label:'Best Price',val:'$3.04',color:'#ff3b30'},{label:'Deduction',val:'$182/mo',color:'#30d158'},{label:'Trend',val:'↓ Falling',color:'#25a244'}].map((k,i)=>(
+          <div key={i} style={{flex:1,padding:'8px 10px',borderRight:i<2?'1px solid rgba(0,0,0,.06)':'none',textAlign:'center'}}>
+            <div style={{fontSize:7,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.35)',textTransform:'uppercase',marginBottom:2}}>{k.label}</div>
+            <div style={{fontSize:14,fontWeight:800,color:k.color,letterSpacing:-.3}}>{k.val}</div>
+          </div>
+        ))}
+      </div>
+      {stations.map((st,i)=>{
+        const isActive=i===activeStation
+        const icon=st.trend==='down'?'↓':st.trend==='up'?'↑':'→'
+        return (
+          <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 12px',borderBottom:i<stations.length-1?'1px solid rgba(0,0,0,.04)':'none',background:isActive?'rgba(255,59,48,.04)':'transparent',borderLeft:`2px solid ${isActive?'#ff3b30':'transparent'}`,transition:'all .35s ease'}}>
+            <div style={{fontSize:9,fontWeight:700,color:i===0?'#30d158':'rgba(26,26,46,.25)',minWidth:12}}>{i===0?'★':`${i+1}`}</div>
+            <div style={{flex:1,fontSize:12,fontWeight:600,color:'#1a1a2e'}}>{st.name}</div>
+            <div style={{fontSize:9,color:'rgba(26,26,46,.35)'}}>{st.dist}</div>
+            <div style={{fontSize:9,fontWeight:700,color:st.color,minWidth:12}}>{icon}</div>
+            <div style={{fontSize:14,fontWeight:800,color:i===0?'#30d158':'#1a1a2e',letterSpacing:-.3}}>${st.price.toFixed(2)}</div>
+          </div>
+        )
+      })}
+      <div style={{padding:'6px 12px',display:'flex',alignItems:'center',gap:6,background:'rgba(255,59,48,.04)'}}>
+        <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease-in-out infinite'}}/>
+        <span style={{fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:600,letterSpacing:.5}}>LIVE · EIA.GOV · UPDATES HOURLY</span>
+      </div>
+    </div>
+  )
+}
+
 function LandingPage() {
   const [showModal, setShowModal] = useState(false)
   return (
