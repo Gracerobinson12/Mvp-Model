@@ -201,12 +201,18 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       const userId = data.user?.id
       if (!userId) throw new Error('No user ID returned')
       const trialDays   = promoValid ? promoDays : 7
-      const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
+      // Gas-only users get NO trial until they pay via Stripe
+      // All other users get trial immediately (they go through onboarding → pricing)
+      const trialEndsAt = userCat === 'gas'
+        ? null
+        : new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
+
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: userId, email,
         user_type:     userCat,
         account_type:  userCat === 'business' ? 'business' : 'personal',
         plan:          'free',
+        plan_status:   userCat === 'gas' ? 'taste' : 'trialing',
         onboarded:     userCat === 'gas',
         trial_ends_at: trialEndsAt,
       })

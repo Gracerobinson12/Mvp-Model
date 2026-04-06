@@ -631,53 +631,194 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
 
 export default function GasPage() {
   const { allowed, checking, daysLeft } = usePaywall('driver')
-
-  // ── Taste mode: new gas signup gets 30 sec free preview ──────────────────
-  const [tasteExpired, setTasteExpired] = React.useState(false)
-  const [inTasteMode,  setInTasteMode]  = React.useState(false)
-  const [ready,        setReady]        = React.useState(false)
+  const [phase, setPhase] = React.useState<'loading'|'taste'|'paywall'|'access'>('loading')
 
   React.useEffect(() => {
-    const expired   = localStorage.getItem('gratia_taste_expired') === 'true'
-    const signupRaw = localStorage.getItem('gratia_signup_time')
-    const recent    = signupRaw && (Date.now() - parseInt(signupRaw)) < 2 * 60 * 1000
+    if (checking) return
 
-    if (expired) {
-      setTasteExpired(true)
-    } else if (recent) {
-      setInTasteMode(true)
+    // Already paid / active trial → full access
+    if (allowed) {
+      setPhase('access')
+      return
     }
-    setReady(true)
-  }, [])
 
-  const handleTasteExpire = React.useCallback(() => {
-    localStorage.setItem('gratia_taste_expired', 'true')
-    localStorage.removeItem('gratia_signup_time')
-    setTasteExpired(true)
-    setInTasteMode(false)
-  }, [])
+    // New signup within last 3 min → show 30s taste first
+    const signupRaw = localStorage.getItem('gratia_signup_time')
+    if (signupRaw) {
+      const elapsed = Date.now() - parseInt(signupRaw)
+      if (elapsed < 3 * 60 * 1000) {
+        setPhase('taste')
+        return
+      }
+      localStorage.removeItem('gratia_signup_time')
+    }
 
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if (checking || !ready) return (
+    // No access, no taste → straight to paywall
+    setPhase('paywall')
+  }, [checking, allowed])
+
+  if (phase === 'loading' || checking) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f2f7',fontFamily:"'Outfit',system-ui,sans-serif",color:'rgba(0,0,0,.4)',fontSize:14}}>
       Loading...
     </div>
   )
 
-  // ── Taste mode expired → ALWAYS show paywall regardless of trial ──────────
-  if (tasteExpired && !allowed) return <PaywallScreen planRequired="driver"/>
-  if (tasteExpired && allowed)  return <PaywallScreen planRequired="driver"/>
+  // ── Full access (paid or active trial) ────────────────────────────────────
+  if (phase === 'access') return <GasPageContent daysLeft={daysLeft}/>
 
-  // ── No trial, not in taste mode → paywall ─────────────────────────────────
-  if (!allowed && !inTasteMode) return <PaywallScreen planRequired="driver"/>
+  // ── Paywall (after taste or direct visit without payment) ─────────────────
+  if (phase === 'paywall') return <SubscribeScreen/>
 
-  // ── Has access OR in taste mode → show the tracker ────────────────────────
+  // ── Taste mode: 30 seconds then paywall ───────────────────────────────────
   return (
     <>
-      <GasPageContent daysLeft={allowed ? daysLeft : null}/>
-      {inTasteMode && (
-        <TasteTimer onExpire={handleTasteExpire}/>
-      )}
+      <GasPageContent daysLeft={null}/>
+      <TasteTimer onExpire={() => {
+        localStorage.removeItem('gratia_signup_time')
+        setPhase('paywall')
+      }}/>
+    </>
+  )
+}
+
+// ── Subscribe Screen — shown after taste expires ───────────────────────────
+function SubscribeScreen() {
+  const router   = useRouter()
+  const [loading, setLoading] = React.useState(false)
+  const [plan,    setPlan]    = React.useState<'driver'|'freelancer'|'business'>('driver')
+
+  const PLANS = [
+    { id:'driver',     name:'Driver Pass',     price:'$4.99/mo',  color:'#ff3b30', emoji:'🚗',
+      features:['Real-time gas prices near you','Route gas finder','IRS mileage deduction calculator','Gas price drop alerts','Quarterly tax reminders'] },
+    { id:'freelancer', name:'Freelancer Pass',  price:'$7.99/mo',  color:'#0a84ff', emoji:'💼',
+      features:['Everything in Driver Pass','Full deduction teller','Home office tracker','IRS rule change alerts'] },
+    { id:'business',   name:'Business Pass',    price:'$14.99/mo', color:'#30d158', emoji:'🏢',
+      features:['Everything in Freelancer Pass','Live regulatory feed','Tariff intelligence','Labor law compliance'] },
+  ]
+
+  const selected = PLANS.find(p => p.id === plan) || PLANS[0]
+
+  const handleSubscribe = async () => {
+    setLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+
+      const res = await fetch('/api/create-checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ userId: user.id, email: user.email, userType: plan }),
+      })
+      const { url, error } = await res.json()
+      if (error) throw new Error(error)
+      if (url) window.location.href = url
+    } catch (e: any) {
+      alert(e.message || 'Something went wrong.')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
+        @keyframes subIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes lp{0%,100%{opacity:1}50%{opacity:.3}}
+      `}</style>
+      <div style={{minHeight:'100vh',background:'#f0eff4',fontFamily:"'DM Sans',system-ui,sans-serif",padding:'40px 24px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+
+        {/* Header */}
+        <div style={{textAlign:'center',marginBottom:32,animation:'subIn .5s ease both'}}>
+          <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,59,48,.1)',border:'1px solid rgba(255,59,48,.2)',borderRadius:100,padding:'6px 16px',marginBottom:16}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.5s ease infinite'}}/>
+            <span style={{fontSize:11,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase'}}>Start Your Free Trial</span>
+          </div>
+          <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,letterSpacing:-1.5,color:'#1a1a2e',marginBottom:8,lineHeight:1.1}}>
+            You just saw what's waiting for you
+          </h1>
+          <p style={{fontSize:15,color:'rgba(26,26,46,.55)',maxWidth:420,margin:'0 auto',lineHeight:1.65}}>
+            Start your 7-day free trial today. Card required — you won't be charged until day 8. Cancel anytime.
+          </p>
+        </div>
+
+        {/* Plan selector */}
+        <div style={{display:'flex',gap:10,marginBottom:24,flexWrap:'wrap',justifyContent:'center',animation:'subIn .5s ease .1s both'}}>
+          {PLANS.map(p=>(
+            <button key={p.id} onClick={()=>setPlan(p.id as any)} style={{
+              padding:'10px 20px',borderRadius:100,fontSize:13,fontWeight:700,cursor:'pointer',
+              fontFamily:"'DM Sans',sans-serif",transition:'all .2s',
+              background: plan===p.id ? `linear-gradient(135deg,${p.color},${p.color}cc)` : 'rgba(255,255,255,.8)',
+              color:       plan===p.id ? '#fff' : 'rgba(26,26,46,.6)',
+              border:      plan===p.id ? 'none' : '1px solid rgba(0,0,0,.1)',
+              boxShadow:   plan===p.id ? `0 4px 14px ${p.color}44` : 'none',
+            }}>
+              {p.emoji} {p.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Selected plan card */}
+        <div style={{
+          maxWidth:460, width:'100%',
+          background:'rgba(255,255,255,.9)',
+          border:`2px solid ${selected.color}33`,
+          borderRadius:28, padding:'32px 28px',
+          boxShadow:`0 8px 40px ${selected.color}18`,
+          animation:'subIn .5s ease .15s both',
+          position:'relative', overflow:'hidden',
+        }}>
+          <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,transparent,${selected.color},transparent)`}}/>
+
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:selected.color,textTransform:'uppercase',marginBottom:6}}>⭐ Recommended for you</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e'}}>{selected.name}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,letterSpacing:-1.5,color:selected.color,lineHeight:1}}>{selected.price.replace('/mo','')}</div>
+              <div style={{fontSize:12,color:'rgba(26,26,46,.4)'}}>/mo after trial</div>
+            </div>
+          </div>
+
+          {/* Trial info box */}
+          <div style={{background:'rgba(48,209,88,.08)',border:'1px solid rgba(48,209,88,.2)',borderRadius:14,padding:'12px 16px',marginBottom:20,display:'flex',gap:10,alignItems:'center'}}>
+            <span style={{fontSize:20}}>🎁</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:'#1a7a35'}}>7-day free trial — card not charged until day 8</div>
+              <div style={{fontSize:11,color:'rgba(26,26,46,.45)',marginTop:2}}>Cancel before day 8 and pay absolutely nothing</div>
+            </div>
+          </div>
+
+          {/* Features */}
+          <div style={{marginBottom:24}}>
+            {selected.features.map((f,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.7)',marginBottom:8}}>
+                <span style={{color:selected.color,fontWeight:700,flexShrink:0}}>✓</span>{f}
+              </div>
+            ))}
+          </div>
+
+          <button onClick={handleSubscribe} disabled={loading} style={{
+            width:'100%', padding:16,
+            background: loading ? 'rgba(255,59,48,.3)' : 'linear-gradient(135deg,#ff3b30,#ff6b35)',
+            color:'#fff', border:'none', borderRadius:100,
+            fontSize:16, fontWeight:800, cursor: loading ? 'not-allowed' : 'pointer',
+            fontFamily:"'DM Sans',sans-serif",
+            boxShadow: loading ? 'none' : '0 4px 20px rgba(255,59,48,.4)',
+            marginBottom:12, letterSpacing:-.3,
+          }}>
+            {loading ? 'Redirecting to checkout...' : `Start Free Trial — ${selected.price} →`}
+          </button>
+
+          <p style={{fontSize:11,color:'rgba(26,26,46,.35)',textAlign:'center',lineHeight:1.6,margin:0}}>
+            🔒 Secure checkout via Stripe · Cancel anytime · No hidden fees
+          </p>
+        </div>
+
+        <button onClick={()=>router.push('/')} style={{marginTop:20,background:'none',border:'none',color:'rgba(26,26,46,.35)',fontSize:12,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+          ← Back to home
+        </button>
+      </div>
     </>
   )
 }
