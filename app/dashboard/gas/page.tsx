@@ -132,7 +132,7 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
       const { data:{ user } } = await supabase.auth.getUser()
       if (!user) return
       setEmail(user.email || '')
-      setMemberSince(new Date(user.created_at).getFullYear().toString())
+      setMemberSince(new Date(user.created_at).toLocaleDateString('en-US',{month:'short',year:'numeric'}))
       const { data: profile } = await supabase
         .from('profiles')
         .select('trial_ends_at, plan')
@@ -180,7 +180,7 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
     }
   }
 
-  const inputStyle={width:'100%',padding:'11px 14px',background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:12,fontSize:14,color:T.text,outline:'none',fontFamily:"'Outfit',system-ui,sans-serif",marginBottom:10,transition:'border-color .2s'}
+  const inputStyle={width:'100%',padding:'11px 14px',background:'rgba(255,255,255,.9)',border:`1.5px solid rgba(0,0,0,.12)`,borderRadius:12,fontSize:14,color:'#1a1a2e',outline:'none',fontFamily:"'Outfit',system-ui,sans-serif",marginBottom:10,transition:'border-color .2s'}
 
   const handleUpdateLocation=()=>{
     setLocUpdating(true);setLocMsg('Requesting your current location...')
@@ -631,49 +631,51 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
 
 export default function GasPage() {
   const { allowed, checking, daysLeft } = usePaywall('driver')
-  const [tasteExpired, setTasteExpired] = React.useState(() => {
-    // Persist expired state in localStorage so it survives re-renders
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('gratia_taste_expired') === 'true'
-    }
-    return false
-  })
-  const [inTasteMode, setInTasteMode] = React.useState(false)
+
+  // ── Taste mode: new gas signup gets 30 sec free preview ──────────────────
+  const [tasteExpired, setTasteExpired] = React.useState(false)
+  const [inTasteMode,  setInTasteMode]  = React.useState(false)
+  const [ready,        setReady]        = React.useState(false)
 
   React.useEffect(() => {
-    const signupTime = localStorage.getItem('gratia_signup_time')
-    if (signupTime) {
-      const elapsed = Date.now() - parseInt(signupTime)
-      if (elapsed < 2 * 60 * 1000) {
-        setInTasteMode(true)
-      } else {
-        // Signup time expired — clear it
-        localStorage.removeItem('gratia_signup_time')
-      }
+    const expired   = localStorage.getItem('gratia_taste_expired') === 'true'
+    const signupRaw = localStorage.getItem('gratia_signup_time')
+    const recent    = signupRaw && (Date.now() - parseInt(signupRaw)) < 2 * 60 * 1000
+
+    if (expired) {
+      setTasteExpired(true)
+    } else if (recent) {
+      setInTasteMode(true)
     }
+    setReady(true)
   }, [])
 
   const handleTasteExpire = React.useCallback(() => {
     localStorage.setItem('gratia_taste_expired', 'true')
     localStorage.removeItem('gratia_signup_time')
     setTasteExpired(true)
+    setInTasteMode(false)
   }, [])
 
-  if (checking) return (
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (checking || !ready) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f2f7',fontFamily:"'Outfit',system-ui,sans-serif",color:'rgba(0,0,0,.4)',fontSize:14}}>
       Loading...
     </div>
   )
 
-  // Show paywall if: not on trial AND (not in taste mode OR taste expired)
-  if (!allowed && (!inTasteMode || tasteExpired)) {
-    return <PaywallScreen planRequired="driver"/>
-  }
+  // ── Taste mode expired → ALWAYS show paywall regardless of trial ──────────
+  if (tasteExpired && !allowed) return <PaywallScreen planRequired="driver"/>
+  if (tasteExpired && allowed)  return <PaywallScreen planRequired="driver"/>
 
+  // ── No trial, not in taste mode → paywall ─────────────────────────────────
+  if (!allowed && !inTasteMode) return <PaywallScreen planRequired="driver"/>
+
+  // ── Has access OR in taste mode → show the tracker ────────────────────────
   return (
     <>
-      <GasPageContent daysLeft={daysLeft}/>
-      {inTasteMode && !tasteExpired && (
+      <GasPageContent daysLeft={allowed ? daysLeft : null}/>
+      {inTasteMode && (
         <TasteTimer onExpire={handleTasteExpire}/>
       )}
     </>
