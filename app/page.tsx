@@ -502,10 +502,9 @@ function LandingPage() {
           <h1>Business<br/><span className="accent">intelligence</span><br/><span className="light-word">at your fingertips</span></h1>
           <p className="hero-sub">Real-time gas prices, regulatory updates, tariff tracking, and tax deductions — all in one platform built for gig workers, freelancers, and growing businesses.</p>
           <div className="hero-actions">
-            <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
             <button onClick={() => setShowModal(true)} className="btn-secondary">⛽ Try Gas Tracker</button>
           </div>
-          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>No credit card needed · $4.99/mo after trial · Cancel anytime</div>
+          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}> · $4.99/mo after trial · Cancel anytime</div>
           <div className="hero-trust">
             <span className="trust-item">For Drivers</span><div className="trust-dot"/>
             <span className="trust-item">For Freelancers</span><div className="trust-dot"/>
@@ -514,16 +513,7 @@ function LandingPage() {
           </div>
         </section>
 
-        <div className="stats-bar">
-          <div className="stats-inner">
-            {[{val:"$8,736",suffix:"",label:"Avg annual deductions missed by drivers"},{val:"145",suffix:"x",label:"Average ROI for Business Pass users"},{val:"3,200+",suffix:"",label:"Regulatory updates tracked per month"},{val:"$4.99",suffix:"",label:"Per month after your free trial"}].map((s,i)=>(
-              <div className="stat-item" key={i}>
-                <div className="stat-val">{s.val}<span>{s.suffix}</span></div>
-                <div className="stat-lbl">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        
 
         <section className="modules-section" id="modules">
           <div className="modules-header">
