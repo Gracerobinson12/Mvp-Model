@@ -342,40 +342,128 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
 
 // ── Gas Tracker Live Preview ──────────────────────────────────
 function GasTrackerPreview() {
-  const [activeStation, setActiveStation] = useState(0)
-  const stations = [
-    { name:'QuikTrip', price:3.04, dist:'0.4 mi', trend:'down',   color:'#30d158' },
-    { name:'Shell',    price:3.09, dist:'0.7 mi', trend:'down',   color:'#30d158' },
-    { name:'Circle K', price:3.15, dist:'1.1 mi', trend:'stable', color:'#ff9f0a' },
-    { name:'BP',       price:3.21, dist:'1.4 mi', trend:'up',     color:'#ff453a' },
+  const [pulse, setPulse] = useState(0)
+  const [activePin, setActivePin] = useState(0)
+
+  const pins = [
+    { x:52,  y:38,  name:'QuikTrip', price:3.04, best:true  },
+    { x:28,  y:55,  name:'Shell',    price:3.09, best:false },
+    { x:72,  y:60,  name:'Circle K', price:3.15, best:false },
+    { x:42,  y:72,  name:'BP',       price:3.21, best:false },
+    { x:80,  y:35,  name:'Chevron',  price:3.28, best:false },
   ]
+
   useEffect(() => {
-    const t = setInterval(() => setActiveStation(s => (s + 1) % stations.length), 1600)
-    return () => clearInterval(t)
+    const t1 = setInterval(() => setActivePin(p => (p + 1) % pins.length), 2000)
+    const t2 = setInterval(() => setPulse(p => p + 1), 1400)
+    return () => { clearInterval(t1); clearInterval(t2) }
   }, [])
+
   return (
     <div style={{background:'rgba(0,0,0,.04)',border:'1px solid rgba(0,0,0,.08)',borderRadius:14,overflow:'hidden',marginBottom:10}}>
+
+      {/* Mini KPI row */}
       <div style={{display:'flex',borderBottom:'1px solid rgba(0,0,0,.06)'}}>
-        {[{label:'Best Price',val:'$3.04',color:'#ff3b30'},{label:'Deduction',val:'$182/mo',color:'#30d158'},{label:'Trend',val:'↓ Falling',color:'#25a244'}].map((k,i)=>(
+        {[
+          {label:'Best Price',  val:'$3.04', color:'#ff3b30'},
+          {label:'Deduction',   val:'$182/mo',color:'#30d158'},
+          {label:'Trend',       val:'↑ Rising',color:'#ff453a'},
+        ].map((k,i)=>(
           <div key={i} style={{flex:1,padding:'8px 10px',borderRight:i<2?'1px solid rgba(0,0,0,.06)':'none',textAlign:'center'}}>
             <div style={{fontSize:7,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.35)',textTransform:'uppercase',marginBottom:2}}>{k.label}</div>
-            <div style={{fontSize:14,fontWeight:800,color:k.color,letterSpacing:-.3}}>{k.val}</div>
+            <div style={{fontSize:13,fontWeight:800,color:k.color,letterSpacing:-.3}}>{k.val}</div>
           </div>
         ))}
       </div>
-      {stations.map((st,i)=>{
-        const isActive=i===activeStation
-        const icon=st.trend==='down'?'↓':st.trend==='up'?'↑':'→'
-        return (
-          <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 12px',borderBottom:i<stations.length-1?'1px solid rgba(0,0,0,.04)':'none',background:isActive?'rgba(255,59,48,.04)':'transparent',borderLeft:`2px solid ${isActive?'#ff3b30':'transparent'}`,transition:'all .35s ease'}}>
-            <div style={{fontSize:9,fontWeight:700,color:i===0?'#30d158':'rgba(26,26,46,.25)',minWidth:12}}>{i===0?'★':`${i+1}`}</div>
-            <div style={{flex:1,fontSize:12,fontWeight:600,color:'#1a1a2e'}}>{st.name}</div>
-            <div style={{fontSize:9,color:'rgba(26,26,46,.35)'}}>{st.dist}</div>
-            <div style={{fontSize:9,fontWeight:700,color:st.color,minWidth:12}}>{icon}</div>
-            <div style={{fontSize:14,fontWeight:800,color:i===0?'#30d158':'#1a1a2e',letterSpacing:-.3}}>${st.price.toFixed(2)}</div>
-          </div>
-        )
-      })}
+
+      {/* Map */}
+      <div style={{position:'relative',height:140,background:'linear-gradient(135deg,#e8f0e8 0%,#dce8dc 40%,#e4ecdd 100%)',overflow:'hidden'}}>
+
+        {/* Road lines */}
+        <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:.35}} preserveAspectRatio="none">
+          <line x1="0" y1="55%" x2="100%" y2="55%" stroke="#b0b8a8" strokeWidth="6"/>
+          <line x1="0" y1="55%" x2="100%" y2="55%" stroke="#fff" strokeWidth="1.5" strokeDasharray="12 8"/>
+          <line x1="38%" y1="0" x2="45%" y2="100%" stroke="#b0b8a8" strokeWidth="5"/>
+          <line x1="38%" y1="0" x2="45%" y2="100%" stroke="#fff" strokeWidth="1" strokeDasharray="12 8"/>
+          <line x1="65%" y1="0" x2="70%" y2="100%" stroke="#b0b8a8" strokeWidth="4"/>
+        </svg>
+
+        {/* City blocks */}
+        <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:.2}} preserveAspectRatio="none">
+          <rect x="5%"  y="5%"  width="28%" height="40%" rx="2" fill="#8fa88f"/>
+          <rect x="48%" y="5%"  width="20%" height="42%" rx="2" fill="#8fa88f"/>
+          <rect x="72%" y="5%"  width="24%" height="35%" rx="2" fill="#8fa88f"/>
+          <rect x="5%"  y="65%" width="28%" height="30%" rx="2" fill="#8fa88f"/>
+          <rect x="48%" y="68%" width="48%" height="27%" rx="2" fill="#8fa88f"/>
+        </svg>
+
+        {/* User location pulse */}
+        <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',zIndex:3}}>
+          <div style={{
+            width:12,height:12,borderRadius:'50%',
+            background:'linear-gradient(135deg,#ff3b30,#ff6b35)',
+            border:'2px solid #fff',
+            boxShadow:`0 0 0 ${pulse%2===0?8:14}px rgba(255,59,48,${pulse%2===0?.12:.06}),0 2px 8px rgba(255,59,48,.5)`,
+            transition:'box-shadow .7s ease',
+          }}/>
+        </div>
+
+        {/* Gas station pins */}
+        {pins.map((pin,i)=>{
+          const isActive = i===activePin
+          const isBest   = pin.best
+          return (
+            <div key={i} style={{
+              position:'absolute',
+              left:`${pin.x}%`,top:`${pin.y}%`,
+              transform:'translate(-50%,-100%)',
+              zIndex: isActive ? 10 : isBest ? 8 : 5,
+              transition:'all .3s cubic-bezier(.34,1.56,.64,1)',
+            }}>
+              <div style={{
+                background: isBest
+                  ? 'linear-gradient(135deg,#30d158,#34c759)'
+                  : isActive
+                  ? 'linear-gradient(135deg,#ff3b30,#ff6b35)'
+                  : 'rgba(255,255,255,.92)',
+                border: `1.5px solid ${isBest?'#30d158':isActive?'#ff3b30':'rgba(0,0,0,.15)'}`,
+                borderRadius:8,
+                padding:'3px 7px',
+                display:'flex',alignItems:'center',gap:3,
+                boxShadow:`0 2px 8px rgba(0,0,0,.18)${isActive?',0 0 12px rgba(255,59,48,.3)':''}`,
+                transform:`scale(${isActive||isBest?1.15:1})`,
+                transition:'all .3s ease',
+                whiteSpace:'nowrap',
+              }}>
+                <span style={{fontSize:8}}>⛽</span>
+                <span style={{fontSize:11,fontWeight:800,color:isBest||isActive?'#fff':'#1a1a2e',letterSpacing:-.3}}>${pin.price.toFixed(2)}</span>
+              </div>
+              {/* Pin tail */}
+              <div style={{
+                width:0,height:0,
+                borderLeft:'4px solid transparent',
+                borderRight:'4px solid transparent',
+                borderTop:`5px solid ${isBest?'#30d158':isActive?'#ff3b30':'rgba(0,0,0,.15)'}`,
+                margin:'0 auto',
+              }}/>
+              {/* Station name tooltip on active */}
+              {isActive && (
+                <div style={{
+                  position:'absolute',top:'100%',left:'50%',transform:'translateX(-50%)',
+                  marginTop:4,
+                  background:'rgba(26,26,46,.9)',color:'#fff',
+                  fontSize:9,fontWeight:600,padding:'2px 6px',borderRadius:4,
+                  whiteSpace:'nowrap',
+                }}>
+                  {pin.name}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Live indicator */}
       <div style={{padding:'6px 12px',display:'flex',alignItems:'center',gap:6,background:'rgba(255,59,48,.04)'}}>
         <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease-in-out infinite'}}/>
         <span style={{fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:600,letterSpacing:.5}}>LIVE · EIA.GOV · UPDATES HOURLY</span>
@@ -502,9 +590,10 @@ function LandingPage() {
           <h1>Business<br/><span className="accent">intelligence</span><br/><span className="light-word">at your fingertips</span></h1>
           <p className="hero-sub">Real-time gas prices, regulatory updates, tariff tracking, and tax deductions — all in one platform built for gig workers, freelancers, and growing businesses.</p>
           <div className="hero-actions">
+            <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
             <button onClick={() => setShowModal(true)} className="btn-secondary">⛽ Try Gas Tracker</button>
           </div>
-          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}> · $4.99/mo after trial · Cancel anytime</div>
+          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>No credit card needed · $4.99/mo after trial · Cancel anytime</div>
           <div className="hero-trust">
             <span className="trust-item">For Drivers</span><div className="trust-dot"/>
             <span className="trust-item">For Freelancers</span><div className="trust-dot"/>
@@ -513,7 +602,16 @@ function LandingPage() {
           </div>
         </section>
 
-        
+        <div className="stats-bar">
+          <div className="stats-inner">
+            {[{val:"$8,736",suffix:"",label:"Avg annual deductions missed by drivers"},{val:"145",suffix:"x",label:"Average ROI for Business Pass users"},{val:"3,200+",suffix:"",label:"Regulatory updates tracked per month"},{val:"$4.99",suffix:"",label:"Per month after your free trial"}].map((s,i)=>(
+              <div className="stat-item" key={i}>
+                <div className="stat-val">{s.val}<span>{s.suffix}</span></div>
+                <div className="stat-lbl">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <section className="modules-section" id="modules">
           <div className="modules-header">
