@@ -433,7 +433,7 @@ function GasTrackerPreview() {
         {[
           {label:'Cheapest State', val:`${cheapest.id} $${cheapest.avg.toFixed(2)}`, color:'#30d158'},
           {label:'Most Expensive', val:`${priciest.id} $${priciest.high.toFixed(2)}`, color:'#ff3b30'},
-          {label:'Nat'l Trend',   val:'↑ Rising', color:'#ff453a'},
+          {label:'Natl Trend',   val:'↑ Rising', color:'#ff453a'},
         ].map((k,i)=>(
           <div key={i} style={{flex:1,padding:'8px 10px',borderRight:i<2?'1px solid rgba(0,0,0,.06)':'none',textAlign:'center'}}>
             <div style={{fontSize:7,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.35)',textTransform:'uppercase',marginBottom:2}}>{k.label}</div>
@@ -802,11 +802,17 @@ function LandingPage() {
               {icon:"🌐",color:"linear-gradient(135deg,#ff9f0a,#ffb340)",title:"Tariff Intelligence",desc:"Live import/export tariff rates. See how changes affect your costs.",meta:"China · Mexico · Canada · EU"},
               {icon:"🧾",color:"linear-gradient(135deg,#30d158,#4cd964)",title:"Deduction Teller",desc:"Enter monthly expenses — we find what's deductible and what you're missing.",meta:"Average user finds $5,760/yr"},
               {icon:"📊",color:"linear-gradient(135deg,#bf5af2,#da8fff)",title:"Assets & Liabilities",desc:"Track net worth and generate a bank-ready one-page balance sheet.",meta:"PDF export · Bank-ready"},
+              {icon:"💡",color:"linear-gradient(135deg,#ffd60a,#ff9f0a)",title:"Idea Vault",desc:"Timestamp and seal your ideas with a PDF receipt. Your proof of concept — on record forever.",meta:"Timestamped · PDF receipt · Blockchain anchored"},
             ].map((m,i)=>(
               <div key={i} className="module-card locked">
                 <div className="card-top">
                   <div className="card-icon" style={{background:m.color}}>{m.icon}</div>
-                  <div className="card-status-soon">🔒 Coming Soon</div>
+                  {i===4
+                    ? <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'linear-gradient(135deg,rgba(255,214,10,.15),rgba(255,159,10,.1))',border:'1px solid rgba(255,159,10,.3)',borderRadius:100,padding:'3px 10px',fontSize:9,fontWeight:700,color:'#b36b00',letterSpacing:.5}}>
+                        ✦ Coming Soon
+                      </div>
+                    : <div className="card-status-soon">🔒 Coming Soon</div>
+                  }
                 </div>
                 <div className="card-title">{m.title}</div>
                 <div className="card-desc">{m.desc}</div>
