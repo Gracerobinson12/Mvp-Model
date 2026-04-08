@@ -342,135 +342,298 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
 
 // ── Gas Tracker Live Preview ──────────────────────────────────
 function GasTrackerPreview() {
+  const [hoveredState, setHoveredState] = useState(null)
+  const [reported, setReported] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [reportPrice, setReportPrice] = useState('')
+  const [userReports, setUserReports] = useState([])
   const [pulse, setPulse] = useState(0)
-  const [activePin, setActivePin] = useState(0)
-
-  const pins = [
-    { x:52,  y:38,  name:'QuikTrip', price:3.04, best:true  },
-    { x:28,  y:55,  name:'Shell',    price:3.09, best:false },
-    { x:72,  y:60,  name:'Circle K', price:3.15, best:false },
-    { x:42,  y:72,  name:'BP',       price:3.21, best:false },
-    { x:80,  y:35,  name:'Chevron',  price:3.28, best:false },
-  ]
 
   useEffect(() => {
-    const t1 = setInterval(() => setActivePin(p => (p + 1) % pins.length), 2000)
-    const t2 = setInterval(() => setPulse(p => p + 1), 1400)
-    return () => { clearInterval(t1); clearInterval(t2) }
+    const t = setInterval(() => setPulse(p => p + 1), 1500)
+    return () => clearInterval(t)
   }, [])
+
+  // State data - EIA-based weekly averages + realistic high estimates
+  const states = [
+    {id:'WA', x:'11%', y:'12%', avg:4.28, high:4.89, low:3.89},
+    {id:'OR', x:'10%', y:'22%', avg:4.08, high:4.62, low:3.71},
+    {id:'CA', x:'8%',  y:'38%', avg:4.94, high:5.89, low:2.79},
+    {id:'NV', x:'14%', y:'33%', avg:4.08, high:4.52, low:3.62},
+    {id:'AZ', x:'17%', y:'48%', avg:3.71, high:4.12, low:3.34},
+    {id:'ID', x:'18%', y:'18%', avg:3.68, high:4.01, low:3.42},
+    {id:'MT', x:'26%', y:'11%', avg:3.54, high:3.92, low:3.31},
+    {id:'WY', x:'28%', y:'22%', avg:3.31, high:3.72, low:3.08},
+    {id:'UT', x:'20%', y:'32%', avg:3.71, high:4.08, low:3.48},
+    {id:'CO', x:'28%', y:'38%', avg:3.58, high:3.98, low:3.21},
+    {id:'NM', x:'23%', y:'52%', avg:3.28, high:3.68, low:3.01},
+    {id:'ND', x:'40%', y:'11%', avg:3.22, high:3.58, low:3.02},
+    {id:'SD', x:'40%', y:'20%', avg:3.21, high:3.55, low:3.01},
+    {id:'NE', x:'40%', y:'29%', avg:3.14, high:3.48, low:2.95},
+    {id:'KS', x:'40%', y:'38%', avg:3.08, high:3.42, low:2.91},
+    {id:'OK', x:'40%', y:'48%', avg:2.98, high:3.31, low:2.81},
+    {id:'TX', x:'36%', y:'62%', avg:2.94, high:3.45, low:2.79},
+    {id:'MN', x:'50%', y:'14%', avg:3.38, high:3.72, low:3.18},
+    {id:'IA', x:'50%', y:'28%', avg:3.28, high:3.62, low:3.11},
+    {id:'MO', x:'50%', y:'40%', avg:3.04, high:3.38, low:2.88},
+    {id:'AR', x:'50%', y:'52%', avg:2.99, high:3.35, low:2.81},
+    {id:'LA', x:'50%', y:'64%', avg:3.14, high:3.52, low:2.89},
+    {id:'WI', x:'57%', y:'18%', avg:3.38, high:3.72, low:3.18},
+    {id:'IL', x:'57%', y:'32%', avg:4.21, high:4.72, low:3.58},
+    {id:'MS', x:'57%', y:'58%', avg:3.01, high:3.38, low:2.82},
+    {id:'MI', x:'62%', y:'18%', avg:3.64, high:3.98, low:3.41},
+    {id:'IN', x:'62%', y:'30%', avg:3.48, high:3.81, low:3.28},
+    {id:'TN', x:'60%', y:'48%', avg:3.08, high:3.42, low:2.88},
+    {id:'AL', x:'60%', y:'60%', avg:3.12, high:3.98, low:2.89},
+    {id:'OH', x:'66%', y:'28%', avg:3.58, high:3.92, low:3.32},
+    {id:'KY', x:'64%', y:'40%', avg:3.09, high:3.44, low:2.88},
+    {id:'GA', x:'66%', y:'58%', avg:3.19, high:3.61, low:2.98},
+    {id:'FL', x:'66%', y:'74%', avg:3.51, high:4.02, low:3.21},
+    {id:'SC', x:'71%', y:'54%', avg:3.12, high:3.48, low:2.92},
+    {id:'NC', x:'71%', y:'46%', avg:3.28, high:3.62, low:3.08},
+    {id:'VA', x:'72%', y:'38%', avg:3.42, high:3.78, low:3.18},
+    {id:'WV', x:'69%', y:'34%', avg:3.42, high:3.78, low:3.21},
+    {id:'PA', x:'73%', y:'26%', avg:3.82, high:4.22, low:3.58},
+    {id:'NY', x:'76%', y:'18%', avg:4.35, high:4.92, low:3.82},
+    {id:'NJ', x:'78%', y:'28%', avg:3.72, high:4.08, low:3.51},
+    {id:'CT', x:'80%', y:'22%', avg:3.89, high:4.31, low:3.62},
+    {id:'MA', x:'82%', y:'16%', avg:4.02, high:4.48, low:3.71},
+    {id:'VT', x:'79%', y:'12%', avg:3.82, high:4.18, low:3.62},
+    {id:'ME', x:'83%', y:'10%', avg:3.71, high:4.02, low:3.51},
+    {id:'AK', x:'14%', y:'86%', avg:4.82, high:5.48, low:4.21},
+    {id:'HI', x:'28%', y:'87%', avg:5.12, high:5.62, low:4.52},
+  ]
+
+  function priceColor(high) {
+    if (high < 3.50) return '#30d158'
+    if (high < 4.00) return '#a8d96a'
+    if (high < 4.50) return '#ff9f0a'
+    if (high < 5.00) return '#ff6b35'
+    return '#ff3b30'
+  }
+
+  const cheapest = [...states].sort((a,b) => a.avg - b.avg)[0]
+  const priciest  = [...states].sort((a,b) => b.high - a.high)[0]
+
+  const handleReport = () => {
+    if (!reportPrice || isNaN(parseFloat(reportPrice))) return
+    const price = parseFloat(reportPrice)
+    setUserReports(r => [{price, time: 'just now', id: Date.now()}, ...r.slice(0,2)])
+    setReported(true)
+    setShowReport(false)
+    setReportPrice('')
+    setTimeout(() => setReported(false), 3000)
+  }
 
   return (
     <div style={{background:'rgba(0,0,0,.04)',border:'1px solid rgba(0,0,0,.08)',borderRadius:14,overflow:'hidden',marginBottom:10}}>
 
-      {/* Mini KPI row */}
-      <div style={{display:'flex',borderBottom:'1px solid rgba(0,0,0,.06)'}}>
+      {/* KPI row */}
+      <div style={{display:'flex',borderBottom:'1px solid rgba(0,0,0,.06)',background:'rgba(255,255,255,.5)'}}>
         {[
-          {label:'Best Price',  val:'$3.04', color:'#ff3b30'},
-          {label:'Deduction',   val:'$182/mo',color:'#30d158'},
-          {label:'Trend',       val:'↑ Rising',color:'#ff453a'},
+          {label:'Cheapest State', val:`${cheapest.id} $${cheapest.avg.toFixed(2)}`, color:'#30d158'},
+          {label:'Most Expensive', val:`${priciest.id} $${priciest.high.toFixed(2)}`, color:'#ff3b30'},
+          {label:'Nat'l Trend',   val:'↑ Rising', color:'#ff453a'},
         ].map((k,i)=>(
           <div key={i} style={{flex:1,padding:'8px 10px',borderRight:i<2?'1px solid rgba(0,0,0,.06)':'none',textAlign:'center'}}>
             <div style={{fontSize:7,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.35)',textTransform:'uppercase',marginBottom:2}}>{k.label}</div>
-            <div style={{fontSize:13,fontWeight:800,color:k.color,letterSpacing:-.3}}>{k.val}</div>
+            <div style={{fontSize:12,fontWeight:800,color:k.color,letterSpacing:-.3}}>{k.val}</div>
           </div>
         ))}
       </div>
 
-      {/* Map */}
-      <div style={{position:'relative',height:140,background:'linear-gradient(135deg,#e8f0e8 0%,#dce8dc 40%,#e4ecdd 100%)',overflow:'hidden'}}>
+      {/* USA Map */}
+      <div style={{position:'relative',height:180,background:'linear-gradient(160deg,#d4e8f0,#c8dce8)',overflow:'hidden'}}>
 
-        {/* Road lines */}
-        <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:.35}} preserveAspectRatio="none">
-          <line x1="0" y1="55%" x2="100%" y2="55%" stroke="#b0b8a8" strokeWidth="6"/>
-          <line x1="0" y1="55%" x2="100%" y2="55%" stroke="#fff" strokeWidth="1.5" strokeDasharray="12 8"/>
-          <line x1="38%" y1="0" x2="45%" y2="100%" stroke="#b0b8a8" strokeWidth="5"/>
-          <line x1="38%" y1="0" x2="45%" y2="100%" stroke="#fff" strokeWidth="1" strokeDasharray="12 8"/>
-          <line x1="65%" y1="0" x2="70%" y2="100%" stroke="#b0b8a8" strokeWidth="4"/>
+        {/* USA outline */}
+        <svg viewBox="0 0 500 220" style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:.25}} preserveAspectRatio="xMidYMid meet">
+          <path d="M55,30 L390,30 L415,50 L435,75 L430,115 L415,150 L390,175 L350,190 L300,200 L240,200 L180,192 L130,175 L90,150 L65,120 L50,85 L52,55 Z" fill="#8aaabb" stroke="rgba(255,255,255,.4)" strokeWidth="1.5"/>
+          <path d="M318,200 L338,218 L348,234 L332,238 L315,220 L305,204 Z" fill="#8aaabb"/>
+          <rect x="30" y="152" width="52" height="40" rx="4" fill="#7a9aaa" stroke="rgba(255,255,255,.3)" strokeWidth="1"/>
+          <text x="56" y="177" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,.6)" fontFamily="system-ui" fontWeight="600">AK</text>
+          <rect x="96" y="160" width="38" height="28" rx="4" fill="#7a9aaa" stroke="rgba(255,255,255,.3)" strokeWidth="1"/>
+          <text x="115" y="179" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,.6)" fontFamily="system-ui" fontWeight="600">HI</text>
         </svg>
 
-        {/* City blocks */}
-        <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:.2}} preserveAspectRatio="none">
-          <rect x="5%"  y="5%"  width="28%" height="40%" rx="2" fill="#8fa88f"/>
-          <rect x="48%" y="5%"  width="20%" height="42%" rx="2" fill="#8fa88f"/>
-          <rect x="72%" y="5%"  width="24%" height="35%" rx="2" fill="#8fa88f"/>
-          <rect x="5%"  y="65%" width="28%" height="30%" rx="2" fill="#8fa88f"/>
-          <rect x="48%" y="68%" width="48%" height="27%" rx="2" fill="#8fa88f"/>
-        </svg>
-
-        {/* User location pulse */}
-        <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',zIndex:3}}>
-          <div style={{
-            width:12,height:12,borderRadius:'50%',
-            background:'linear-gradient(135deg,#ff3b30,#ff6b35)',
-            border:'2px solid #fff',
-            boxShadow:`0 0 0 ${pulse%2===0?8:14}px rgba(255,59,48,${pulse%2===0?.12:.06}),0 2px 8px rgba(255,59,48,.5)`,
-            transition:'box-shadow .7s ease',
-          }}/>
-        </div>
-
-        {/* Gas station pins */}
-        {pins.map((pin,i)=>{
-          const isActive = i===activePin
-          const isBest   = pin.best
+        {/* State dots */}
+        {states.map((st) => {
+          const isHovered = hoveredState === st.id
+          const color = priceColor(st.high)
+          const size = isHovered ? 20 : st.high > 5 ? 13 : st.high > 4.5 ? 12 : st.high > 4 ? 11 : 10
           return (
-            <div key={i} style={{
-              position:'absolute',
-              left:`${pin.x}%`,top:`${pin.y}%`,
-              transform:'translate(-50%,-100%)',
-              zIndex: isActive ? 10 : isBest ? 8 : 5,
-              transition:'all .3s cubic-bezier(.34,1.56,.64,1)',
-            }}>
-              <div style={{
-                background: isBest
-                  ? 'linear-gradient(135deg,#30d158,#34c759)'
-                  : isActive
-                  ? 'linear-gradient(135deg,#ff3b30,#ff6b35)'
-                  : 'rgba(255,255,255,.92)',
-                border: `1.5px solid ${isBest?'#30d158':isActive?'#ff3b30':'rgba(0,0,0,.15)'}`,
-                borderRadius:8,
-                padding:'3px 7px',
-                display:'flex',alignItems:'center',gap:3,
-                boxShadow:`0 2px 8px rgba(0,0,0,.18)${isActive?',0 0 12px rgba(255,59,48,.3)':''}`,
-                transform:`scale(${isActive||isBest?1.15:1})`,
-                transition:'all .3s ease',
-                whiteSpace:'nowrap',
-              }}>
-                <span style={{fontSize:8}}>⛽</span>
-                <span style={{fontSize:11,fontWeight:800,color:isBest||isActive?'#fff':'#1a1a2e',letterSpacing:-.3}}>${pin.price.toFixed(2)}</span>
-              </div>
-              {/* Pin tail */}
-              <div style={{
-                width:0,height:0,
-                borderLeft:'4px solid transparent',
-                borderRight:'4px solid transparent',
-                borderTop:`5px solid ${isBest?'#30d158':isActive?'#ff3b30':'rgba(0,0,0,.15)'}`,
-                margin:'0 auto',
-              }}/>
-              {/* Station name tooltip on active */}
-              {isActive && (
+            <div
+              key={st.id}
+              onMouseEnter={() => setHoveredState(st.id)}
+              onMouseLeave={() => setHoveredState(null)}
+              style={{
+                position:'absolute',
+                left: st.x, top: st.y,
+                transform:'translate(-50%,-50%)',
+                width: size, height: size,
+                borderRadius:'50%',
+                background: color,
+                border: `${isHovered?2:1.5}px solid rgba(255,255,255,${isHovered?1:.7})`,
+                cursor:'pointer',
+                zIndex: isHovered ? 20 : 5,
+                transition:'all .2s cubic-bezier(.34,1.56,.64,1)',
+                boxShadow: isHovered ? `0 0 0 5px ${color}40,0 2px 8px rgba(0,0,0,.2)` : '0 1px 3px rgba(0,0,0,.15)',
+              }}
+            >
+              {/* Hover tooltip showing highest price */}
+              {isHovered && (
                 <div style={{
-                  position:'absolute',top:'100%',left:'50%',transform:'translateX(-50%)',
-                  marginTop:4,
-                  background:'rgba(26,26,46,.9)',color:'#fff',
-                  fontSize:9,fontWeight:600,padding:'2px 6px',borderRadius:4,
+                  position:'absolute',
+                  bottom:'calc(100% + 8px)',
+                  left:'50%',
+                  transform:'translateX(-50%)',
+                  background:'rgba(26,26,46,.95)',
+                  color:'#fff',
+                  borderRadius:10,
+                  padding:'8px 12px',
                   whiteSpace:'nowrap',
+                  zIndex:30,
+                  pointerEvents:'none',
+                  boxShadow:'0 4px 16px rgba(0,0,0,.25)',
                 }}>
-                  {pin.name}
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:'rgba(255,255,255,.5)',textTransform:'uppercase',marginBottom:3}}>{st.id} · Highest Pump</div>
+                  <div style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:'#ff3b30',lineHeight:1,marginBottom:4}}>${st.high.toFixed(2)}</div>
+                  <div style={{display:'flex',gap:10}}>
+                    <span style={{fontSize:10,color:'#30d158',fontWeight:700}}>Low ${st.low.toFixed(2)}</span>
+                    <span style={{fontSize:10,color:'rgba(255,255,255,.4)'}}>·</span>
+                    <span style={{fontSize:10,color:'rgba(255,255,255,.6)',fontWeight:600}}>Avg ${st.avg.toFixed(2)}</span>
+                  </div>
+                  {/* Arrow */}
+                  <div style={{position:'absolute',top:'100%',left:'50%',transform:'translateX(-50%)',width:0,height:0,borderLeft:'5px solid transparent',borderRight:'5px solid transparent',borderTop:'5px solid rgba(26,26,46,.95)'}}/>
                 </div>
               )}
             </div>
           )
         })}
+
+        {/* User reports overlay */}
+        {userReports.map((r,i) => (
+          <div key={r.id} style={{
+            position:'absolute',
+            top: `${20+i*22}%`,
+            right: 8,
+            background:'rgba(48,209,88,.9)',
+            color:'#fff',
+            borderRadius:8,
+            padding:'3px 8px',
+            fontSize:11,
+            fontWeight:800,
+            display:'flex',
+            alignItems:'center',
+            gap:5,
+            animation:'fadeUp .3s ease',
+          }}>
+            <span style={{fontSize:8}}>📍</span>
+            ${r.price.toFixed(2)} <span style={{fontSize:8,opacity:.7}}>reported</span>
+          </div>
+        ))}
+
+        {/* Report a Price button — Waze style */}
+        {!showReport ? (
+          <button
+            onClick={() => setShowReport(true)}
+            style={{
+              position:'absolute',
+              bottom: 8,
+              right: 8,
+              background: reported ? 'rgba(48,209,88,.9)' : 'rgba(255,255,255,.92)',
+              border: reported ? 'none' : '1px solid rgba(0,0,0,.12)',
+              borderRadius:100,
+              padding:'5px 12px',
+              fontSize:10,
+              fontWeight:700,
+              cursor:'pointer',
+              display:'flex',
+              alignItems:'center',
+              gap:5,
+              color: reported ? '#fff' : '#1a1a2e',
+              boxShadow:'0 2px 8px rgba(0,0,0,.15)',
+              zIndex:10,
+              transition:'all .2s',
+            }}
+          >
+            <span style={{fontSize:11}}>{reported ? '✓' : '⛽'}</span>
+            {reported ? 'Thanks! Price reported' : 'Report a Price'}
+          </button>
+        ) : (
+          <div style={{
+            position:'absolute',
+            bottom:8,right:8,
+            background:'rgba(255,255,255,.97)',
+            border:'1px solid rgba(0,0,0,.1)',
+            borderRadius:12,
+            padding:'8px 10px',
+            zIndex:20,
+            boxShadow:'0 4px 16px rgba(0,0,0,.15)',
+            display:'flex',
+            flexDirection:'column',
+            gap:6,
+            minWidth:160,
+          }}>
+            <div style={{fontSize:10,fontWeight:700,color:'#1a1a2e'}}>What are you seeing?</div>
+            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <span style={{fontSize:12,fontWeight:700,color:'rgba(26,26,46,.4)'}}>$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="2"
+                max="9"
+                placeholder="4.29"
+                value={reportPrice}
+                onChange={e => setReportPrice(e.target.value)}
+                style={{
+                  flex:1,
+                  padding:'5px 8px',
+                  border:'1.5px solid rgba(0,0,0,.12)',
+                  borderRadius:8,
+                  fontSize:14,
+                  fontWeight:800,
+                  color:'#ff3b30',
+                  outline:'none',
+                  width:70,
+                  fontFamily:'system-ui',
+                }}
+                autoFocus
+              />
+              <button onClick={handleReport} style={{padding:'5px 10px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                Submit
+              </button>
+            </div>
+            <button onClick={() => setShowReport(false)} style={{background:'none',border:'none',fontSize:9,color:'rgba(26,26,46,.35)',cursor:'pointer',textAlign:'left',padding:0}}>Cancel</button>
+          </div>
+        )}
+
+        {/* Legend */}
+        <div style={{position:'absolute',bottom:8,left:8,display:'flex',flexDirection:'column',gap:2}}>
+          {[
+            {color:'#30d158',label:'Under $3.50'},
+            {color:'#ff9f0a',label:'$4.00–$4.50'},
+            {color:'#ff3b30',label:'Over $5.00'},
+          ].map((l,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:4}}>
+              <div style={{width:7,height:7,borderRadius:'50%',background:l.color,border:'1px solid rgba(255,255,255,.6)'}}/>
+              <span style={{fontSize:8,fontWeight:600,color:'rgba(26,26,46,.6)',background:'rgba(255,255,255,.6)',padding:'1px 4px',borderRadius:3}}>{l.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Live indicator */}
-      <div style={{padding:'6px 12px',display:'flex',alignItems:'center',gap:6,background:'rgba(255,59,48,.04)'}}>
-        <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease-in-out infinite'}}/>
-        <span style={{fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:600,letterSpacing:.5}}>LIVE · EIA.GOV · UPDATES HOURLY</span>
+      {/* Live bar */}
+      <div style={{padding:'6px 12px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(255,59,48,.04)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease-in-out infinite'}}/>
+          <span style={{fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:600,letterSpacing:.5}}>EIA.GOV · WEEKLY AVERAGES · HOVER STATE → HIGHEST PRICE</span>
+        </div>
+        <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.3)'}}>{userReports.length > 0 ? `${userReports.length} user report${userReports.length>1?'s':''}` : ''}</span>
       </div>
     </div>
   )
 }
+
 
 function LandingPage() {
   const [showModal, setShowModal] = useState(false)
