@@ -641,8 +641,11 @@ function LandingPage() {
         .module-card:hover{transform:translateY(-4px) scale(1.01);box-shadow:0 8px 32px rgba(0,0,0,0.1)}
         .module-card.active{border-color:rgba(255,59,48,0.25)}
         .module-card.active::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,59,48,0.5),transparent)}
-        .module-card.locked{opacity:0.75;cursor:default}
+        .module-card.locked{opacity:0.85;cursor:default;position:relative;overflow:hidden}
         .module-card.locked:hover{transform:none}
+        .module-card.locked .locked-overlay{position:absolute;inset:0;background:rgba(240,239,244,0);display:flex;align-items:center;justify-content:center;opacity:0;transition:all .3s ease;border-radius:24px;backdrop-filter:blur(0px)}
+        .module-card.locked:hover .locked-overlay{background:rgba(240,239,244,0.92);opacity:1;backdrop-filter:blur(8px)}
+        .locked-overlay-text{font-family:'Sora',sans-serif;font-size:15px;font-weight:800;color:rgba(26,26,46,.5);letter-spacing:2px;text-transform:uppercase}
         .module-card.featured{grid-column:span 2;background:linear-gradient(135deg,rgba(255,59,48,0.08),rgba(255,255,255,0.72));border-color:rgba(255,59,48,0.2)}
         .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
         .card-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px}
@@ -752,19 +755,21 @@ function LandingPage() {
               {icon:"💡",color:"linear-gradient(135deg,#ffd60a,#ff9f0a)",title:"Idea Vault",desc:"Timestamp and seal your ideas with a PDF receipt. Your proof of concept — on record forever.",meta:"Timestamped · PDF receipt · Blockchain anchored"},
             ].map((m,i)=>(
               <div key={i} className="module-card locked">
-                <div className="card-top">
-                  <div className="card-icon" style={{background:m.color}}>{m.icon}</div>
-                  {i===4
-                    ? <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'linear-gradient(135deg,rgba(255,214,10,.15),rgba(255,159,10,.1))',border:'1px solid rgba(255,159,10,.3)',borderRadius:100,padding:'3px 10px',fontSize:9,fontWeight:700,color:'#b36b00',letterSpacing:.5}}>
-                        ✦ Coming Soon
-                      </div>
-                    : <div className="card-status-soon">🔒 Coming Soon</div>
-                  }
+                {/* Blurred content — no details revealed */}
+                <div style={{filter:'blur(3px)',userSelect:'none',pointerEvents:'none'}}>
+                  <div className="card-top">
+                    <div className="card-icon" style={{background:m.color}}>{m.icon}</div>
+                    <div className="card-status-soon">· · ·</div>
+                  </div>
+                  <div className="card-title" style={{color:'rgba(26,26,46,.4)'}}>{m.title}</div>
+                  <div style={{height:10,background:'rgba(0,0,0,.06)',borderRadius:6,marginBottom:8,width:'85%'}}/>
+                  <div style={{height:10,background:'rgba(0,0,0,.06)',borderRadius:6,marginBottom:8,width:'65%'}}/>
+                  <div style={{height:10,background:'rgba(0,0,0,.06)',borderRadius:6,width:'75%'}}/>
                 </div>
-                <div className="card-title">{m.title}</div>
-                <div className="card-desc">{m.desc}</div>
-                <div className="card-meta-grey">{m.meta}</div>
-                <br/><button className="notify-btn">🔔 Notify Me</button>
+                {/* Hover overlay — just "Coming Soon" */}
+                <div className="locked-overlay">
+                  <div className="locked-overlay-text">Coming Soon</div>
+                </div>
               </div>
             ))}
           </div>
