@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -342,88 +342,180 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
 
 // ── Gas Tracker Live Preview ──────────────────────────────────
 function GasTrackerPreview() {
+  const mapRef = useRef(null)
   const [hoveredState, setHoveredState] = useState(null)
-  const [reported, setReported] = useState(false)
-  const [showReport, setShowReport] = useState(false)
-  const [reportPrice, setReportPrice] = useState('')
-  const [userReports, setUserReports] = useState([])
-  const [pulse, setPulse] = useState(0)
+  const [showReport, setShowReport]     = useState(false)
+  const [reportPrice, setReportPrice]   = useState('')
+  const [reported, setReported]         = useState(false)
+  const [userReports, setUserReports]   = useState([])
 
-  useEffect(() => {
-    const t = setInterval(() => setPulse(p => p + 1), 1500)
-    return () => clearInterval(t)
-  }, [])
+  const stateInfo = {
+    "Alabama":{"low":2.89,"high":3.98,"avg":3.12},
+    "Alaska":{"low":4.21,"high":5.48,"avg":4.82},
+    "Arizona":{"low":3.34,"high":4.12,"avg":3.71},
+    "Arkansas":{"low":2.81,"high":3.28,"avg":2.99},
+    "California":{"low":2.79,"high":5.89,"avg":4.94},
+    "Colorado":{"low":3.21,"high":3.98,"avg":3.58},
+    "Connecticut":{"low":3.62,"high":4.21,"avg":3.89},
+    "Delaware":{"low":3.41,"high":3.82,"avg":3.61},
+    "Florida":{"low":3.21,"high":3.89,"avg":3.51},
+    "Georgia":{"low":2.98,"high":3.61,"avg":3.19},
+    "Hawaii":{"low":4.52,"high":5.62,"avg":5.12},
+    "Idaho":{"low":3.42,"high":3.98,"avg":3.68},
+    "Illinois":{"low":3.58,"high":4.62,"avg":4.21},
+    "Indiana":{"low":3.28,"high":3.72,"avg":3.48},
+    "Iowa":{"low":3.11,"high":3.48,"avg":3.28},
+    "Kansas":{"low":2.91,"high":3.31,"avg":3.08},
+    "Kentucky":{"low":2.88,"high":3.32,"avg":3.09},
+    "Louisiana":{"low":2.89,"high":3.52,"avg":3.14},
+    "Maine":{"low":3.51,"high":3.98,"avg":3.71},
+    "Maryland":{"low":3.42,"high":3.91,"avg":3.65},
+    "Massachusetts":{"low":3.71,"high":4.48,"avg":4.02},
+    "Michigan":{"low":3.41,"high":3.92,"avg":3.64},
+    "Minnesota":{"low":3.18,"high":3.62,"avg":3.38},
+    "Mississippi":{"low":2.82,"high":3.28,"avg":3.01},
+    "Missouri":{"low":2.88,"high":3.24,"avg":3.04},
+    "Montana":{"low":3.31,"high":3.82,"avg":3.54},
+    "Nebraska":{"low":2.95,"high":3.38,"avg":3.14},
+    "Nevada":{"low":3.62,"high":4.41,"avg":4.08},
+    "New Hampshire":{"low":3.52,"high":3.98,"avg":3.72},
+    "New Jersey":{"low":3.51,"high":3.98,"avg":3.72},
+    "New Mexico":{"low":3.01,"high":3.58,"avg":3.28},
+    "New York":{"low":3.82,"high":4.92,"avg":4.35},
+    "North Carolina":{"low":3.08,"high":3.52,"avg":3.28},
+    "North Dakota":{"low":3.02,"high":3.48,"avg":3.22},
+    "Ohio":{"low":3.32,"high":3.89,"avg":3.58},
+    "Oklahoma":{"low":2.81,"high":3.24,"avg":2.98},
+    "Oregon":{"low":3.71,"high":4.52,"avg":4.08},
+    "Pennsylvania":{"low":3.58,"high":4.12,"avg":3.82},
+    "Rhode Island":{"low":3.61,"high":4.02,"avg":3.79},
+    "South Carolina":{"low":2.92,"high":3.38,"avg":3.12},
+    "South Dakota":{"low":3.01,"high":3.45,"avg":3.21},
+    "Tennessee":{"low":2.88,"high":3.28,"avg":3.08},
+    "Texas":{"low":2.79,"high":3.45,"avg":2.94},
+    "Utah":{"low":3.48,"high":3.98,"avg":3.71},
+    "Vermont":{"low":3.62,"high":4.08,"avg":3.82},
+    "Virginia":{"low":3.18,"high":3.72,"avg":3.42},
+    "Washington":{"low":3.89,"high":4.78,"avg":4.28},
+    "West Virginia":{"low":3.21,"high":3.68,"avg":3.42},
+    "Wisconsin":{"low":3.18,"high":3.62,"avg":3.38},
+    "Wyoming":{"low":3.08,"high":3.62,"avg":3.31}
+  }
 
-  // State data - EIA-based weekly averages + realistic high estimates
-  const states = [
-    {id:'WA', x:'11%', y:'12%', avg:4.28, high:4.89, low:3.89},
-    {id:'OR', x:'10%', y:'22%', avg:4.08, high:4.62, low:3.71},
-    {id:'CA', x:'8%',  y:'38%', avg:4.94, high:5.89, low:2.79},
-    {id:'NV', x:'14%', y:'33%', avg:4.08, high:4.52, low:3.62},
-    {id:'AZ', x:'17%', y:'48%', avg:3.71, high:4.12, low:3.34},
-    {id:'ID', x:'18%', y:'18%', avg:3.68, high:4.01, low:3.42},
-    {id:'MT', x:'26%', y:'11%', avg:3.54, high:3.92, low:3.31},
-    {id:'WY', x:'28%', y:'22%', avg:3.31, high:3.72, low:3.08},
-    {id:'UT', x:'20%', y:'32%', avg:3.71, high:4.08, low:3.48},
-    {id:'CO', x:'28%', y:'38%', avg:3.58, high:3.98, low:3.21},
-    {id:'NM', x:'23%', y:'52%', avg:3.28, high:3.68, low:3.01},
-    {id:'ND', x:'40%', y:'11%', avg:3.22, high:3.58, low:3.02},
-    {id:'SD', x:'40%', y:'20%', avg:3.21, high:3.55, low:3.01},
-    {id:'NE', x:'40%', y:'29%', avg:3.14, high:3.48, low:2.95},
-    {id:'KS', x:'40%', y:'38%', avg:3.08, high:3.42, low:2.91},
-    {id:'OK', x:'40%', y:'48%', avg:2.98, high:3.31, low:2.81},
-    {id:'TX', x:'36%', y:'62%', avg:2.94, high:3.45, low:2.79},
-    {id:'MN', x:'50%', y:'14%', avg:3.38, high:3.72, low:3.18},
-    {id:'IA', x:'50%', y:'28%', avg:3.28, high:3.62, low:3.11},
-    {id:'MO', x:'50%', y:'40%', avg:3.04, high:3.38, low:2.88},
-    {id:'AR', x:'50%', y:'52%', avg:2.99, high:3.35, low:2.81},
-    {id:'LA', x:'50%', y:'64%', avg:3.14, high:3.52, low:2.89},
-    {id:'WI', x:'57%', y:'18%', avg:3.38, high:3.72, low:3.18},
-    {id:'IL', x:'57%', y:'32%', avg:4.21, high:4.72, low:3.58},
-    {id:'MS', x:'57%', y:'58%', avg:3.01, high:3.38, low:2.82},
-    {id:'MI', x:'62%', y:'18%', avg:3.64, high:3.98, low:3.41},
-    {id:'IN', x:'62%', y:'30%', avg:3.48, high:3.81, low:3.28},
-    {id:'TN', x:'60%', y:'48%', avg:3.08, high:3.42, low:2.88},
-    {id:'AL', x:'60%', y:'60%', avg:3.12, high:3.98, low:2.89},
-    {id:'OH', x:'66%', y:'28%', avg:3.58, high:3.92, low:3.32},
-    {id:'KY', x:'64%', y:'40%', avg:3.09, high:3.44, low:2.88},
-    {id:'GA', x:'66%', y:'58%', avg:3.19, high:3.61, low:2.98},
-    {id:'FL', x:'66%', y:'74%', avg:3.51, high:4.02, low:3.21},
-    {id:'SC', x:'71%', y:'54%', avg:3.12, high:3.48, low:2.92},
-    {id:'NC', x:'71%', y:'46%', avg:3.28, high:3.62, low:3.08},
-    {id:'VA', x:'72%', y:'38%', avg:3.42, high:3.78, low:3.18},
-    {id:'WV', x:'69%', y:'34%', avg:3.42, high:3.78, low:3.21},
-    {id:'PA', x:'73%', y:'26%', avg:3.82, high:4.22, low:3.58},
-    {id:'NY', x:'76%', y:'18%', avg:4.35, high:4.92, low:3.82},
-    {id:'NJ', x:'78%', y:'28%', avg:3.72, high:4.08, low:3.51},
-    {id:'CT', x:'80%', y:'22%', avg:3.89, high:4.31, low:3.62},
-    {id:'MA', x:'82%', y:'16%', avg:4.02, high:4.48, low:3.71},
-    {id:'VT', x:'79%', y:'12%', avg:3.82, high:4.18, low:3.62},
-    {id:'ME', x:'83%', y:'10%', avg:3.71, high:4.02, low:3.51},
-    {id:'AK', x:'14%', y:'86%', avg:4.82, high:5.48, low:4.21},
-    {id:'HI', x:'28%', y:'87%', avg:5.12, high:5.62, low:4.52},
-  ]
+  const fipsToName = {
+    "01":"Alabama","02":"Alaska","04":"Arizona","05":"Arkansas","06":"California",
+    "08":"Colorado","09":"Connecticut","10":"Delaware","12":"Florida","13":"Georgia",
+    "15":"Hawaii","16":"Idaho","17":"Illinois","18":"Indiana","19":"Iowa",
+    "20":"Kansas","21":"Kentucky","22":"Louisiana","23":"Maine","24":"Maryland",
+    "25":"Massachusetts","26":"Michigan","27":"Minnesota","28":"Mississippi","29":"Missouri",
+    "30":"Montana","31":"Nebraska","32":"Nevada","33":"New Hampshire","34":"New Jersey",
+    "35":"New Mexico","36":"New York","37":"North Carolina","38":"North Dakota","39":"Ohio",
+    "40":"Oklahoma","41":"Oregon","42":"Pennsylvania","44":"Rhode Island","45":"South Carolina",
+    "46":"South Dakota","47":"Tennessee","48":"Texas","49":"Utah","50":"Vermont",
+    "51":"Virginia","53":"Washington","54":"West Virginia","55":"Wisconsin","56":"Wyoming"
+  }
 
-  function priceColor(high) {
-    if (high < 3.50) return '#30d158'
-    if (high < 4.00) return '#a8d96a'
-    if (high < 4.50) return '#ff9f0a'
-    if (high < 5.00) return '#ff6b35'
+  function highColor(h) {
+    if (h < 3.50) return '#30d158'
+    if (h < 4.00) return '#a8d96a'
+    if (h < 4.50) return '#ff9f0a'
+    if (h < 5.00) return '#ff6b35'
     return '#ff3b30'
   }
 
-  const cheapest = [...states].sort((a,b) => a.avg - b.avg)[0]
-  const priciest  = [...states].sort((a,b) => b.high - a.high)[0]
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    const loadMap = (d3, topojson) => {
+      if (!mapRef.current) return
+      mapRef.current.innerHTML = ''
+
+      const W = mapRef.current.offsetWidth || 500
+      const H = 180
+
+      const svg = d3.select(mapRef.current)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', H)
+        .attr('viewBox', `0 0 ${W} ${H}`)
+        .style('display', 'block')
+
+      const proj = d3.geoAlbersUsa()
+        .scale(W * 1.28)
+        .translate([W / 2, H / 2])
+
+      const path = d3.geoPath().projection(proj)
+
+      fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json')
+        .then(r => r.json())
+        .then(us => {
+          const feats = topojson.feature(us, us.objects.states).features
+
+          // Draw state fills
+          svg.selectAll('path.state')
+            .data(feats)
+            .enter()
+            .append('path')
+            .attr('class', 'state')
+            .attr('d', path)
+            .attr('fill', d => {
+              const id   = String(d.id).padStart(2,'0')
+              const name = fipsToName[id]
+              const data = stateInfo[name]
+              return data ? highColor(data.high) : '#c8d8c0'
+            })
+            .attr('opacity', 0.8)
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 0.6)
+            .style('cursor', 'pointer')
+            .on('mouseover', function(event, d) {
+              const id   = String(d.id).padStart(2,'0')
+              const name = fipsToName[id]
+              const data = stateInfo[name]
+              if (!name || !data) return
+              d3.select(this).attr('opacity', 1).attr('stroke-width', 1.5)
+              setHoveredState({name, data, x: event.offsetX, y: event.offsetY})
+            })
+            .on('mousemove', function(event) {
+              setHoveredState(s => s ? {...s, x: event.offsetX, y: event.offsetY} : s)
+            })
+            .on('mouseout', function() {
+              d3.select(this).attr('opacity', 0.8).attr('stroke-width', 0.6)
+              setHoveredState(null)
+            })
+        })
+        .catch(() => {})
+    }
+
+    // Load D3 + TopoJSON
+    const loadScript = (src, id) => new Promise(resolve => {
+      if (document.getElementById(id)) { resolve(); return }
+      const s = document.createElement('script')
+      s.id = id; s.src = src
+      s.onload = resolve
+      document.head.appendChild(s)
+    })
+
+    Promise.all([
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js', 'preview-d3'),
+      loadScript('https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js', 'preview-topo'),
+    ]).then(() => loadMap((window as any).d3, (window as any).topojson))
+
+    return () => { if (mapRef.current) mapRef.current.innerHTML = '' }
+  }, [])
 
   const handleReport = () => {
-    if (!reportPrice || isNaN(parseFloat(reportPrice))) return
     const price = parseFloat(reportPrice)
-    setUserReports(r => [{price, time: 'just now', id: Date.now()}, ...r.slice(0,2)])
+    if (!price || price < 2 || price > 9) return
+    setUserReports(r => [{price, id: Date.now()}, ...r.slice(0,2)])
     setReported(true)
     setShowReport(false)
     setReportPrice('')
     setTimeout(() => setReported(false), 3000)
   }
+
+  const cheapest = Object.entries(stateInfo).sort((a,b) => a[1].avg - b[1].avg)[0]
+  const priciest  = Object.entries(stateInfo).sort((a,b) => b[1].high - a[1].high)[0]
 
   return (
     <div style={{background:'rgba(0,0,0,.04)',border:'1px solid rgba(0,0,0,.08)',borderRadius:14,overflow:'hidden',marginBottom:10}}>
@@ -431,172 +523,96 @@ function GasTrackerPreview() {
       {/* KPI row */}
       <div style={{display:'flex',borderBottom:'1px solid rgba(0,0,0,.06)',background:'rgba(255,255,255,.5)'}}>
         {[
-          {label:'Cheapest State', val:`${cheapest.id} $${cheapest.avg.toFixed(2)}`, color:'#30d158'},
-          {label:'Most Expensive', val:`${priciest.id} $${priciest.high.toFixed(2)}`, color:'#ff3b30'},
-          {label:'Natl Trend',   val:'↑ Rising', color:'#ff453a'},
+          {label:'Cheapest State', val:`TX $${cheapest[1].avg.toFixed(2)}`, color:'#30d158'},
+          {label:'Most Expensive', val:`CA $${priciest[1].high.toFixed(2)}`, color:'#ff3b30'},
+          {label:'Natl Trend',     val:'Rising', color:'#ff453a'},
         ].map((k,i)=>(
           <div key={i} style={{flex:1,padding:'8px 10px',borderRight:i<2?'1px solid rgba(0,0,0,.06)':'none',textAlign:'center'}}>
             <div style={{fontSize:7,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.35)',textTransform:'uppercase',marginBottom:2}}>{k.label}</div>
-            <div style={{fontSize:12,fontWeight:800,color:k.color,letterSpacing:-.3}}>{k.val}</div>
+            <div style={{fontSize:12,fontWeight:800,color:k.color,letterSpacing:-.3}}>{i===2?'↑ ':''}{k.val}</div>
           </div>
         ))}
       </div>
 
-      {/* USA Map */}
-      <div style={{position:'relative',height:180,background:'linear-gradient(160deg,#d4e8f0,#c8dce8)',overflow:'hidden'}}>
+      {/* Map container */}
+      <div style={{position:'relative',height:180,overflow:'hidden',background:'#e8f2f8'}}>
+        <div ref={mapRef} style={{width:'100%',height:'100%'}}/>
 
-        {/* USA outline */}
-        <svg viewBox="0 0 500 220" style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:.25}} preserveAspectRatio="xMidYMid meet">
-          <path d="M55,30 L390,30 L415,50 L435,75 L430,115 L415,150 L390,175 L350,190 L300,200 L240,200 L180,192 L130,175 L90,150 L65,120 L50,85 L52,55 Z" fill="#8aaabb" stroke="rgba(255,255,255,.4)" strokeWidth="1.5"/>
-          <path d="M318,200 L338,218 L348,234 L332,238 L315,220 L305,204 Z" fill="#8aaabb"/>
-          <rect x="30" y="152" width="52" height="40" rx="4" fill="#7a9aaa" stroke="rgba(255,255,255,.3)" strokeWidth="1"/>
-          <text x="56" y="177" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,.6)" fontFamily="system-ui" fontWeight="600">AK</text>
-          <rect x="96" y="160" width="38" height="28" rx="4" fill="#7a9aaa" stroke="rgba(255,255,255,.3)" strokeWidth="1"/>
-          <text x="115" y="179" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,.6)" fontFamily="system-ui" fontWeight="600">HI</text>
-        </svg>
-
-        {/* State dots */}
-        {states.map((st) => {
-          const isHovered = hoveredState === st.id
-          const color = priceColor(st.high)
-          const size = isHovered ? 20 : st.high > 5 ? 13 : st.high > 4.5 ? 12 : st.high > 4 ? 11 : 10
-          return (
-            <div
-              key={st.id}
-              onMouseEnter={() => setHoveredState(st.id)}
-              onMouseLeave={() => setHoveredState(null)}
-              style={{
-                position:'absolute',
-                left: st.x, top: st.y,
-                transform:'translate(-50%,-50%)',
-                width: size, height: size,
-                borderRadius:'50%',
-                background: color,
-                border: `${isHovered?2:1.5}px solid rgba(255,255,255,${isHovered?1:.7})`,
-                cursor:'pointer',
-                zIndex: isHovered ? 20 : 5,
-                transition:'all .2s cubic-bezier(.34,1.56,.64,1)',
-                boxShadow: isHovered ? `0 0 0 5px ${color}40,0 2px 8px rgba(0,0,0,.2)` : '0 1px 3px rgba(0,0,0,.15)',
-              }}
-            >
-              {/* Hover tooltip showing highest price */}
-              {isHovered && (
-                <div style={{
-                  position:'absolute',
-                  bottom:'calc(100% + 8px)',
-                  left:'50%',
-                  transform:'translateX(-50%)',
-                  background:'rgba(26,26,46,.95)',
-                  color:'#fff',
-                  borderRadius:10,
-                  padding:'8px 12px',
-                  whiteSpace:'nowrap',
-                  zIndex:30,
-                  pointerEvents:'none',
-                  boxShadow:'0 4px 16px rgba(0,0,0,.25)',
-                }}>
-                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:'rgba(255,255,255,.5)',textTransform:'uppercase',marginBottom:3}}>{st.id} · Highest Pump</div>
-                  <div style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:'#ff3b30',lineHeight:1,marginBottom:4}}>${st.high.toFixed(2)}</div>
-                  <div style={{display:'flex',gap:10}}>
-                    <span style={{fontSize:10,color:'#30d158',fontWeight:700}}>Low ${st.low.toFixed(2)}</span>
-                    <span style={{fontSize:10,color:'rgba(255,255,255,.4)'}}>·</span>
-                    <span style={{fontSize:10,color:'rgba(255,255,255,.6)',fontWeight:600}}>Avg ${st.avg.toFixed(2)}</span>
-                  </div>
-                  {/* Arrow */}
-                  <div style={{position:'absolute',top:'100%',left:'50%',transform:'translateX(-50%)',width:0,height:0,borderLeft:'5px solid transparent',borderRight:'5px solid transparent',borderTop:'5px solid rgba(26,26,46,.95)'}}/>
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        {/* User reports overlay */}
-        {userReports.map((r,i) => (
-          <div key={r.id} style={{
+        {/* Hover tooltip */}
+        {hoveredState && (
+          <div style={{
             position:'absolute',
-            top: `${20+i*22}%`,
-            right: 8,
-            background:'rgba(48,209,88,.9)',
+            left: Math.min(hoveredState.x, 280),
+            top:  Math.max(hoveredState.y - 80, 4),
+            background:'rgba(26,26,46,.95)',
             color:'#fff',
-            borderRadius:8,
-            padding:'3px 8px',
-            fontSize:11,
-            fontWeight:800,
-            display:'flex',
-            alignItems:'center',
-            gap:5,
-            animation:'fadeUp .3s ease',
+            borderRadius:10,
+            padding:'8px 12px',
+            pointerEvents:'none',
+            zIndex:30,
+            whiteSpace:'nowrap',
+            boxShadow:'0 4px 16px rgba(0,0,0,.25)',
           }}>
-            <span style={{fontSize:8}}>📍</span>
-            ${r.price.toFixed(2)} <span style={{fontSize:8,opacity:.7}}>reported</span>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:'rgba(255,255,255,.5)',textTransform:'uppercase',marginBottom:3}}>
+              {hoveredState.name} · Highest Pump
+            </div>
+            <div style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:'#ff3b30',lineHeight:1,marginBottom:4}}>
+              ${hoveredState.data.high.toFixed(2)}
+            </div>
+            <div style={{display:'flex',gap:10}}>
+              <span style={{fontSize:10,color:'#30d158',fontWeight:700}}>Low ${hoveredState.data.low.toFixed(2)}</span>
+              <span style={{fontSize:10,color:'rgba(255,255,255,.35)'}}>·</span>
+              <span style={{fontSize:10,color:'rgba(255,255,255,.6)',fontWeight:600}}>Avg ${hoveredState.data.avg.toFixed(2)}</span>
+            </div>
           </div>
-        ))}
+        )}
 
-        {/* Report a Price button — Waze style */}
+        {/* Legend */}
+        <div style={{position:'absolute',bottom:6,left:8,display:'flex',flexDirection:'column',gap:2}}>
+          {[
+            {color:'#30d158',label:'Under $3.50'},
+            {color:'#ff9f0a',label:'$4.00–$4.50'},
+            {color:'#ff3b30',label:'Over $5.00'},
+          ].map((l,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:4}}>
+              <div style={{width:7,height:7,borderRadius:'50%',background:l.color,border:'1px solid rgba(255,255,255,.7)',flexShrink:0}}/>
+              <span style={{fontSize:8,fontWeight:600,color:'rgba(26,26,46,.7)',background:'rgba(255,255,255,.7)',padding:'1px 5px',borderRadius:3}}>{l.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Report button */}
         {!showReport ? (
-          <button
-            onClick={() => setShowReport(true)}
-            style={{
-              position:'absolute',
-              bottom: 8,
-              right: 8,
-              background: reported ? 'rgba(48,209,88,.9)' : 'rgba(255,255,255,.92)',
-              border: reported ? 'none' : '1px solid rgba(0,0,0,.12)',
-              borderRadius:100,
-              padding:'5px 12px',
-              fontSize:10,
-              fontWeight:700,
-              cursor:'pointer',
-              display:'flex',
-              alignItems:'center',
-              gap:5,
-              color: reported ? '#fff' : '#1a1a2e',
-              boxShadow:'0 2px 8px rgba(0,0,0,.15)',
-              zIndex:10,
-              transition:'all .2s',
-            }}
-          >
-            <span style={{fontSize:11}}>{reported ? '✓' : '⛽'}</span>
-            {reported ? 'Thanks! Price reported' : 'Report a Price'}
+          <button onClick={() => setShowReport(true)} style={{
+            position:'absolute',bottom:8,right:8,
+            background:reported?'rgba(48,209,88,.9)':'rgba(255,255,255,.92)',
+            border:reported?'none':'1px solid rgba(0,0,0,.12)',
+            borderRadius:100,padding:'5px 12px',
+            fontSize:10,fontWeight:700,cursor:'pointer',
+            display:'flex',alignItems:'center',gap:5,
+            color:reported?'#fff':'#1a1a2e',
+            boxShadow:'0 2px 8px rgba(0,0,0,.15)',zIndex:10,
+          }}>
+            <span style={{fontSize:11}}>{reported?'✓':'⛽'}</span>
+            {reported?'Thanks! Price reported':'Report a Price'}
           </button>
         ) : (
           <div style={{
-            position:'absolute',
-            bottom:8,right:8,
-            background:'rgba(255,255,255,.97)',
-            border:'1px solid rgba(0,0,0,.1)',
-            borderRadius:12,
-            padding:'8px 10px',
-            zIndex:20,
+            position:'absolute',bottom:8,right:8,
+            background:'rgba(255,255,255,.97)',border:'1px solid rgba(0,0,0,.1)',
+            borderRadius:12,padding:'8px 10px',zIndex:20,
             boxShadow:'0 4px 16px rgba(0,0,0,.15)',
-            display:'flex',
-            flexDirection:'column',
-            gap:6,
-            minWidth:160,
+            display:'flex',flexDirection:'column',gap:6,minWidth:160,
           }}>
             <div style={{fontSize:10,fontWeight:700,color:'#1a1a2e'}}>What are you seeing?</div>
             <div style={{display:'flex',gap:6,alignItems:'center'}}>
               <span style={{fontSize:12,fontWeight:700,color:'rgba(26,26,46,.4)'}}>$</span>
               <input
-                type="number"
-                step="0.01"
-                min="2"
-                max="9"
+                type="number" step="0.01" min="2" max="9"
                 placeholder="4.29"
                 value={reportPrice}
                 onChange={e => setReportPrice(e.target.value)}
-                style={{
-                  flex:1,
-                  padding:'5px 8px',
-                  border:'1.5px solid rgba(0,0,0,.12)',
-                  borderRadius:8,
-                  fontSize:14,
-                  fontWeight:800,
-                  color:'#ff3b30',
-                  outline:'none',
-                  width:70,
-                  fontFamily:'system-ui',
-                }}
+                style={{flex:1,padding:'5px 8px',border:'1.5px solid rgba(0,0,0,.12)',borderRadius:8,fontSize:14,fontWeight:800,color:'#ff3b30',outline:'none',width:70,fontFamily:'system-ui'}}
                 autoFocus
               />
               <button onClick={handleReport} style={{padding:'5px 10px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>
@@ -606,29 +622,12 @@ function GasTrackerPreview() {
             <button onClick={() => setShowReport(false)} style={{background:'none',border:'none',fontSize:9,color:'rgba(26,26,46,.35)',cursor:'pointer',textAlign:'left',padding:0}}>Cancel</button>
           </div>
         )}
-
-        {/* Legend */}
-        <div style={{position:'absolute',bottom:8,left:8,display:'flex',flexDirection:'column',gap:2}}>
-          {[
-            {color:'#30d158',label:'Under $3.50'},
-            {color:'#ff9f0a',label:'$4.00–$4.50'},
-            {color:'#ff3b30',label:'Over $5.00'},
-          ].map((l,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:4}}>
-              <div style={{width:7,height:7,borderRadius:'50%',background:l.color,border:'1px solid rgba(255,255,255,.6)'}}/>
-              <span style={{fontSize:8,fontWeight:600,color:'rgba(26,26,46,.6)',background:'rgba(255,255,255,.6)',padding:'1px 4px',borderRadius:3}}>{l.label}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Live bar */}
-      <div style={{padding:'6px 12px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(255,59,48,.04)'}}>
-        <div style={{display:'flex',alignItems:'center',gap:6}}>
-          <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease-in-out infinite'}}/>
-          <span style={{fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:600,letterSpacing:.5}}>EIA.GOV · WEEKLY AVERAGES · HOVER STATE → HIGHEST PRICE</span>
-        </div>
-        <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.3)'}}>{userReports.length > 0 ? `${userReports.length} user report${userReports.length>1?'s':''}` : ''}</span>
+      <div style={{padding:'6px 12px',display:'flex',alignItems:'center',gap:6,background:'rgba(255,59,48,.04)'}}>
+        <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease-in-out infinite'}}/>
+        <span style={{fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:600,letterSpacing:.5}}>EIA.GOV · WEEKLY AVERAGES · HOVER STATE FOR HIGHEST PRICE</span>
       </div>
     </div>
   )
