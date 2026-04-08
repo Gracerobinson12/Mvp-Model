@@ -344,10 +344,6 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
 function GasTrackerPreview() {
   const mapRef = useRef(null)
   const [hoveredState, setHoveredState] = useState(null)
-  const [showReport, setShowReport]     = useState(false)
-  const [reportPrice, setReportPrice]   = useState('')
-  const [reported, setReported]         = useState(false)
-  const [userReports, setUserReports]   = useState([])
 
   const stateInfo = {
     "Alabama":{"low":2.89,"high":3.98,"avg":3.12},
@@ -504,15 +500,7 @@ function GasTrackerPreview() {
     return () => { if (mapRef.current) mapRef.current.innerHTML = '' }
   }, [])
 
-  const handleReport = () => {
-    const price = parseFloat(reportPrice)
-    if (!price || price < 2 || price > 9) return
-    setUserReports(r => [{price, id: Date.now()}, ...r.slice(0,2)])
-    setReported(true)
-    setShowReport(false)
-    setReportPrice('')
-    setTimeout(() => setReported(false), 3000)
-  }
+
 
   const cheapest = Object.entries(stateInfo).sort((a,b) => a[1].avg - b[1].avg)[0]
   const priciest  = Object.entries(stateInfo).sort((a,b) => b[1].high - a[1].high)[0]
@@ -581,47 +569,7 @@ function GasTrackerPreview() {
           ))}
         </div>
 
-        {/* Report button */}
-        {!showReport ? (
-          <button onClick={() => setShowReport(true)} style={{
-            position:'absolute',bottom:8,right:8,
-            background:reported?'rgba(48,209,88,.9)':'rgba(255,255,255,.92)',
-            border:reported?'none':'1px solid rgba(0,0,0,.12)',
-            borderRadius:100,padding:'5px 12px',
-            fontSize:10,fontWeight:700,cursor:'pointer',
-            display:'flex',alignItems:'center',gap:5,
-            color:reported?'#fff':'#1a1a2e',
-            boxShadow:'0 2px 8px rgba(0,0,0,.15)',zIndex:10,
-          }}>
-            <span style={{fontSize:11}}>{reported?'✓':'⛽'}</span>
-            {reported?'Thanks! Price reported':'Report a Price'}
-          </button>
-        ) : (
-          <div style={{
-            position:'absolute',bottom:8,right:8,
-            background:'rgba(255,255,255,.97)',border:'1px solid rgba(0,0,0,.1)',
-            borderRadius:12,padding:'8px 10px',zIndex:20,
-            boxShadow:'0 4px 16px rgba(0,0,0,.15)',
-            display:'flex',flexDirection:'column',gap:6,minWidth:160,
-          }}>
-            <div style={{fontSize:10,fontWeight:700,color:'#1a1a2e'}}>What are you seeing?</div>
-            <div style={{display:'flex',gap:6,alignItems:'center'}}>
-              <span style={{fontSize:12,fontWeight:700,color:'rgba(26,26,46,.4)'}}>$</span>
-              <input
-                type="number" step="0.01" min="2" max="9"
-                placeholder="4.29"
-                value={reportPrice}
-                onChange={e => setReportPrice(e.target.value)}
-                style={{flex:1,padding:'5px 8px',border:'1.5px solid rgba(0,0,0,.12)',borderRadius:8,fontSize:14,fontWeight:800,color:'#ff3b30',outline:'none',width:70,fontFamily:'system-ui'}}
-                autoFocus
-              />
-              <button onClick={handleReport} style={{padding:'5px 10px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>
-                Submit
-              </button>
-            </div>
-            <button onClick={() => setShowReport(false)} style={{background:'none',border:'none',fontSize:9,color:'rgba(26,26,46,.35)',cursor:'pointer',textAlign:'left',padding:0}}>Cancel</button>
-          </div>
-        )}
+
       </div>
 
       {/* Live bar */}
@@ -709,7 +657,7 @@ function LandingPage() {
         .notify-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:rgba(0,0,0,0.05);color:var(--ink-2);border-radius:12px;font-size:13px;font-weight:600;border:1px solid var(--ash-3);cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px}
         .who-section{padding:0 24px 100px;max-width:1100px;margin:0 auto}
         .who-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:48px}
-        .who-card{background:rgba(255,255,255,0.65);border:1px solid rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:20px;padding:24px 20px;text-align:center;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1)}
+        .who-card{background:rgba(255,255,255,0.65);border:1px solid rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:20px;padding:24px 20px;text-align:center;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);position:relative;overflow:visible}
         .who-card:hover{transform:translateY(-3px);background:rgba(255,255,255,0.85)}
         .who-emoji{font-size:32px;margin-bottom:12px}
         .who-title{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px}
@@ -753,7 +701,7 @@ function LandingPage() {
           <p className="hero-sub">Real-time gas prices, regulatory updates, tariff tracking, and tax deductions — all in one platform built for gig workers, freelancers, and growing businesses.</p>
           <div className="hero-actions">
             <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
-            <button onClick={() => setShowModal(true)} className="btn-secondary">⛽ Try Gas Tracker</button>
+            <Link href="/pricing" className="btn-secondary">View Plans</Link>
           </div>
           <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>No credit card needed · $4.99/mo after trial · Cancel anytime</div>
           <div className="hero-trust">
@@ -766,7 +714,7 @@ function LandingPage() {
 
         <div className="stats-bar">
           <div className="stats-inner">
-            {[{val:"$8,736",suffix:"",label:"Avg annual deductions missed by drivers"},{val:"145",suffix:"x",label:"Average ROI for Business Pass users"},{val:"3,200+",suffix:"",label:"Regulatory updates tracked per month"},{val:"$4.99",suffix:"",label:"Per month after your free trial"}].map((s,i)=>(
+            {[{val:"59M+",suffix:"",label:"Gig workers in the US who need this"},{val:"$0.70",suffix:"/mi",label:"IRS mileage rate — money you're leaving behind"},{val:"$3.00+",suffix:"",label:"Per gallon difference between TX and CA"},{val:"$5,760",suffix:"",label:"Avg deductions freelancers miss every year"}].map((s,i)=>(
               <div className="stat-item" key={i}>
                 <div className="stat-val">{s.val}<span>{s.suffix}</span></div>
                 <div className="stat-lbl">{s.label}</div>
@@ -825,10 +773,11 @@ function LandingPage() {
         <section className="who-section" id="who">
           <div style={{textAlign:"center"}}>
             <div className="section-label">Who It's For</div>
-            <div className="section-title">Built for everyone<br/>who works for themselves</div>
+            <div className="section-title">Built for everyone<br/>who drives, works, or owns</div>
           </div>
           <div className="who-grid">
             {[
+              {emoji:"⛽",title:"Everyday Drivers",sub:"Anyone who drives\nand wants to save at the pump",highlight:true},
               {emoji:"🚗",title:"Rideshare & Delivery",sub:"Uber, Lyft, DoorDash\nInstacart, Amazon Flex"},
               {emoji:"💼",title:"Freelancers",sub:"Designers, developers\nconsultants, writers"},
               {emoji:"🍽️",title:"Restaurants & Cafes",sub:"Independent owners\ncaterers, food trucks"},
@@ -838,7 +787,8 @@ function LandingPage() {
               {emoji:"🛒",title:"Retail & E-commerce",sub:"Shopify, Amazon\nboutique stores"},
               {emoji:"📦",title:"Importers & Exporters",sub:"Manufacturers\ndistributors, wholesalers"},
             ].map((w,i)=>(
-              <div className="who-card" key={i}>
+              <div className="who-card" key={i} style={w.highlight?{border:'1.5px solid rgba(255,59,48,.3)',background:'linear-gradient(135deg,rgba(255,59,48,.06),rgba(255,255,255,.72))'}:{}}>
+                {w.highlight && <div style={{position:'absolute',top:-10,left:16,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',fontSize:9,fontWeight:700,padding:'3px 10px',borderRadius:100,letterSpacing:1}}>START HERE</div>}
                 <div className="who-emoji">{w.emoji}</div>
                 <div className="who-title">{w.title}</div>
                 <div className="who-sub" style={{whiteSpace:"pre-line"}}>{w.sub}</div>
