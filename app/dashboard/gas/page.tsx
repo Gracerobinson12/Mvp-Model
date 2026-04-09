@@ -28,17 +28,17 @@ const AVG_MPG  = 28
 const gk       = (g: string) => g.toLowerCase()
 
 const FALLBACK_STATIONS: Station[] = [
-  { id:1, name:"Shell",    address:"Nearest Shell",    lat:0,lng:0,distance:0.3,regular:3.09,mid:3.39,premium:3.69,diesel:3.55,updated:"2m ago",  trending:"down"   },
-  { id:2, name:"BP",       address:"Nearest BP",       lat:0,lng:0,distance:0.7,regular:3.15,mid:3.45,premium:3.75,diesel:3.61,updated:"8m ago",  trending:"stable" },
-  { id:3, name:"Circle K", address:"Nearest Circle K", lat:0,lng:0,distance:1.1,regular:3.07,mid:3.37,premium:3.67,diesel:3.52,updated:"1m ago",  trending:"down"   },
-  { id:4, name:"Chevron",  address:"Nearest Chevron",  lat:0,lng:0,distance:1.4,regular:3.21,mid:3.51,premium:3.81,diesel:3.68,updated:"15m ago", trending:"up"     },
-  { id:5, name:"QuikTrip", address:"Nearest QuikTrip", lat:0,lng:0,distance:1.9,regular:3.04,mid:3.34,premium:3.64,diesel:3.48,updated:"5m ago",  trending:"down"   },
+  { id:1, name:"Shell",    address:"Nearest Shell",    lat:0,lng:0,distance:0.3,regular:4.89,mid:5.19,premium:5.49,diesel:5.35,updated:"2m ago",  trending:"down"   },
+  { id:2, name:"BP",       address:"Nearest BP",       lat:0,lng:0,distance:0.7,regular:4.97,mid:5.27,premium:5.57,diesel:5.43,updated:"8m ago",  trending:"stable" },
+  { id:3, name:"Circle K", address:"Nearest Circle K", lat:0,lng:0,distance:1.1,regular:4.85,mid:5.15,premium:5.45,diesel:5.31,updated:"1m ago",  trending:"down"   },
+  { id:4, name:"Chevron",  address:"Nearest Chevron",  lat:0,lng:0,distance:1.4,regular:5.09,mid:5.39,premium:5.69,diesel:5.55,updated:"15m ago", trending:"up"     },
+  { id:5, name:"QuikTrip", address:"Nearest QuikTrip", lat:0,lng:0,distance:1.9,regular:4.79,mid:5.09,premium:5.39,diesel:5.25,updated:"5m ago",  trending:"down"   },
 ]
 
 const FALLBACK_HISTORY = [
-  {day:"Feb 26",price:3.28},{day:"Feb 27",price:3.25},{day:"Feb 28",price:3.31},
-  {day:"Mar 1", price:3.22},{day:"Mar 2", price:3.18},{day:"Mar 3", price:3.14},
-  {day:"Mar 4", price:3.11},{day:"Mar 5", price:3.09},
+  {day:"Feb 26",price:4.89},{day:"Feb 27",price:4.95},{day:"Feb 28",price:5.01},
+  {day:"Mar 1", price:5.05},{day:"Mar 2", price:5.09},{day:"Mar 3", price:5.15},
+  {day:"Mar 4", price:5.19},{day:"Mar 5", price:5.23},
 ]
 
 const PLANS = [
@@ -525,7 +525,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
             {label:"Area Average",val:`$${avgPrice.toFixed(2)}`,sub:`Save $${saving}/fill-up`,ok:true},
             {label:"Fill-Up Cost",val:`$${fillCost}`,sub:`${tank}gal · best price`},
             {label:"7-Day Trend",val:"↓ $0.19",sub:"vs last week",grn:true},
-            {label:"Natl Average",val:"$3.31",sub:"$0.22 under national",ok:true},
+            {label:"Natl Average",val:"$5.05",sub:"$0.16 under national",ok:true},
           ].map(k=><div key={k.label} style={{...glass({padding:"16px 18px"})}}><div style={{fontSize:9,fontWeight:600,letterSpacing:"1.5px",color:T.text3,textTransform:"uppercase",marginBottom:7}}>{k.label}</div><div style={{fontSize:30,fontWeight:800,letterSpacing:-1,color:k.grn?T.green:T.text}}>{k.val}</div><div style={{fontSize:11,color:k.ok?T.green:T.text2,marginTop:5}}>{k.sub}</div></div>)}
         </div>
 
@@ -580,12 +580,12 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
                 <XAxis dataKey="day" tick={{fontFamily:"system-ui",fontSize:9,fill:T.text3}} axisLine={false} tickLine={false}/>
                 <YAxis domain={["auto","auto"]} tick={{fontFamily:"system-ui",fontSize:9,fill:T.text3}} axisLine={false} tickLine={false} tickFormatter={(v:number)=>`$${v.toFixed(2)}`}/>
                 <Tooltip content={(props:any)=><ChartTip {...props} T={T}/>}/>
-                <ReferenceLine y={3.31} stroke={T.text3} strokeDasharray="4 4"/>
+                <ReferenceLine y={5.05} stroke={T.text3} strokeDasharray="4 4"/>
                 <Area type="monotone" dataKey="price" stroke="#ff3b30" strokeWidth={2.5} fill="url(#redGrad)" dot={{r:3,fill:"#ff3b30",strokeWidth:0}} activeDot={{r:5,fill:"#ff3b30",stroke:"rgba(255,59,48,.3)",strokeWidth:4}}/>
               </AreaChart>
             </ResponsiveContainer>
             <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.surfaceBdr}`}}>
-              {[{label:"Local Best",val:bestPrice},{label:"Local Avg",val:avgPrice},{label:"National",val:3.31}].map(item=>(
+              {[{label:"Local Best",val:bestPrice},{label:"Local Avg",val:avgPrice},{label:"National",val:5.05}].map(item=>(
                 <div key={item.label} style={{marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:9,fontWeight:500,color:T.text3}}>{item.label}</span><span style={{fontSize:9,fontWeight:600,color:T.text2}}>${item.val.toFixed(2)}</span></div>
                   <div style={{height:2,background:T.inputBg,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${(item.val/3.6)*100}%`,background:"linear-gradient(90deg,#ff3b30,#ff6b35)",borderRadius:2}}/></div>
@@ -685,16 +685,27 @@ export default function GasPage() {
 function SubscribeScreen() {
   const router   = useRouter()
   const [loading, setLoading] = React.useState(false)
-  const [plan,    setPlan]    = React.useState<'driver'|'freelancer'|'business'>('driver')
 
-  const PLANS = [
-    { id:'driver',     name:'Driver Pass',     price:'$4.99/mo',  color:'#ff3b30', emoji:'🚗',
-      features:['Real-time gas prices near you','Route gas finder','IRS mileage deduction calculator','Gas price drop alerts','Quarterly tax reminders'] },
-    { id:'freelancer', name:'Freelancer Pass',  price:'$7.99/mo',  color:'#0a84ff', emoji:'💼',
-      features:['Everything in Driver Pass','Full deduction teller','Home office tracker','IRS rule change alerts'] },
-    { id:'business',   name:'Business Pass',    price:'$14.99/mo', color:'#30d158', emoji:'🏢',
-      features:['Everything in Freelancer Pass','Live regulatory feed','Tariff intelligence','Labor law compliance'] },
-  ]
+  // Only one live plan — Core Pass
+  const PLAN = {
+    id:       'driver',
+    name:     'Core Pass',
+    price:    '$4.99',
+    color:    '#ff3b30',
+    gradient: 'linear-gradient(135deg,#ff3b30,#ff6b35)',
+    live: [
+      'Real-time gas prices near you',
+      'Route gas finder — cheapest on any trip',
+      'IRS mileage deduction calculator',
+      'USA gas price map by state',
+      'Price trend tracking — 7 days',
+    ],
+    soon: [
+      'Mileage log + PDF export',
+      'Gas price drop alerts via email',
+      'Quarterly tax deadline reminders',
+    ],
+  }
 
   const selected = PLANS.find(p => p.id === plan) || PLANS[0]
 
@@ -707,7 +718,7 @@ function SubscribeScreen() {
       const res = await fetch('/api/create-checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ userId: user.id, email: user.email, userType: plan }),
+        body:    JSON.stringify({ userId: user.id, email: user.email, userType: 'driver' }),
       })
       const { url, error } = await res.json()
       if (error) throw new Error(error)
@@ -741,41 +752,39 @@ function SubscribeScreen() {
           </p>
         </div>
 
-        {/* Plan selector */}
-        <div style={{display:'flex',gap:10,marginBottom:24,flexWrap:'wrap',justifyContent:'center',animation:'subIn .5s ease .1s both'}}>
-          {PLANS.map(p=>(
-            <button key={p.id} onClick={()=>setPlan(p.id as any)} style={{
-              padding:'10px 20px',borderRadius:100,fontSize:13,fontWeight:700,cursor:'pointer',
-              fontFamily:"'DM Sans',sans-serif",transition:'all .2s',
-              background: plan===p.id ? `linear-gradient(135deg,${p.color},${p.color}cc)` : 'rgba(255,255,255,.8)',
-              color:       plan===p.id ? '#fff' : 'rgba(26,26,46,.6)',
-              border:      plan===p.id ? 'none' : '1px solid rgba(0,0,0,.1)',
-              boxShadow:   plan===p.id ? `0 4px 14px ${p.color}44` : 'none',
-            }}>
-              {p.emoji} {p.name}
-            </button>
-          ))}
+        {/* Live plan badge */}
+        <div style={{display:'flex',gap:10,marginBottom:24,justifyContent:'center',animation:'subIn .5s ease .1s both'}}>
+          <div style={{padding:'8px 20px',borderRadius:100,fontSize:13,fontWeight:700,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',boxShadow:'0 4px 14px rgba(255,59,48,.35)',display:'flex',alignItems:'center',gap:8}}>
+            <span style={{width:6,height:6,borderRadius:'50%',background:'#fff',display:'inline-block',animation:'lp 1.5s ease infinite'}}/>
+            ⛽ Core Pass — Live Now
+          </div>
+          <div style={{padding:'8px 20px',borderRadius:100,fontSize:13,fontWeight:600,background:'rgba(255,255,255,.7)',color:'rgba(26,26,46,.35)',border:'1px solid rgba(0,0,0,.08)',filter:'blur(1.5px)',userSelect:'none'}}>
+            💼 Pro Pass
+          </div>
+          <div style={{padding:'8px 20px',borderRadius:100,fontSize:13,fontWeight:600,background:'rgba(255,255,255,.7)',color:'rgba(26,26,46,.35)',border:'1px solid rgba(0,0,0,.08)',filter:'blur(1.5px)',userSelect:'none'}}>
+            🏢 Business Pass
+          </div>
         </div>
 
-        {/* Selected plan card */}
+        {/* Core Pass card */}
         <div style={{
           maxWidth:460, width:'100%',
           background:'rgba(255,255,255,.9)',
-          border:`2px solid ${selected.color}33`,
+          border:'2px solid rgba(255,59,48,.25)',
           borderRadius:28, padding:'32px 28px',
-          boxShadow:`0 8px 40px ${selected.color}18`,
+          boxShadow:'0 8px 40px rgba(255,59,48,.12)',
           animation:'subIn .5s ease .15s both',
           position:'relative', overflow:'hidden',
         }}>
-          <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,transparent,${selected.color},transparent)`}}/>
+          <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:'linear-gradient(90deg,transparent,#ff3b30,transparent)'}}/>
 
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
             <div>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:selected.color,textTransform:'uppercase',marginBottom:6}}>⭐ Recommended for you</div>
-              <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e'}}>{selected.name}</div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:6}}>⭐ First Module — Live Now</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e'}}>{PLAN.name}</div>
             </div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,letterSpacing:-1.5,color:selected.color,lineHeight:1}}>{selected.price.replace('/mo','')}</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,letterSpacing:-1.5,color:'#ff3b30',lineHeight:1}}>{PLAN.price}</div>
               <div style={{fontSize:12,color:'rgba(26,26,46,.4)'}}>/mo after trial</div>
             </div>
           </div>
@@ -807,7 +816,7 @@ function SubscribeScreen() {
             boxShadow: loading ? 'none' : '0 4px 20px rgba(255,59,48,.4)',
             marginBottom:12, letterSpacing:-.3,
           }}>
-            {loading ? 'Redirecting to checkout...' : `Start Free Trial — ${selected.price} →`}
+            {loading ? 'Redirecting to checkout...' : 'Start Free Trial — $4.99/mo →'}
           </button>
 
           <p style={{fontSize:11,color:'rgba(26,26,46,.35)',textAlign:'center',lineHeight:1.6,margin:0}}>
