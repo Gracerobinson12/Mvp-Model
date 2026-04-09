@@ -686,7 +686,7 @@ function LandingPage() {
           <div className="nav-links">
             <a href="#modules" className="nav-link">Modules</a>
             <a href="#who" className="nav-link">Who it's for</a>
-            <a href="#pricing" className="nav-link">Pricing</a>
+            <a href="/pricing" className="nav-link">Pricing</a>
             <a href="#about" className="nav-link">About</a>
           </div>
           <div className="nav-actions">
