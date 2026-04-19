@@ -390,6 +390,33 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
   const T=isDark?DARK:LIGHT
   const glass=(extra={})=>({background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",...extra})
 
+  // Save location + preferences back to Supabase
+  const savePreferences = useCallback(async (lat:number, lng:number, grade:string, miles:number, tank:number) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('profiles').update({
+      last_location_lat: lat,
+      last_location_lng: lng,
+      last_seen_at:      new Date().toISOString(),
+      grade_preference:  grade,
+      miles_per_week:    miles,
+      tank_size:         tank,
+    }).eq('id', user.id)
+  }, [])
+
+  // Log gas search to history
+  const logSearch = useCallback(async (lat:number, lng:number, grade:string, bestPrice:number) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('gas_searches').insert({
+      user_id:    user.id,
+      lat,
+      lng,
+      grade,
+      best_price: bestPrice,
+    }).catch(() => {}) // silent fail — not critical
+  }, [])
+
   const fetchData=useCallback(async(lat:number,lng:number)=>{
     setLoading(true);setLocStatus("Fetching prices near you...")
     try {
@@ -405,12 +432,40 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
     setLoading(false)
   },[])
 
+  // Load saved user preferences on mount
+  useEffect(()=>{
+    const loadPrefs = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('last_location_lat,last_location_lng,grade_preference,miles_per_week,tank_size,last_seen_at')
+        .eq('id', user.id)
+        .single()
+      if (!profile) return
+      // Restore last known location
+      if (profile.last_location_lat && profile.last_location_lng) {
+        const lat = profile.last_location_lat
+        const lng = profile.last_location_lng
+        setUserCoords({lat, lng})
+        setLocStatus('📍 Last known location restored')
+        setModal(null)
+        fetchData(lat, lng)
+      }
+      // Restore preferences
+      if (profile.grade_preference) setGrade(profile.grade_preference)
+      if (profile.miles_per_week)   setMiles(profile.miles_per_week)
+      if (profile.tank_size)        setTank(profile.tank_size)
+    }
+    loadPrefs()
+  }, [])
+
   const handleAllow=useCallback(()=>{
     setModal(null)
     if(!navigator.geolocation){setModal("zip");return}
     setLocStatus("Requesting location...")
     navigator.geolocation.getCurrentPosition(
-      pos=>{const{latitude:lat,longitude:lng}=pos.coords;setUserCoords({lat,lng});setLocStatus("📍 Location found");fetchData(lat,lng)},
+      pos=>{const{latitude:lat,longitude:lng}=pos.coords;setUserCoords({lat,lng});setLocStatus("📍 Location found");fetchData(lat,lng);savePreferences(lat,lng,grade,miles,tank)},
       err=>{setLocStatus(err.code===1?"Location denied · Try ZIP":"Location unavailable · Try ZIP");setModal("zip");setLoading(false)},
       {enableHighAccuracy:true,timeout:12000,maximumAge:300000}
     )
@@ -420,7 +475,8 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
     setModal(null);setLocStatus(`ZIP ${zip} · Finding stations...`)
     const lat=33.749,lng=-84.388
     setUserCoords({lat,lng});setMapKey(`zip-${zip}-${Date.now()}`);fetchData(lat,lng)
-  },[fetchData])
+    savePreferences(lat,lng,grade,miles,tank)
+  },[fetchData,savePreferences,grade,miles,tank])
 
   const handleUpdateLocation=useCallback(()=>{
     if(!navigator.geolocation)return
@@ -707,7 +763,6 @@ function SubscribeScreen() {
     ],
   }
 
-  const selected = PLANS.find(p => p.id === plan) || PLANS[0]
 
   const handleSubscribe = async () => {
     setLoading(true)
@@ -802,7 +857,7 @@ function SubscribeScreen() {
           <div style={{marginBottom:24}}>
             {selected.features.map((f,i)=>(
               <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.7)',marginBottom:8}}>
-                <span style={{color:selected.color,fontWeight:700,flexShrink:0}}>✓</span>{f}
+                <span style={{color:PLAN.color,fontWeight:700,flexShrink:0}}>✓</span>{f}
               </div>
             ))}
           </div>
