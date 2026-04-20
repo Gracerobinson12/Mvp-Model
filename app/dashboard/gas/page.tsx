@@ -868,13 +868,24 @@ function SubscribeScreen() {
             </div>
           </div>
 
-          {/* Features */}
-          <div style={{marginBottom:24}}>
-            {selected.features.map((f,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.7)',marginBottom:8}}>
+          {/* Live features */}
+          <div style={{marginBottom:8}}>
+            <div style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(48,209,88,.1)',border:'1px solid rgba(48,209,88,.25)',borderRadius:100,padding:'2px 8px',fontSize:9,fontWeight:700,color:'#1a7a35',letterSpacing:.5,textTransform:'uppercase',marginBottom:10}}>● Live Now</div>
+            {PLAN.live.map((f,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.7)',marginBottom:7}}>
                 <span style={{color:PLAN.color,fontWeight:700,flexShrink:0}}>✓</span>{f}
               </div>
             ))}
+          </div>
+          <div style={{marginBottom:20}}>
+            <div style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(255,159,10,.08)',border:'1px solid rgba(255,159,10,.2)',borderRadius:100,padding:'2px 8px',fontSize:9,fontWeight:700,color:'#8a5c00',letterSpacing:.5,textTransform:'uppercase',marginBottom:10}}>⏳ Coming Soon</div>
+            <div style={{filter:'blur(3px)',userSelect:'none'}}>
+              {PLAN.soon.map((f,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.4)',marginBottom:7}}>
+                  <span style={{flexShrink:0}}>·</span>{f}
+                </div>
+              ))}
+            </div>
           </div>
 
           {stripeError && (
