@@ -432,33 +432,34 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
     setLoading(false)
   },[])
 
-  // Load saved user preferences on mount
+  // Load saved preferences AFTER fetchData is defined
   useEffect(()=>{
     const loadPrefs = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('last_location_lat,last_location_lng,grade_preference,miles_per_week,tank_size,last_seen_at')
-        .eq('id', user.id)
-        .single()
-      if (!profile) return
-      // Restore last known location
-      if (profile.last_location_lat && profile.last_location_lng) {
-        const lat = profile.last_location_lat
-        const lng = profile.last_location_lng
-        setUserCoords({lat, lng})
-        setLocStatus('📍 Last known location restored')
-        setModal(null)
-        fetchData(lat, lng)
-      }
-      // Restore preferences
-      if (profile.grade_preference) setGrade(profile.grade_preference)
-      if (profile.miles_per_week)   setMiles(profile.miles_per_week)
-      if (profile.tank_size)        setTank(profile.tank_size)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('last_location_lat,last_location_lng,grade_preference,miles_per_week,tank_size')
+          .eq('id', user.id)
+          .single()
+        if (!profile) return
+        if (profile.grade_preference) setGrade(profile.grade_preference)
+        if (profile.miles_per_week)   setMiles(profile.miles_per_week)
+        if (profile.tank_size)        setTank(profile.tank_size)
+        // Restore last location — skip modal if we have it
+        if (profile.last_location_lat && profile.last_location_lng) {
+          const lat = parseFloat(profile.last_location_lat)
+          const lng = parseFloat(profile.last_location_lng)
+          setUserCoords({lat, lng})
+          setLocStatus('📍 Last location restored')
+          setModal(null)
+          fetchData(lat, lng)
+        }
+      } catch(e) { /* silent fail */ }
     }
     loadPrefs()
-  }, [])
+  }, [fetchData])
 
   const handleAllow=useCallback(()=>{
     setModal(null)
@@ -764,8 +765,11 @@ function SubscribeScreen() {
   }
 
 
+  const [stripeError, setStripeError] = React.useState('')
+
   const handleSubscribe = async () => {
     setLoading(true)
+    setStripeError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
@@ -775,11 +779,22 @@ function SubscribeScreen() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ userId: user.id, email: user.email, userType: 'driver' }),
       })
-      const { url, error } = await res.json()
-      if (error) throw new Error(error)
-      if (url) window.location.href = url
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`Server error ${res.status}: ${text}`)
+      }
+
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error('No checkout URL returned from Stripe')
+      }
     } catch (e: any) {
-      alert(e.message || 'Something went wrong.')
+      console.error('Checkout error:', e)
+      setStripeError(e.message || 'Something went wrong. Please try again.')
       setLoading(false)
     }
   }
@@ -862,6 +877,12 @@ function SubscribeScreen() {
             ))}
           </div>
 
+          {stripeError && (
+            <div style={{background:'rgba(255,59,48,.08)',border:'1px solid rgba(255,59,48,.2)',borderRadius:12,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#cc2018',lineHeight:1.5}}>
+              ⚠️ {stripeError}
+            </div>
+          )}
+
           <button onClick={handleSubscribe} disabled={loading} style={{
             width:'100%', padding:16,
             background: loading ? 'rgba(255,59,48,.3)' : 'linear-gradient(135deg,#ff3b30,#ff6b35)',
@@ -871,7 +892,7 @@ function SubscribeScreen() {
             boxShadow: loading ? 'none' : '0 4px 20px rgba(255,59,48,.4)',
             marginBottom:12, letterSpacing:-.3,
           }}>
-            {loading ? 'Redirecting to checkout...' : 'Start Free Trial — $4.99/mo →'}
+            {loading ? 'Connecting to Stripe...' : 'Start Free Trial — $4.99/mo →'}
           </button>
 
           <p style={{fontSize:11,color:'rgba(26,26,46,.35)',textAlign:'center',lineHeight:1.6,margin:0}}>
