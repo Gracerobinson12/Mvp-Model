@@ -173,12 +173,32 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
   const [promoDays,  setPromoDays] = useState(7)
 
   const USER_TYPES = [
-    { id:'gas',        icon:'⛽', label:'Gas prices only',  sub:'I just want to find cheap gas near me',        color:'#ff3b30' },
-    { id:'driver',     icon:'🚗', label:'Gig driver',       sub:'Uber, Lyft, DoorDash — I need deductions too', color:'#ff6b35' },
-    { id:'freelancer', icon:'💼', label:'Freelancer',       sub:'Independent contractor or self-employed',      color:'#0a84ff' },
-    { id:'business',   icon:'🏢', label:'Business owner',   sub:'I run a business and need compliance tools',   color:'#30d158' },
+    {
+      id:'driver',
+      icon:'⛽',
+      label:'Personal',
+      sub:'Everyday drivers, commuters, anyone who wants to save at the pump',
+      color:'#ff3b30',
+      plans:'Core Pass · $4.99/mo',
+    },
+    {
+      id:'freelancer',
+      icon:'💼',
+      label:'Self-Employed',
+      sub:'Gig drivers, freelancers, contractors — gas + mileage + deductions',
+      color:'#0a84ff',
+      plans:'Pro Pass · Coming Soon',
+    },
+    {
+      id:'business',
+      icon:'🏢',
+      label:'Business',
+      sub:'Owners and operators who need compliance, tariffs, and team tools',
+      color:'#30d158',
+      plans:'Business Pass · Coming Soon',
+    },
   ]
-  const selectedType = USER_TYPES.find(t => t.id === userCat)
+  const selectedType = USER_TYPES.find(t => t.id === userCat) || USER_TYPES[0]
 
   const validatePromo = async () => {
     if (!promoCode.trim()) return
@@ -203,18 +223,16 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       const trialDays   = promoValid ? promoDays : 7
       // Gas-only users get NO trial until they pay via Stripe
       // All other users get trial immediately (they go through onboarding → pricing)
-      const trialEndsAt = userCat === 'gas'
-        ? null
-        : new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
-
+      // All users start with no trial — they get 30s taste then subscribe for Core Pass
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: userId, email,
         user_type:     userCat,
         account_type:  userCat === 'business' ? 'business' : 'personal',
         plan:          'free',
-        plan_status:   userCat === 'gas' ? 'taste' : 'trialing',
-        onboarded:     userCat === 'gas',
-        trial_ends_at: trialEndsAt,
+        plan_status:   'taste',
+        onboarded:     true,
+        trial_ends_at: null,
+        notify_plan:   userCat === 'freelancer' ? 'pro' : userCat === 'business' ? 'enterprise' : null,
       })
       if (profileError) throw profileError
       if (promoValid && promoCode) {
@@ -226,12 +244,10 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
         body: JSON.stringify({ email, userType: userCat, trialDays }),
       }).catch(()=>{})
       // Gas only → straight to tracker, others → onboarding for extra info
-      if (userCat === 'gas') {
-        // Store signup time so gas tracker shows 30-sec taste preview
-        localStorage.setItem('gratia_signup_time', Date.now().toString())
-        router.push('/dashboard/gas')
-      }
-      else router.push(`/onboarding?prefill=${userCat}`)
+      // All users go to gas tracker — it's the only live module
+      // Store signup time for 30-sec taste preview
+      localStorage.setItem('gratia_signup_time', Date.now().toString())
+      router.push('/dashboard/gas')
     } catch (e: any) {
       setError(e?.message || 'Something went wrong. Please try again.')
       setLoading(false)
@@ -253,11 +269,21 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
         {step === 'gate' && <>
           <div style={{display:'flex',justifyContent:'center',marginBottom:20}}><GCIcon size={52}/></div>
           <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,textAlign:'center',color:'#1a1a2e',marginBottom:8}}>Start your free trial</h2>
-          <p style={{fontSize:14,color:'rgba(26,26,46,.55)',textAlign:'center',lineHeight:1.65,marginBottom:22}}>7 days full access — no credit card needed. $4.99/mo after trial.</p>
+          <p style={{fontSize:14,color:'rgba(26,26,46,.55)',textAlign:'center',lineHeight:1.65,marginBottom:22}}>7 days full access · $4.99/mo after · Cancel anytime</p>
           <div style={{background:'#f8f7fc',borderRadius:14,padding:'14px 16px',marginBottom:22}}>
-            {[{icon:'📍',text:'Real-time prices at nearby stations'},{icon:'🛣️',text:'Cheapest gas on any route you drive'},{icon:'🧾',text:'IRS mileage deduction calculator'},{icon:'🔔',text:'Price drop alerts via email'}].map((f,i)=>(
+            {[
+              {icon:'📍',text:'Real-time gas prices at stations near you',live:true},
+              {icon:'🛣️',text:'Route gas finder — cheapest on any trip',live:true},
+              {icon:'🗺️',text:'USA gas price map across all 50 states',live:true},
+              {icon:'💡',text:'Idea Vault — timestamp & seal your ideas',live:false},
+            ].map((f,i)=>(
               <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.75)',marginBottom:i<3?9:0}}>
-                <span style={{fontSize:15}}>{f.icon}</span>{f.text}
+                <span style={{fontSize:15}}>{f.icon}</span>
+                <span style={{flex:1}}>{f.text}</span>
+                {f.live
+                  ? <span style={{fontSize:9,fontWeight:700,color:'#1a7a35',background:'rgba(48,209,88,.1)',border:'1px solid rgba(48,209,88,.2)',borderRadius:100,padding:'1px 7px',flexShrink:0}}>Live</span>
+                  : <span style={{fontSize:9,fontWeight:700,color:'#8a5c00',background:'rgba(255,159,10,.08)',border:'1px solid rgba(255,159,10,.2)',borderRadius:100,padding:'1px 7px',flexShrink:0}}>Soon</span>
+                }
               </div>
             ))}
           </div>
@@ -277,21 +303,143 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
         </>}
 
         {step === 'type' && <>
-          <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:21,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:6}}>One quick question</h2>
-          <p style={{fontSize:13,color:'rgba(26,26,46,.5)',marginBottom:20}}>We use this to show you the right tools.</p>
-          <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
-            {USER_TYPES.map(t=>(
-              <button key={t.id} onClick={()=>{setUserCat(t.id);setStep('details')}}
-                style={{display:'flex',alignItems:'center',gap:14,padding:'13px 16px',background:'#f8f7fc',border:'1.5px solid rgba(0,0,0,.08)',borderRadius:14,cursor:'pointer',textAlign:'left',fontFamily:"'DM Sans',sans-serif"}}>
-                <div style={{width:42,height:42,borderRadius:12,background:`${t.color}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}}>{t.icon}</div>
+          <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:21,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:4}}>Which plan fits you?</h2>
+          <p style={{fontSize:13,color:'rgba(26,26,46,.5)',marginBottom:16,lineHeight:1.5}}>Everyone starts with gas intelligence. Select your path — we'll notify you when your plan launches.</p>
+
+          <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+
+            {/* Personal */}
+            <div
+              onClick={()=>setUserCat('driver')}
+              style={{border:`1.5px solid ${userCat==='driver'?'#ff3b30':'rgba(0,0,0,.08)'}`,borderRadius:16,padding:'14px 16px',cursor:'pointer',background:userCat==='driver'?'rgba(255,59,48,.04)':'#f8f7fc',transition:'all .2s'}}>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <div style={{width:42,height:42,borderRadius:12,background:'rgba(255,59,48,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>⛽</div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:600,color:'#1a1a2e',marginBottom:2}}>{t.label}</div>
-                  <div style={{fontSize:11,color:'rgba(26,26,46,.45)'}}>{t.sub}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
+                    <span style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>Personal</span>
+                    <span style={{fontSize:9,fontWeight:700,color:'#1a7a35',background:'rgba(48,209,88,.1)',border:'1px solid rgba(48,209,88,.2)',borderRadius:100,padding:'1px 7px'}}>Live Now</span>
+                  </div>
+                  <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Everyday drivers and creators</div>
+                  <div style={{fontSize:10,fontWeight:700,color:'#ff3b30'}}>Core Pass · $4.99/mo</div>
                 </div>
-                <span style={{fontSize:16,color:'rgba(26,26,46,.2)'}}>›</span>
-              </button>
-            ))}
+                <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='driver'?'#ff3b30':'rgba(0,0,0,.15)'}`,background:userCat==='driver'?'#ff3b30':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {userCat==='driver' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
+                </div>
+              </div>
+              {/* Personal features */}
+              {userCat==='driver' && (
+                <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(0,0,0,.06)',display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {['⛽ Gas tracker','🗺️ USA price map','💡 Idea Vault soon'].map((f,i)=>(
+                    <span key={i} style={{fontSize:10,background:'rgba(255,59,48,.07)',color:'#cc2018',padding:'2px 8px',borderRadius:100,fontWeight:600}}>{f}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Pro */}
+            <div
+              onClick={()=>setUserCat('freelancer')}
+              style={{border:`1.5px solid ${userCat==='freelancer'?'#0a84ff':'rgba(0,0,0,.08)'}`,borderRadius:16,padding:'14px 16px',cursor:'pointer',background:userCat==='freelancer'?'rgba(10,132,255,.04)':'#f8f7fc',transition:'all .2s'}}>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <div style={{width:42,height:42,borderRadius:12,background:'rgba(10,132,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>💼</div>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
+                    <span style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>Pro</span>
+                    <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.4)',background:'rgba(0,0,0,.05)',border:'1px solid rgba(0,0,0,.08)',borderRadius:100,padding:'1px 7px'}}>Coming Soon</span>
+                  </div>
+                  <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Freelancers, gig workers, contractors</div>
+                  <div style={{fontSize:10,fontWeight:700,color:'#0a84ff'}}>Pro Pass · $9.99/mo</div>
+                </div>
+                <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='freelancer'?'#0a84ff':'rgba(0,0,0,.15)'}`,background:userCat==='freelancer'?'#0a84ff':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {userCat==='freelancer' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
+                </div>
+              </div>
+              {/* Pro notify checkboxes */}
+              {userCat==='freelancer' && (
+                <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(0,0,0,.06)'}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:8}}>Notify me when these launch:</div>
+                  {[
+                    {id:'pro_deduct',  label:'Deduction Teller',       sub:'Full deduction tracking + PDF export'},
+                    {id:'pro_barter',  label:'Barter & Trade Tracker',  sub:'Legally timestamp trade agreements'},
+                    {id:'pro_alerts',  label:'Gas price drop alerts',   sub:'Email when prices fall near you'},
+                  ].map((item)=>(
+                    <div key={item.id} style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:8,cursor:'pointer'}}
+                      onClick={e=>{e.stopPropagation();setPromoCode(p=>p===item.id?'':item.id)}}>
+                      <div style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${promoCode===item.id?'#0a84ff':'rgba(0,0,0,.15)'}`,background:promoCode===item.id?'#0a84ff':'transparent',flexShrink:0,marginTop:1,display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s'}}>
+                        {promoCode===item.id && <span style={{color:'#fff',fontSize:10,fontWeight:900}}>✓</span>}
+                      </div>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#1a1a2e'}}>{item.label}</div>
+                        <div style={{fontSize:11,color:'rgba(26,26,46,.45)'}}>{item.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Enterprise */}
+            <div
+              onClick={()=>setUserCat('business')}
+              style={{border:`1.5px solid ${userCat==='business'?'#30d158':'rgba(0,0,0,.08)'}`,borderRadius:16,padding:'14px 16px',cursor:'pointer',background:userCat==='business'?'rgba(48,209,88,.04)':'#f8f7fc',transition:'all .2s'}}>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <div style={{width:42,height:42,borderRadius:12,background:'rgba(48,209,88,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>🏢</div>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
+                    <span style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>Enterprise</span>
+                    <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.4)',background:'rgba(0,0,0,.05)',border:'1px solid rgba(0,0,0,.08)',borderRadius:100,padding:'1px 7px'}}>Coming Soon</span>
+                  </div>
+                  <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Business owners, operators, teams</div>
+                  <div style={{fontSize:10,fontWeight:700,color:'#30d158'}}>Enterprise Pass · $19.99/mo</div>
+                </div>
+                <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='business'?'#30d158':'rgba(0,0,0,.15)'}`,background:userCat==='business'?'#30d158':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {userCat==='business' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
+                </div>
+              </div>
+              {/* Enterprise notify checkboxes */}
+              {userCat==='business' && (
+                <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(0,0,0,.06)'}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:8}}>Notify me when these launch:</div>
+                  {[
+                    {id:'ent_reg',     label:'Regulatory Updates',      sub:'IRS, OSHA, labor laws for your industry'},
+                    {id:'ent_tariff',  label:'Tariff Intelligence',     sub:'Live import/export cost tracking'},
+                    {id:'ent_market',  label:'Market Intelligence',     sub:'Predict margins, spot trends early'},
+                    {id:'ent_barter',  label:'Barter & Trade Tracker',  sub:'Legally timestamp trade agreements'},
+                    {id:'ent_assets',  label:'Assets & Liabilities',    sub:'Balance sheet + PDF export'},
+                  ].map((item)=>(
+                    <div key={item.id} style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:8,cursor:'pointer'}}
+                      onClick={e=>{e.stopPropagation();setPromoCode(p=>p===item.id?'':item.id)}}>
+                      <div style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${promoCode===item.id?'#30d158':'rgba(0,0,0,.15)'}`,background:promoCode===item.id?'#30d158':'transparent',flexShrink:0,marginTop:1,display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s'}}>
+                        {promoCode===item.id && <span style={{color:'#fff',fontSize:10,fontWeight:900}}>✓</span>}
+                      </div>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#1a1a2e'}}>{item.label}</div>
+                        <div style={{fontSize:11,color:'rgba(26,26,46,.45)'}}>{item.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
+
+          {/* Notify message for Pro/Enterprise */}
+          {(userCat==='freelancer'||userCat==='business') && (
+            <div style={{background:'rgba(255,159,10,.06)',border:'1px solid rgba(255,159,10,.2)',borderRadius:12,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#8a5c00',lineHeight:1.5}}>
+              ✓ You'll start with <strong>Personal (Core Pass $4.99/mo)</strong> today and be the first notified when your plan launches — at a founding member rate.
+            </div>
+          )}
+
+          <button
+            onClick={()=>{ if(userCat) setStep('details') }}
+            disabled={!userCat}
+            style={{width:'100%',padding:13,background:userCat?`linear-gradient(135deg,${userCat==='driver'?'#ff3b30,#ff6b35':userCat==='freelancer'?'#0a84ff,#30a0ff':'#30d158,#34c759'})`:'rgba(0,0,0,.08)',color:userCat?'#fff':'rgba(26,26,46,.3)',border:'none',borderRadius:100,fontSize:14,fontWeight:700,cursor:userCat?'pointer':'not-allowed',fontFamily:"'DM Sans',sans-serif",marginBottom:10,transition:'all .2s'}}>
+            {!userCat ? 'Select a plan to continue'
+              : userCat==='driver' ? 'Continue with Personal →'
+              : userCat==='freelancer' ? 'Start with Personal + Notify Me for Pro →'
+              : 'Start with Personal + Notify Me for Enterprise →'}
+          </button>
           <button onClick={()=>setStep('gate')} style={{background:'none',border:'none',color:'rgba(26,26,46,.4)',fontSize:13,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",padding:0}}>← Back</button>
         </>}
 
@@ -300,10 +448,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
           <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:21,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:4}}>Almost done</h2>
           <p style={{fontSize:13,color:'rgba(26,26,46,.5)',marginBottom:16}}>Creating account for <strong style={{color:'#1a1a2e'}}>{email}</strong></p>
           <div style={{background:'#f8f7fc',borderRadius:14,padding:'12px 14px',marginBottom:16,fontSize:12,color:'rgba(26,26,46,.6)',lineHeight:1.6}}>
-            {userCat==='gas'       && '✓ Gas tracker opens immediately · 7-day free trial · $4.99/mo after'}
-            {userCat==='driver'    && "✓ Full access for 7 days free · Gas tracker + deduction tools · $4.99/mo after"}
-            {userCat==='freelancer'&& "✓ Full access for 7 days free · Deduction dashboard · $7.99/mo after"}
-            {userCat==='business'  && "✓ Full access for 7 days free · All compliance modules · $14.99/mo after"}
+            {'✓ Gas tracker opens immediately · 7-day free trial · Core Pass $4.99/mo after · Cancel anytime'}
           </div>
 
           {/* ── FIXED: autoComplete="off" stops browser filling email into promo field ── */}
@@ -333,7 +478,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
             {loading?'Creating your account...':userCat==='gas'?'Start Free Trial →':'Create account & continue →'}
           </button>
           <button onClick={()=>setStep('type')} style={{background:'none',border:'none',color:'rgba(26,26,46,.4)',fontSize:13,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",padding:0}}>← Back</button>
-          <p style={{fontSize:11,color:'rgba(26,26,46,.3)',textAlign:'center',marginTop:14,lineHeight:1.6}}>No card needed · Cancel anytime · <a href="/terms" style={{color:'#ff3b30'}}>Terms</a> & <a href="/privacy" style={{color:'#ff3b30'}}>Privacy</a></p>
+          <p style={{fontSize:11,color:'rgba(26,26,46,.3)',textAlign:'center',marginTop:14,lineHeight:1.6}}>Card required after trial · Cancel anytime · <a href="/terms" style={{color:'#ff3b30'}}>Terms</a> & <a href="/privacy" style={{color:'#ff3b30'}}>Privacy</a></p>
         </>}
       </div>
     </div>
@@ -682,14 +827,21 @@ function LandingPage() {
       <div className="bg-mesh" />
       <div className="page">
         <nav className="navbar">
-          <a href="/" style={{textDecoration:'none'}}><GratiaLogo/></a>
+          <a href="/" style={{textDecoration:'none',display:'flex',alignItems:'center',gap:10}}>
+              <GCIcon size={34}/>
+              <div style={{display:'flex',flexDirection:'column',lineHeight:1}}>
+                <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:15,fontWeight:900,letterSpacing:-0.5,color:'#1a1a2e'}}>GRAT<span style={{color:'#ff3b30'}}>IA</span> CORE</span>
+                <span style={{fontSize:8,fontWeight:600,letterSpacing:2.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase'}}>Business Intelligence</span>
+              </div>
+            </a>
           <div className="nav-links">
             <a href="#modules" className="nav-link">Modules</a>
             <a href="#who" className="nav-link">Who it's for</a>
-            <a href="/pricing" className="nav-link">Pricing</a>
+            <Link href="/pricing" className="nav-link">Pricing</Link>
             <a href="#about" className="nav-link">About</a>
           </div>
           <div className="nav-actions">
+            <Link href="/pricing" className="btn-login">View Plans</Link>
             <Link href="/login" className="btn-login">Log in</Link>
             <button onClick={() => setShowModal(true)} className="btn-signup">Get Started →</button>
           </div>
@@ -756,12 +908,12 @@ function LandingPage() {
             ].map((m,i)=>(
               <div key={i} className="module-card locked">
                 {/* Blurred content — no details revealed */}
-                <div style={{filter:'blur(3px)',userSelect:'none',pointerEvents:'none'}}>
+                <div style={{filter:'blur(6px)',userSelect:'none',pointerEvents:'none',opacity:0.4}}>
                   <div className="card-top">
                     <div className="card-icon" style={{background:m.color}}>{m.icon}</div>
                     <div className="card-status-soon">· · ·</div>
                   </div>
-                  <div className="card-title" style={{color:'rgba(26,26,46,.4)'}}>{m.title}</div>
+                  <div className="card-title" style={{color:'rgba(26,26,46,.15)',letterSpacing:8}}>{'█'.repeat(8)}</div>
                   <div style={{height:10,background:'rgba(0,0,0,.06)',borderRadius:6,marginBottom:8,width:'85%'}}/>
                   <div style={{height:10,background:'rgba(0,0,0,.06)',borderRadius:6,marginBottom:8,width:'65%'}}/>
                   <div style={{height:10,background:'rgba(0,0,0,.06)',borderRadius:6,width:'75%'}}/>
@@ -816,7 +968,10 @@ function LandingPage() {
         </section>
 
         <footer className="footer">
-          <GratiaLogo/>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <GCIcon size={30}/>
+            <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:14,fontWeight:900,letterSpacing:-0.5,color:'#1a1a2e'}}>GRAT<span style={{color:'#ff3b30'}}>IA</span> CORE</span>
+          </div>
           <div className="footer-links">
             <a href="/privacy" className="footer-link">Privacy Policy</a>
             <a href="/terms" className="footer-link">Terms of Service</a>
