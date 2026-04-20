@@ -1,5 +1,5 @@
-// @ts-nocheck
 'use client'
+// @ts-nocheck
 import RouteGasFinder from '@/components/gas/RouteGasFinder'
 import React from 'react'
 import { usePaywall, PaywallScreen, TrialBanner, TasteTimer } from '@/components/PaywallGate'
