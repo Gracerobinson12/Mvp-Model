@@ -1,9 +1,8 @@
 'use client'
 // @ts-nocheck
 import RouteGasFinder from '@/components/gas/RouteGasFinder'
-import React from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { usePaywall, PaywallScreen, TrialBanner, TasteTimer } from '@/components/PaywallGate'
-import { useEffect, useState, useRef, useCallback } from "react"
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceLine
