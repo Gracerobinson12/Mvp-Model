@@ -166,6 +166,10 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
   const [email,      setEmail]     = useState('')
   const [password,   setPassword]  = useState('')
   const [userCat,    setUserCat]   = useState('')
+  const [firstName,  setFirstName] = useState('')
+  const [lastName,   setLastName]  = useState('')
+  const [stateName,  setStateName] = useState('')
+  const [bizName,    setBizName]   = useState('')
   const [loading,    setLoading]   = useState(false)
   const [error,      setError]     = useState('')
   const [promoCode,  setPromoCode] = useState('')
@@ -226,6 +230,11 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       // All users start with no trial — they get 30s taste then subscribe for Core Pass
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: userId, email,
+        first_name:    firstName.trim() || null,
+        last_name:     lastName.trim() || null,
+        full_name:     [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null,
+        business_name: bizName.trim() || null,
+        state:         stateName || null,
         user_type:     userCat,
         account_type:  userCat === 'business' ? 'business' : 'personal',
         plan:          'free',
@@ -249,7 +258,12 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       localStorage.setItem('gratia_signup_time', Date.now().toString())
       router.push('/dashboard/gas')
     } catch (e: any) {
-      setError(e?.message || 'Something went wrong. Please try again.')
+      const msg = e?.message || ''
+      if (msg.includes('already registered') || msg.includes('already been registered') || e?.status === 422) {
+        setError('An account with this email already exists. Please log in instead.')
+      } else {
+        setError(msg || 'Something went wrong. Please try again.')
+      }
       setLoading(false)
     }
   }
@@ -447,6 +461,32 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
           <div style={{width:50,height:50,borderRadius:15,background:`linear-gradient(135deg,${selectedType?.color||'#ff3b30'},${selectedType?.color||'#ff3b30'}99)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,marginBottom:18}}>{selectedType?.icon||'⛽'}</div>
           <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:21,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:4}}>Almost done</h2>
           <p style={{fontSize:13,color:'rgba(26,26,46,.5)',marginBottom:16}}>Creating account for <strong style={{color:'#1a1a2e'}}>{email}</strong></p>
+
+          {/* Name fields */}
+          <div style={{display:'flex',gap:8,marginBottom:10}}>
+            <input type="text" placeholder="First name" value={firstName}
+              onChange={e=>setFirstName(e.target.value)}
+              style={{flex:1,padding:'11px 14px',background:'#f8f7fc',border:'1.5px solid rgba(0,0,0,.1)',borderRadius:12,fontSize:14,color:'#1a1a2e',outline:'none',fontFamily:"'DM Sans',sans-serif"}}/>
+            <input type="text" placeholder="Last name" value={lastName}
+              onChange={e=>setLastName(e.target.value)}
+              style={{flex:1,padding:'11px 14px',background:'#f8f7fc',border:'1.5px solid rgba(0,0,0,.1)',borderRadius:12,fontSize:14,color:'#1a1a2e',outline:'none',fontFamily:"'DM Sans',sans-serif"}}/>
+          </div>
+
+          {/* Business name — only for Enterprise */}
+          {userCat==='business' && (
+            <input type="text" placeholder="Business name" value={bizName}
+              onChange={e=>setBizName(e.target.value)}
+              style={{width:'100%',padding:'11px 14px',background:'#f8f7fc',border:'1.5px solid rgba(0,0,0,.1)',borderRadius:12,fontSize:14,color:'#1a1a2e',outline:'none',fontFamily:"'DM Sans',sans-serif",marginBottom:10}}/>
+          )}
+
+          {/* State */}
+          <select value={stateName} onChange={e=>setStateName(e.target.value)}
+            style={{width:'100%',padding:'11px 14px',background:'#f8f7fc',border:'1.5px solid rgba(0,0,0,.1)',borderRadius:12,fontSize:14,color:stateName?'#1a1a2e':'rgba(26,26,46,.4)',outline:'none',fontFamily:"'DM Sans',sans-serif",marginBottom:10,appearance:'none'}}>
+            <option value="">Select your state</option>
+            {['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'].map(s=>(
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
           <div style={{background:'#f8f7fc',borderRadius:14,padding:'12px 14px',marginBottom:16,fontSize:12,color:'rgba(26,26,46,.6)',lineHeight:1.6}}>
             {'✓ Gas tracker opens immediately · 7-day free trial · Core Pass $4.99/mo after · Cancel anytime'}
           </div>

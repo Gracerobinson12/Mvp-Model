@@ -1,56 +1,94 @@
-import Stripe from 'stripe'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(req: Request) {
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+export async function POST(req: NextRequest) {
   try {
-    // ── Check env vars first ──────────────────────────────────
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return Response.json({ error: 'Stripe not configured — missing STRIPE_SECRET_KEY in Vercel env vars' }, { status: 500 })
+    const Stripe = (await import('stripe')).default
+
+    const key = process.env.STRIPE_SECRET_KEY
+    const priceId = process.env.STRIPE_PRICE_DRIVER
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://gratiacore.com'
+
+    if (!key) {
+      return NextResponse.json(
+        { error: 'STRIPE_SECRET_KEY missing in Vercel env vars' },
+        { status: 500 }
+      )
     }
-    if (!process.env.STRIPE_PRICE_DRIVER) {
-      return Response.json({ error: 'Stripe not configured — missing STRIPE_PRICE_DRIVER in Vercel env vars' }, { status: 500 })
+    if (!priceId) {
+      return NextResponse.json(
+        { error: 'STRIPE_PRICE_DRIVER missing in Vercel env vars' },
+        { status: 500 }
+      )
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-06-20',
-    })
+    const stripe = new Stripe(key, { apiVersion: '2024-06-20' })
 
-    const { userId, email, userType } = await req.json()
+    const body = await req.json()
+    const { userId, email, userType } = body
 
     if (!userId || !email) {
-      return Response.json({ error: 'Missing userId or email' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Missing userId or email' },
+        { status: 400 }
+      )
     }
 
-    // All plans use driver/Core Pass price for now
-    const priceId = process.env.STRIPE_PRICE_DRIVER
+    // Check if user has a promo code with extended trial days
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Get promo redemption for this user
+    const { data: redemption } = await supabase
+      .from('promo_redemptions')
+      .select('code')
+      .eq('user_id', userId)
+      .single()
+
+    let trialDays = 7
+    if (redemption?.code) {
+      const { data: promo } = await supabase
+        .from('promo_codes')
+        .select('trial_days')
+        .eq('code', redemption.code)
+        .eq('active', true)
+        .single()
+      if (promo?.trial_days) trialDays = promo.trial_days
+    }
 
     const session = await stripe.checkout.sessions.create({
-      mode:                 'subscription',
+      mode: 'subscription',
       payment_method_types: ['card'],
-      customer_email:       email,
+      customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
-        trial_period_days: 7,
+        trial_period_days: trialDays,
         metadata: {
           supabase_user_id: userId,
-          user_type:        userType || 'driver',
+          user_type: userType || 'driver',
         },
       },
       client_reference_id: userId,
       metadata: {
         supabase_user_id: userId,
-        user_type:        userType || 'driver',
+        user_type: userType || 'driver',
       },
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://gratiacore.com'}/dashboard`,
-      cancel_url:  `${process.env.NEXT_PUBLIC_SITE_URL || 'https://gratiacore.com'}`,
+      success_url: `${siteUrl}/dashboard`,
+      cancel_url: `${siteUrl}`,
       allow_promotion_codes: true,
     })
 
-    return Response.json({ url: session.url, sessionId: session.id })
+    return NextResponse.json({ url: session.url, sessionId: session.id })
 
-  } catch (error: any) {
-    console.error('Stripe checkout error:', error)
-    return Response.json(
-      { error: error.message || 'Failed to create checkout session' },
+  } catch (err: any) {
+    console.error('[Stripe Checkout Error]', err?.message, err?.type, err?.code)
+    return NextResponse.json(
+      { error: err?.message || 'Stripe checkout failed' },
       { status: 500 }
     )
   }

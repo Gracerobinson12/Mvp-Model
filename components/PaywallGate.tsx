@@ -41,7 +41,7 @@ export function usePaywall(planRequired: 'driver' | 'freelancer' | 'business' = 
 
       // ── KEY FIX: during trial = full access to everything ──
       // Only check plan level if trial is over
-      const paidActive = profile?.plan_status === 'active'
+      const paidActive = profile?.plan_status === 'active' || profile?.plan_status === 'trialing'
       const planHierarchy: Record<string, number> = { driver:1, freelancer:2, business:3, free:0 }
       const requiredLevel = planHierarchy[planRequired] || 1
       const userLevel     = planHierarchy[profile?.plan || 'free'] || 0
