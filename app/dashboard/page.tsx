@@ -2,7 +2,7 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 function GCIcon({ size = 32 }: { size?: number }) {
@@ -71,8 +71,6 @@ export default function DashboardPage() {
   const [loading,  setLoading]  = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const searchParams = useSearchParams()
-
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -80,7 +78,7 @@ export default function DashboardPage() {
       setUser(user)
 
       // If coming from Stripe checkout, verify payment immediately
-      const sessionId = searchParams.get('session_id')
+      const sessionId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('session_id') : null
       if (sessionId) {
         try {
           await fetch('/api/verify-session', {
