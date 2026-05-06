@@ -117,7 +117,7 @@ export default function DashboardPage() {
   const initial    = (profile?.first_name?.[0] || user?.email?.[0] || 'G').toUpperCase()
   const userPlan   = profile?.user_type === 'business' ? 'enterprise' : profile?.user_type === 'freelancer' ? 'pro' : 'personal'
   const planStatus = profile?.plan_status
-  const isActive   = planStatus === 'active' || planStatus === 'trialing'
+  const isActive   = planStatus === 'active' || planStatus === 'trialing' || (!!profile?.stripe_customer_id && planStatus !== 'canceled')
   const state      = profile?.state
   const stateGas   = state ? STATE_GAS[state] : null
 
@@ -139,27 +139,36 @@ export default function DashboardPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{background:#f0eff4;font-family:'DM Sans',system-ui,sans-serif;color:#1a1a2e;overflow-x:hidden}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes lp{0%,100%{opacity:1}50%{opacity:.3}}
-        @keyframes navSlide{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-        .navbar{position:fixed;top:16px;left:50%;transform:translateX(-50%);width:calc(100% - 48px);max-width:1100px;z-index:998;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:56px;background:rgba(255,255,255,0.85);backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.95);border-radius:22px;box-shadow:0 2px 8px rgba(0,0,0,0.06);animation:navSlide 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards}
-        .module-card{background:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.95);border-radius:22px;padding:22px;position:relative;overflow:hidden;transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+        body{background:#f0eff4;font-family:'DM Sans',system-ui,sans-serif;color:#1a1a2e;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes lp{0%,100%{opacity:1}50%{opacity:.25}}
+        @keyframes navSlide{from{opacity:0;transform:translateX(-50%) translateY(-16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        /* iOS 26 Liquid Glass */
+        .navbar{position:fixed;top:16px;left:50%;transform:translateX(-50%);width:calc(100% - 48px);max-width:1100px;z-index:998;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;background:rgba(255,255,255,0.62);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:0.5px solid rgba(255,255,255,0.92);border-radius:30px;box-shadow:0 2px 16px rgba(0,0,0,0.06);animation:navSlide 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards}
+        .module-card{background:rgba(255,255,255,0.62);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:0.5px solid rgba(255,255,255,0.92);border-radius:28px;padding:24px;position:relative;overflow:hidden;transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;box-shadow:0 2px 12px rgba(0,0,0,0.05)}
         .module-card.live{cursor:pointer}
-        .module-card.live:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.1)}
-        .module-card.locked{cursor:default;opacity:.8}
-        .locked-overlay{position:absolute;inset:0;border-radius:22px;background:rgba(240,239,244,0);display:flex;align-items:center;justify-content:center;opacity:0;transition:all .3s;backdrop-filter:blur(0px);z-index:5}
-        .module-card.locked:hover .locked-overlay{background:rgba(240,239,244,.92);opacity:1;backdrop-filter:blur(8px)}
-        .avatar-btn{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;border:none;flex-shrink:0;font-family:'DM Sans',sans-serif}
-        .dropdown{position:absolute;top:46px;right:0;background:rgba(255,255,255,.97);border:1px solid rgba(0,0,0,.09);border-radius:16px;padding:8px;min-width:190px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:999}
-        .dropdown-item{display:block;width:100%;padding:9px 12px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:#1a1a2e;font-family:'DM Sans',sans-serif;border-radius:10px;text-align:left;text-decoration:none;transition:background .15s}
-        .dropdown-item:hover{background:rgba(0,0,0,.05)}
-        .stat-card{background:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.95);border-radius:18px;padding:18px;backdrop-filter:blur(40px)}
-        .hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,59,48,.06) 0%,rgba(255,107,53,.03) 50%,transparent 100%);pointer-events:none}
+        .module-card.live:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,0.10)}
+        .module-card.locked{cursor:default;opacity:.75}
+        .locked-overlay{position:absolute;inset:0;border-radius:28px;background:rgba(240,239,244,0);display:flex;align-items:center;justify-content:center;opacity:0;transition:all .3s ease;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);z-index:5}
+        .module-card.locked:hover .locked-overlay{background:rgba(240,239,244,0.88);opacity:1;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+        .avatar-btn{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;cursor:pointer;border:none;flex-shrink:0;font-family:'DM Sans',sans-serif;box-shadow:0 4px 12px rgba(255,59,48,0.35)}
+        .dropdown{position:absolute;top:50px;right:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:0.5px solid rgba(255,255,255,0.95);border-radius:22px;padding:8px;min-width:200px;box-shadow:0 12px 40px rgba(0,0,0,0.14);z-index:999}
+        .dropdown-item{display:block;width:100%;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:#1a1a2e;font-family:'DM Sans',sans-serif;border-radius:14px;text-align:left;text-decoration:none;transition:background .15s}
+        .dropdown-item:hover{background:rgba(0,0,0,0.05)}
+        .stat-card{background:rgba(255,255,255,0.55);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);border:0.5px solid rgba(255,255,255,0.9);border-radius:22px;padding:18px 20px}
+        .hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,59,48,0.07) 0%,rgba(255,107,53,0.03) 50%,transparent 100%);pointer-events:none;border-radius:32px}
       `}</style>
 
-      <div style={{background:'#f0eff4',backgroundImage:'radial-gradient(ellipse 80% 60% at 20% 0%,rgba(255,59,48,0.07) 0%,transparent 55%)',minHeight:'100vh',paddingBottom:80}}>
+      <div style={{
+          background:'#f0eff4',
+          backgroundImage:`
+            radial-gradient(ellipse 70% 50% at 15% 5%,rgba(255,59,48,0.10) 0%,transparent 55%),
+            radial-gradient(ellipse 50% 40% at 85% 85%,rgba(10,132,255,0.07) 0%,transparent 50%),
+            radial-gradient(ellipse 40% 30% at 55% 40%,rgba(48,209,88,0.05) 0%,transparent 45%),
+            linear-gradient(160deg,#f0eff4 0%,#eae9f2 50%,#f2f0f7 100%)
+          `,
+          minHeight:'100vh',paddingBottom:80}}>
 
         {/* Navbar */}
         <nav className="navbar">
@@ -201,12 +210,12 @@ export default function DashboardPage() {
         <div style={{maxWidth:1100,margin:'0 auto',padding:'88px 24px 0'}}>
 
           {/* Hero greeting section */}
-          <div style={{position:'relative',background:'rgba(255,255,255,.85)',border:'1px solid rgba(255,255,255,.95)',borderRadius:28,padding:'32px 36px',marginBottom:20,overflow:'hidden',animation:'fadeUp .5s ease both'}}>
+          <div style={{position:'relative',background:'rgba(255,255,255,0.62)',backdropFilter:'blur(40px)',WebkitBackdropFilter:'blur(40px)',border:'0.5px solid rgba(255,255,255,0.92)',borderRadius:32,padding:'32px 36px',marginBottom:20,overflow:'hidden',animation:'fadeUp .5s ease both',boxShadow:'0 4px 20px rgba(0,0,0,0.06)'}}>
             <div className="hero-bg"/>
             <div style={{position:'relative',display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:20}}>
               <div>
                 <div style={{fontSize:11,fontWeight:600,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:6}}>{greeting}</div>
-                <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:'clamp(28px,4vw,42px)',fontWeight:900,letterSpacing:-1.5,color:'#1a1a2e',lineHeight:1.05,marginBottom:8}}>
+                <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:'clamp(30px,4vw,48px)',fontWeight:900,letterSpacing:-2,color:'#1a1a2e',lineHeight:1.0,marginBottom:8}}>
                   Welcome back,<br/><span style={{color:'#ff3b30'}}>{profile?.first_name || displayName}</span> 👋
                 </h1>
                 {profile?.business_name && (
@@ -223,7 +232,7 @@ export default function DashboardPage() {
               {stateGas && (
                 <div style={{textAlign:'right'}}>
                   <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:4}}>{state} avg gas price</div>
-                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:48,fontWeight:900,letterSpacing:-2,color:'#ff3b30',lineHeight:1}}>${stateGas.avg.toFixed(2)}</div>
+                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:56,fontWeight:900,letterSpacing:-3,color:'#ff3b30',lineHeight:0.9}}>${stateGas.avg.toFixed(2)}</div>
                   <div style={{fontSize:13,fontWeight:700,color:stateGas.trend==='↓'?'#30d158':stateGas.trend==='↑'?'#ff453a':'rgba(26,26,46,.4)',marginTop:4}}>
                     {stateGas.trend} {stateGas.change} this week · EIA.gov
                   </div>
@@ -240,7 +249,7 @@ export default function DashboardPage() {
 
           {/* Trial / Subscribe banner */}
           {!isActive && (
-            <div style={{background:'rgba(255,59,48,.06)',border:'1px solid rgba(255,59,48,.18)',borderRadius:18,padding:'14px 20px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',animation:'fadeUp .5s ease .05s both'}}>
+            <div style={{background:'rgba(255,59,48,.06)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',border:'0.5px solid rgba(255,59,48,.22)',borderRadius:22,padding:'14px 20px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',animation:'fadeUp .5s ease .05s both'}}>
               <div style={{display:'flex',alignItems:'center',gap:12}}>
                 <div style={{width:36,height:36,borderRadius:10,background:'rgba(255,59,48,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>⛽</div>
                 <div>

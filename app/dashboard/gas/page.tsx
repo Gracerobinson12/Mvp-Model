@@ -1,15 +1,15 @@
 'use client'
+/* eslint-disable */
 // @ts-nocheck
-import RouteGasFinder from '@/components/gas/RouteGasFinder'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { usePaywall, PaywallScreen, TrialBanner, TasteTimer } from '@/components/PaywallGate'
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, ReferenceLine
-} from "recharts"
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { supabase } from '@/lib/supabase'
+import { usePaywall, PaywallScreen, TrialBanner, TasteTimer } from '@/components/PaywallGate'
+import dynamic from 'next/dynamic'
+
+const RouteGasFinder = dynamic(() => import('@/components/gas/RouteGasFinder'), { ssr: false })
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Station = {
@@ -514,6 +514,12 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         body{background:${T.bg}!important;transition:background .4s}
+        .gc-mesh{position:fixed;inset:0;pointer-events:none;z-index:0;
+          background:
+            radial-gradient(ellipse 60% 40% at 15% 5%,rgba(255,59,48,0.09) 0%,transparent 55%),
+            radial-gradient(ellipse 50% 35% at 85% 85%,rgba(10,132,255,0.06) 0%,transparent 50%),
+            radial-gradient(ellipse 40% 30% at 55% 40%,rgba(48,209,88,0.04) 0%,transparent 45%);
+        }
         @keyframes popIn{from{opacity:0;transform:scale(.88) translateY(14px)}to{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.28;transform:scale(.58)}}
@@ -537,14 +543,14 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
               <Link href="/" style={{fontSize:11,color:T.text3,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>← Back</Link>
             </div>
-            <div style={{fontSize:10,fontWeight:600,letterSpacing:"2.5px",color:T.accent,textTransform:"uppercase",marginBottom:4}}>⛽ Personal Dashboard · Fuel Module</div>
-            <div style={{fontSize:40,fontWeight:900,letterSpacing:-2,lineHeight:1}}>GAS <span style={{color:T.accent}}>PRICES</span></div>
+            <div style={{fontSize:10,fontWeight:600,letterSpacing:"2.5px",color:T.accent,textTransform:"uppercase",marginBottom:4}}>⛽ Gas Tracker · Fuel Intelligence</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:40,fontWeight:900,letterSpacing:-2,lineHeight:1}}>GAS <span style={{color:T.accent}}>PRICES</span></div>
           </div>
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <button onClick={handleUpdateLocation} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}>📍 Update Location</button>
               <button onClick={()=>setIsDark(d=>!d)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}><span style={{fontSize:14}}>{isDark?"☀️":"🌙"}</span></button>
-              <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}>⚙️ Settings</button>
+
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,background:T.pillBg,border:`1px solid ${T.pillBdr}`,borderRadius:100,padding:"6px 14px",fontSize:10,fontWeight:600,letterSpacing:1,color:T.accent}}>
               <div style={{width:7,height:7,background:T.accent,borderRadius:"50%",animation:"lp 1.4s ease-in-out infinite",boxShadow:`0 0 5px ${T.accent}`}}/>
@@ -565,6 +571,26 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
             </div>
           </div>
         )}
+
+        {/* Quick actions — link to new pages */}
+        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+          {[
+            {label:"🛣️ Plan Route",  href:"/dashboard/gas/route",   color:"rgba(255,59,48,0.1)",  bdr:"rgba(255,59,48,0.25)",  txt:"#cc2018"},
+            {label:"🚗 Start Trip",  href:"/dashboard/gas/trip",    color:"rgba(48,209,88,0.08)", bdr:"rgba(48,209,88,0.25)",  txt:"#1a7a35"},
+            {label:"🔔 Alerts",      href:"/dashboard/gas/alerts",  color:"rgba(255,159,10,0.08)",bdr:"rgba(255,159,10,0.25)", txt:"#854F0B"},
+            {label:"⚙️ My Vehicle",  href:"/dashboard/gas/vehicle", color:"rgba(10,132,255,0.08)",bdr:"rgba(10,132,255,0.25)",  txt:"#185FA5"},
+          ].map(a=>(
+            <Link key={a.href} href={a.href} style={{
+              display:"inline-flex",alignItems:"center",gap:6,
+              padding:"8px 18px",borderRadius:100,
+              background:a.color,border:`0.5px solid ${a.bdr}`,
+              fontSize:12,fontWeight:600,color:a.txt,
+              textDecoration:"none",
+              backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
+              transition:"all .2s",
+            }}>{a.label}</Link>
+          ))}
+        </div>
 
         <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
           {GRADES.map(g=><button key={g} onClick={()=>setGrade(g)} style={{padding:"8px 20px",borderRadius:100,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:.3,transition:"all .25s cubic-bezier(.34,1.56,.64,1)",background:grade===g?"linear-gradient(135deg,#ff3b30,#ff6b35)":T.surface,color:grade===g?"#fff":T.text2,border:grade===g?"none":`1px solid ${T.surfaceBdr}`,boxShadow:grade===g?`0 0 18px rgba(255,59,48,.35),0 4px 12px rgba(255,59,48,.2)`:"none",transform:grade===g?"scale(1.03)":"scale(1)"}}>{g}</button>)}
@@ -650,31 +676,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
             </div>
           </div>
 
-          <div style={{...glass({padding:"20px 22px"})}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
-              Mileage & Deduction
-              <span style={{fontSize:9,fontWeight:600,background:"rgba(10,132,255,.12)",color:"#0a84ff",padding:"2px 8px",borderRadius:6,letterSpacing:.5,border:"1px solid rgba(10,132,255,.2)"}}>IRS 2025 · $0.70/mi</span>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:11,margin:"0 0 14px"}}>
-              {[{label:"Miles / Week",val:miles,set:setMiles,unit:"mi/wk"},{label:"Tank Size",val:tank,set:setTank,unit:"gal"}].map(f=>(
-                <div key={f.label}>
-                  <div style={{fontSize:9,fontWeight:600,letterSpacing:"1.5px",color:T.text3,textTransform:"uppercase",marginBottom:6}}>{f.label}</div>
-                  <div style={{display:"flex",alignItems:"center",background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:12,padding:"9px 13px",gap:7}}>
-                    <input type="number" value={f.val} min={0} onChange={e=>f.set(+e.target.value)} style={{background:"transparent",border:"none",outline:"none",color:T.accent,fontSize:19,fontWeight:700,width:"100%",fontFamily:"'Outfit',sans-serif",letterSpacing:-.5}}/>
-                    <span style={{fontSize:9,fontWeight:500,color:T.text3,whiteSpace:"nowrap"}}>{f.unit}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{background:T.dedBg,border:`1px solid ${T.dedBdr}`,borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-              <div>
-                <div style={{fontSize:9,fontWeight:600,letterSpacing:2,color:T.green,textTransform:"uppercase"}}>Est. Monthly Deduction</div>
-                <div style={{fontSize:36,fontWeight:800,letterSpacing:-2,color:T.green,lineHeight:1}}>${deduction}</div>
-                <div style={{fontSize:9,color:T.dedGreen,marginTop:3}}>IRS standard mileage · business use</div>
-              </div>
-              <div>{[["Monthly fuel",`$${monthlyGas}`],["Weekly fuel",`$${weeklyGas}`],["Monthly miles",`${(miles*4.33).toFixed(0)} mi`],["MPG assumed","28"]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"flex-end",gap:10,fontSize:10,color:T.text3,marginBottom:4}}><span>{l}</span><span style={{color:T.text2,fontWeight:500}}>{v}</span></div>)}</div>
-            </div>
-          </div>
+
         </div>
 
         <div style={{fontSize:9,color:T.text3,textAlign:"center",letterSpacing:.5}}>
