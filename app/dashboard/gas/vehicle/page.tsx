@@ -5,44 +5,139 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const CARS = [
-  { make:'Honda', model:'Civic', year:'2022', grade:'Regular', mpg:32, tank:12.4 },
-  { make:'Toyota', model:'Camry', year:'2023', grade:'Regular', mpg:28, tank:15.8 },
-  { make:'Ford', model:'F-150', year:'2022', grade:'Regular', mpg:24, tank:23.0 },
-  { make:'BMW', model:'3 Series', year:'2023', grade:'Premium', mpg:30, tank:15.6 },
-  { make:'Mercedes', model:'C-Class', year:'2023', grade:'Premium', mpg:26, tank:15.6 },
-  { make:'Chevrolet', model:'Silverado', year:'2022', grade:'Regular', mpg:21, tank:24.0 },
-  { make:'Toyota', model:'RAV4', year:'2023', grade:'Regular', mpg:29, tank:14.5 },
-  { make:'Tesla', model:'Model 3', year:'2023', grade:'Electric', mpg:134, tank:0 },
-  { make:'Jeep', model:'Wrangler', year:'2022', grade:'Regular', mpg:22, tank:21.5 },
-  { make:'Dodge', model:'Charger', year:'2023', grade:'Premium', mpg:23, tank:18.5 },
-]
+// Car database — make → models → years → specs
+const CAR_DB = {
+  'Honda': {
+    'Civic':     { '2020':{ mpg:32, tank:12.4, grade:'Regular' }, '2021':{ mpg:32, tank:12.4, grade:'Regular' }, '2022':{ mpg:33, tank:12.4, grade:'Regular' }, '2023':{ mpg:33, tank:12.4, grade:'Regular' }, '2024':{ mpg:36, tank:12.4, grade:'Regular' } },
+    'Accord':    { '2020':{ mpg:30, tank:14.8, grade:'Regular' }, '2021':{ mpg:30, tank:14.8, grade:'Regular' }, '2022':{ mpg:29, tank:14.8, grade:'Regular' }, '2023':{ mpg:29, tank:14.8, grade:'Regular' }, '2024':{ mpg:29, tank:14.8, grade:'Regular' } },
+    'CR-V':      { '2020':{ mpg:28, tank:14.0, grade:'Regular' }, '2021':{ mpg:28, tank:14.0, grade:'Regular' }, '2022':{ mpg:28, tank:14.0, grade:'Regular' }, '2023':{ mpg:29, tank:14.0, grade:'Regular' }, '2024':{ mpg:29, tank:14.0, grade:'Regular' } },
+    'Pilot':     { '2020':{ mpg:20, tank:19.5, grade:'Regular' }, '2021':{ mpg:20, tank:19.5, grade:'Regular' }, '2022':{ mpg:20, tank:19.5, grade:'Regular' }, '2023':{ mpg:22, tank:19.5, grade:'Regular' }, '2024':{ mpg:22, tank:19.5, grade:'Regular' } },
+    'Odyssey':   { '2020':{ mpg:22, tank:19.5, grade:'Regular' }, '2021':{ mpg:22, tank:19.5, grade:'Regular' }, '2022':{ mpg:22, tank:19.5, grade:'Regular' }, '2023':{ mpg:22, tank:19.5, grade:'Regular' }, '2024':{ mpg:22, tank:19.5, grade:'Regular' } },
+  },
+  'Toyota': {
+    'Camry':     { '2020':{ mpg:29, tank:15.8, grade:'Regular' }, '2021':{ mpg:29, tank:15.8, grade:'Regular' }, '2022':{ mpg:28, tank:15.8, grade:'Regular' }, '2023':{ mpg:28, tank:15.8, grade:'Regular' }, '2024':{ mpg:28, tank:15.8, grade:'Regular' } },
+    'Corolla':   { '2020':{ mpg:32, tank:13.2, grade:'Regular' }, '2021':{ mpg:32, tank:13.2, grade:'Regular' }, '2022':{ mpg:31, tank:13.2, grade:'Regular' }, '2023':{ mpg:31, tank:13.2, grade:'Regular' }, '2024':{ mpg:32, tank:13.2, grade:'Regular' } },
+    'RAV4':      { '2020':{ mpg:30, tank:14.5, grade:'Regular' }, '2021':{ mpg:30, tank:14.5, grade:'Regular' }, '2022':{ mpg:30, tank:14.5, grade:'Regular' }, '2023':{ mpg:30, tank:14.5, grade:'Regular' }, '2024':{ mpg:30, tank:14.5, grade:'Regular' } },
+    'Highlander':{ '2020':{ mpg:21, tank:17.9, grade:'Regular' }, '2021':{ mpg:21, tank:17.9, grade:'Regular' }, '2022':{ mpg:22, tank:17.9, grade:'Regular' }, '2023':{ mpg:22, tank:17.9, grade:'Regular' }, '2024':{ mpg:23, tank:17.9, grade:'Regular' } },
+    'Tacoma':    { '2020':{ mpg:20, tank:21.1, grade:'Regular' }, '2021':{ mpg:20, tank:21.1, grade:'Regular' }, '2022':{ mpg:20, tank:21.1, grade:'Regular' }, '2023':{ mpg:20, tank:21.1, grade:'Regular' }, '2024':{ mpg:23, tank:21.1, grade:'Regular' } },
+    'Tundra':    { '2020':{ mpg:15, tank:22.5, grade:'Regular' }, '2021':{ mpg:15, tank:22.5, grade:'Regular' }, '2022':{ mpg:18, tank:22.5, grade:'Regular' }, '2023':{ mpg:18, tank:22.5, grade:'Regular' }, '2024':{ mpg:18, tank:22.5, grade:'Regular' } },
+    'Prius':     { '2020':{ mpg:52, tank:11.3, grade:'Regular' }, '2021':{ mpg:52, tank:11.3, grade:'Regular' }, '2022':{ mpg:52, tank:11.3, grade:'Regular' }, '2023':{ mpg:57, tank:11.3, grade:'Regular' }, '2024':{ mpg:57, tank:11.3, grade:'Regular' } },
+  },
+  'Ford': {
+    'F-150':         { '2020':{ mpg:22, tank:23.0, grade:'Regular' }, '2021':{ mpg:22, tank:23.0, grade:'Regular' }, '2022':{ mpg:23, tank:23.0, grade:'Regular' }, '2023':{ mpg:23, tank:23.0, grade:'Regular' }, '2024':{ mpg:24, tank:23.0, grade:'Regular' } },
+    'Mustang':       { '2020':{ mpg:21, tank:16.0, grade:'Premium' }, '2021':{ mpg:21, tank:16.0, grade:'Premium' }, '2022':{ mpg:21, tank:16.0, grade:'Premium' }, '2023':{ mpg:21, tank:16.0, grade:'Premium' }, '2024':{ mpg:22, tank:16.0, grade:'Premium' } },
+    'Explorer':      { '2020':{ mpg:23, tank:18.0, grade:'Regular' }, '2021':{ mpg:23, tank:18.0, grade:'Regular' }, '2022':{ mpg:23, tank:18.0, grade:'Regular' }, '2023':{ mpg:24, tank:18.0, grade:'Regular' }, '2024':{ mpg:24, tank:18.0, grade:'Regular' } },
+    'Escape':        { '2020':{ mpg:28, tank:14.8, grade:'Regular' }, '2021':{ mpg:28, tank:14.8, grade:'Regular' }, '2022':{ mpg:28, tank:14.8, grade:'Regular' }, '2023':{ mpg:28, tank:14.8, grade:'Regular' }, '2024':{ mpg:28, tank:14.8, grade:'Regular' } },
+    'Bronco':        { '2021':{ mpg:20, tank:16.9, grade:'Regular' }, '2022':{ mpg:20, tank:16.9, grade:'Regular' }, '2023':{ mpg:20, tank:16.9, grade:'Regular' }, '2024':{ mpg:20, tank:16.9, grade:'Regular' } },
+    'Maverick':      { '2022':{ mpg:37, tank:15.5, grade:'Regular' }, '2023':{ mpg:37, tank:15.5, grade:'Regular' }, '2024':{ mpg:37, tank:15.5, grade:'Regular' } },
+  },
+  'Chevrolet': {
+    'Silverado':     { '2020':{ mpg:20, tank:24.0, grade:'Regular' }, '2021':{ mpg:20, tank:24.0, grade:'Regular' }, '2022':{ mpg:20, tank:24.0, grade:'Regular' }, '2023':{ mpg:20, tank:24.0, grade:'Regular' }, '2024':{ mpg:21, tank:24.0, grade:'Regular' } },
+    'Equinox':       { '2020':{ mpg:28, tank:14.9, grade:'Regular' }, '2021':{ mpg:28, tank:14.9, grade:'Regular' }, '2022':{ mpg:28, tank:14.9, grade:'Regular' }, '2023':{ mpg:28, tank:14.9, grade:'Regular' }, '2024':{ mpg:28, tank:14.9, grade:'Regular' } },
+    'Malibu':        { '2020':{ mpg:29, tank:15.8, grade:'Regular' }, '2021':{ mpg:29, tank:15.8, grade:'Regular' }, '2022':{ mpg:29, tank:15.8, grade:'Regular' }, '2023':{ mpg:29, tank:15.8, grade:'Regular' } },
+    'Traverse':      { '2020':{ mpg:22, tank:19.4, grade:'Regular' }, '2021':{ mpg:22, tank:19.4, grade:'Regular' }, '2022':{ mpg:22, tank:19.4, grade:'Regular' }, '2023':{ mpg:22, tank:19.4, grade:'Regular' }, '2024':{ mpg:24, tank:19.4, grade:'Regular' } },
+    'Colorado':      { '2020':{ mpg:20, tank:21.0, grade:'Regular' }, '2021':{ mpg:20, tank:21.0, grade:'Regular' }, '2022':{ mpg:20, tank:21.0, grade:'Regular' }, '2023':{ mpg:20, tank:21.0, grade:'Regular' }, '2024':{ mpg:22, tank:21.0, grade:'Regular' } },
+  },
+  'BMW': {
+    '3 Series':  { '2020':{ mpg:30, tank:15.6, grade:'Premium' }, '2021':{ mpg:30, tank:15.6, grade:'Premium' }, '2022':{ mpg:29, tank:15.6, grade:'Premium' }, '2023':{ mpg:29, tank:15.6, grade:'Premium' }, '2024':{ mpg:29, tank:15.6, grade:'Premium' } },
+    '5 Series':  { '2020':{ mpg:26, tank:15.6, grade:'Premium' }, '2021':{ mpg:26, tank:15.6, grade:'Premium' }, '2022':{ mpg:26, tank:15.6, grade:'Premium' }, '2023':{ mpg:26, tank:15.6, grade:'Premium' }, '2024':{ mpg:28, tank:15.6, grade:'Premium' } },
+    'X3':        { '2020':{ mpg:25, tank:17.2, grade:'Premium' }, '2021':{ mpg:25, tank:17.2, grade:'Premium' }, '2022':{ mpg:25, tank:17.2, grade:'Premium' }, '2023':{ mpg:26, tank:17.2, grade:'Premium' }, '2024':{ mpg:26, tank:17.2, grade:'Premium' } },
+    'X5':        { '2020':{ mpg:21, tank:21.9, grade:'Premium' }, '2021':{ mpg:21, tank:21.9, grade:'Premium' }, '2022':{ mpg:21, tank:21.9, grade:'Premium' }, '2023':{ mpg:22, tank:21.9, grade:'Premium' }, '2024':{ mpg:23, tank:21.9, grade:'Premium' } },
+  },
+  'Mercedes-Benz': {
+    'C-Class':   { '2020':{ mpg:25, tank:15.6, grade:'Premium' }, '2021':{ mpg:25, tank:15.6, grade:'Premium' }, '2022':{ mpg:25, tank:15.6, grade:'Premium' }, '2023':{ mpg:26, tank:15.6, grade:'Premium' }, '2024':{ mpg:26, tank:15.6, grade:'Premium' } },
+    'E-Class':   { '2020':{ mpg:24, tank:17.4, grade:'Premium' }, '2021':{ mpg:24, tank:17.4, grade:'Premium' }, '2022':{ mpg:24, tank:17.4, grade:'Premium' }, '2023':{ mpg:25, tank:17.4, grade:'Premium' }, '2024':{ mpg:26, tank:17.4, grade:'Premium' } },
+    'GLE':       { '2020':{ mpg:20, tank:21.2, grade:'Premium' }, '2021':{ mpg:20, tank:21.2, grade:'Premium' }, '2022':{ mpg:21, tank:21.2, grade:'Premium' }, '2023':{ mpg:21, tank:21.2, grade:'Premium' }, '2024':{ mpg:22, tank:21.2, grade:'Premium' } },
+  },
+  'Jeep': {
+    'Wrangler':  { '2020':{ mpg:20, tank:18.5, grade:'Regular' }, '2021':{ mpg:20, tank:18.5, grade:'Regular' }, '2022':{ mpg:20, tank:18.5, grade:'Regular' }, '2023':{ mpg:20, tank:18.5, grade:'Regular' }, '2024':{ mpg:20, tank:18.5, grade:'Regular' } },
+    'Grand Cherokee':{ '2020':{ mpg:19, tank:24.6, grade:'Regular' }, '2021':{ mpg:19, tank:24.6, grade:'Regular' }, '2022':{ mpg:22, tank:17.2, grade:'Regular' }, '2023':{ mpg:22, tank:17.2, grade:'Regular' }, '2024':{ mpg:23, tank:17.2, grade:'Regular' } },
+    'Compass':   { '2020':{ mpg:26, tank:13.5, grade:'Regular' }, '2021':{ mpg:26, tank:13.5, grade:'Regular' }, '2022':{ mpg:26, tank:13.5, grade:'Regular' }, '2023':{ mpg:26, tank:13.5, grade:'Regular' }, '2024':{ mpg:26, tank:13.5, grade:'Regular' } },
+  },
+  'Tesla': {
+    'Model 3':   { '2020':{ mpg:141, tank:0, grade:'Electric' }, '2021':{ mpg:141, tank:0, grade:'Electric' }, '2022':{ mpg:138, tank:0, grade:'Electric' }, '2023':{ mpg:138, tank:0, grade:'Electric' }, '2024':{ mpg:138, tank:0, grade:'Electric' } },
+    'Model Y':   { '2020':{ mpg:125, tank:0, grade:'Electric' }, '2021':{ mpg:125, tank:0, grade:'Electric' }, '2022':{ mpg:123, tank:0, grade:'Electric' }, '2023':{ mpg:126, tank:0, grade:'Electric' }, '2024':{ mpg:126, tank:0, grade:'Electric' } },
+    'Model S':   { '2020':{ mpg:111, tank:0, grade:'Electric' }, '2021':{ mpg:120, tank:0, grade:'Electric' }, '2022':{ mpg:120, tank:0, grade:'Electric' }, '2023':{ mpg:120, tank:0, grade:'Electric' }, '2024':{ mpg:120, tank:0, grade:'Electric' } },
+    'Model X':   { '2020':{ mpg:93,  tank:0, grade:'Electric' }, '2021':{ mpg:93,  tank:0, grade:'Electric' }, '2022':{ mpg:102, tank:0, grade:'Electric' }, '2023':{ mpg:102, tank:0, grade:'Electric' }, '2024':{ mpg:102, tank:0, grade:'Electric' } },
+  },
+  'Dodge': {
+    'Charger':   { '2020':{ mpg:21, tank:18.5, grade:'Premium' }, '2021':{ mpg:21, tank:18.5, grade:'Premium' }, '2022':{ mpg:21, tank:18.5, grade:'Premium' }, '2023':{ mpg:21, tank:18.5, grade:'Premium' } },
+    'Challenger':{ '2020':{ mpg:21, tank:16.0, grade:'Premium' }, '2021':{ mpg:21, tank:16.0, grade:'Premium' }, '2022':{ mpg:21, tank:16.0, grade:'Premium' }, '2023':{ mpg:21, tank:16.0, grade:'Premium' } },
+    'Durango':   { '2020':{ mpg:19, tank:24.6, grade:'Regular' }, '2021':{ mpg:19, tank:24.6, grade:'Regular' }, '2022':{ mpg:19, tank:24.6, grade:'Regular' }, '2023':{ mpg:19, tank:24.6, grade:'Regular' } },
+  },
+  'Hyundai': {
+    'Sonata':    { '2020':{ mpg:32, tank:15.9, grade:'Regular' }, '2021':{ mpg:32, tank:15.9, grade:'Regular' }, '2022':{ mpg:32, tank:15.9, grade:'Regular' }, '2023':{ mpg:32, tank:15.9, grade:'Regular' }, '2024':{ mpg:32, tank:15.9, grade:'Regular' } },
+    'Elantra':   { '2020':{ mpg:33, tank:14.0, grade:'Regular' }, '2021':{ mpg:37, tank:12.4, grade:'Regular' }, '2022':{ mpg:37, tank:12.4, grade:'Regular' }, '2023':{ mpg:37, tank:12.4, grade:'Regular' }, '2024':{ mpg:37, tank:12.4, grade:'Regular' } },
+    'Tucson':    { '2020':{ mpg:26, tank:16.4, grade:'Regular' }, '2021':{ mpg:26, tank:16.4, grade:'Regular' }, '2022':{ mpg:28, tank:14.8, grade:'Regular' }, '2023':{ mpg:29, tank:14.8, grade:'Regular' }, '2024':{ mpg:29, tank:14.8, grade:'Regular' } },
+    'Santa Fe':  { '2020':{ mpg:25, tank:17.7, grade:'Regular' }, '2021':{ mpg:25, tank:17.7, grade:'Regular' }, '2022':{ mpg:25, tank:17.7, grade:'Regular' }, '2023':{ mpg:25, tank:17.7, grade:'Regular' }, '2024':{ mpg:26, tank:17.7, grade:'Regular' } },
+  },
+  'Kia': {
+    'Soul':      { '2020':{ mpg:29, tank:13.2, grade:'Regular' }, '2021':{ mpg:29, tank:13.2, grade:'Regular' }, '2022':{ mpg:29, tank:13.2, grade:'Regular' }, '2023':{ mpg:29, tank:13.2, grade:'Regular' }, '2024':{ mpg:29, tank:13.2, grade:'Regular' } },
+    'Sportage':  { '2020':{ mpg:26, tank:16.4, grade:'Regular' }, '2021':{ mpg:26, tank:16.4, grade:'Regular' }, '2022':{ mpg:29, tank:14.3, grade:'Regular' }, '2023':{ mpg:29, tank:14.3, grade:'Regular' }, '2024':{ mpg:29, tank:14.3, grade:'Regular' } },
+    'Forte':     { '2020':{ mpg:32, tank:13.2, grade:'Regular' }, '2021':{ mpg:32, tank:13.2, grade:'Regular' }, '2022':{ mpg:33, tank:13.2, grade:'Regular' }, '2023':{ mpg:33, tank:13.2, grade:'Regular' }, '2024':{ mpg:33, tank:13.2, grade:'Regular' } },
+    'Telluride': { '2020':{ mpg:21, tank:18.8, grade:'Regular' }, '2021':{ mpg:21, tank:18.8, grade:'Regular' }, '2022':{ mpg:21, tank:18.8, grade:'Regular' }, '2023':{ mpg:21, tank:18.8, grade:'Regular' }, '2024':{ mpg:21, tank:18.8, grade:'Regular' } },
+  },
+  'Nissan': {
+    'Altima':    { '2020':{ mpg:32, tank:16.2, grade:'Regular' }, '2021':{ mpg:32, tank:16.2, grade:'Regular' }, '2022':{ mpg:32, tank:16.2, grade:'Regular' }, '2023':{ mpg:32, tank:16.2, grade:'Regular' }, '2024':{ mpg:32, tank:16.2, grade:'Regular' } },
+    'Sentra':    { '2020':{ mpg:29, tank:12.4, grade:'Regular' }, '2021':{ mpg:33, tank:12.4, grade:'Regular' }, '2022':{ mpg:33, tank:12.4, grade:'Regular' }, '2023':{ mpg:33, tank:12.4, grade:'Regular' }, '2024':{ mpg:33, tank:12.4, grade:'Regular' } },
+    'Rogue':     { '2020':{ mpg:30, tank:14.5, grade:'Regular' }, '2021':{ mpg:33, tank:14.5, grade:'Regular' }, '2022':{ mpg:33, tank:14.5, grade:'Regular' }, '2023':{ mpg:33, tank:14.5, grade:'Regular' }, '2024':{ mpg:33, tank:14.5, grade:'Regular' } },
+    'Frontier':  { '2020':{ mpg:18, tank:21.0, grade:'Regular' }, '2021':{ mpg:18, tank:21.0, grade:'Regular' }, '2022':{ mpg:21, tank:21.0, grade:'Regular' }, '2023':{ mpg:21, tank:21.0, grade:'Regular' }, '2024':{ mpg:21, tank:21.0, grade:'Regular' } },
+  },
+  'Ram': {
+    '1500':      { '2020':{ mpg:20, tank:23.0, grade:'Regular' }, '2021':{ mpg:20, tank:23.0, grade:'Regular' }, '2022':{ mpg:20, tank:23.0, grade:'Regular' }, '2023':{ mpg:21, tank:23.0, grade:'Regular' }, '2024':{ mpg:21, tank:23.0, grade:'Regular' } },
+    'ProMaster': { '2020':{ mpg:16, tank:24.6, grade:'Regular' }, '2021':{ mpg:16, tank:24.6, grade:'Regular' }, '2022':{ mpg:16, tank:24.6, grade:'Regular' }, '2023':{ mpg:16, tank:24.6, grade:'Regular' }, '2024':{ mpg:16, tank:24.6, grade:'Regular' } },
+  },
+  'GMC': {
+    'Sierra':    { '2020':{ mpg:20, tank:24.0, grade:'Regular' }, '2021':{ mpg:20, tank:24.0, grade:'Regular' }, '2022':{ mpg:20, tank:24.0, grade:'Regular' }, '2023':{ mpg:20, tank:24.0, grade:'Regular' }, '2024':{ mpg:21, tank:24.0, grade:'Regular' } },
+    'Terrain':   { '2020':{ mpg:26, tank:14.9, grade:'Regular' }, '2021':{ mpg:26, tank:14.9, grade:'Regular' }, '2022':{ mpg:26, tank:14.9, grade:'Regular' }, '2023':{ mpg:26, tank:14.9, grade:'Regular' }, '2024':{ mpg:28, tank:14.9, grade:'Regular' } },
+    'Yukon':     { '2020':{ mpg:15, tank:28.0, grade:'Regular' }, '2021':{ mpg:15, tank:28.0, grade:'Regular' }, '2022':{ mpg:15, tank:28.0, grade:'Regular' }, '2023':{ mpg:16, tank:28.0, grade:'Regular' }, '2024':{ mpg:16, tank:28.0, grade:'Regular' } },
+  },
+  'Subaru': {
+    'Outback':   { '2020':{ mpg:30, tank:18.5, grade:'Regular' }, '2021':{ mpg:30, tank:18.5, grade:'Regular' }, '2022':{ mpg:30, tank:18.5, grade:'Regular' }, '2023':{ mpg:30, tank:18.5, grade:'Regular' }, '2024':{ mpg:30, tank:18.5, grade:'Regular' } },
+    'Forester':  { '2020':{ mpg:28, tank:16.6, grade:'Regular' }, '2021':{ mpg:28, tank:16.6, grade:'Regular' }, '2022':{ mpg:28, tank:16.6, grade:'Regular' }, '2023':{ mpg:28, tank:16.6, grade:'Regular' }, '2024':{ mpg:29, tank:16.6, grade:'Regular' } },
+    'Crosstrek': { '2020':{ mpg:29, tank:13.2, grade:'Regular' }, '2021':{ mpg:29, tank:13.2, grade:'Regular' }, '2022':{ mpg:29, tank:13.2, grade:'Regular' }, '2023':{ mpg:32, tank:13.2, grade:'Regular' }, '2024':{ mpg:33, tank:13.2, grade:'Regular' } },
+    'Impreza':   { '2020':{ mpg:31, tank:13.2, grade:'Regular' }, '2021':{ mpg:31, tank:13.2, grade:'Regular' }, '2022':{ mpg:28, tank:13.2, grade:'Regular' }, '2023':{ mpg:28, tank:13.2, grade:'Regular' }, '2024':{ mpg:28, tank:13.2, grade:'Regular' } },
+  },
+  'Volkswagen': {
+    'Jetta':     { '2020':{ mpg:35, tank:13.2, grade:'Regular' }, '2021':{ mpg:35, tank:13.2, grade:'Regular' }, '2022':{ mpg:35, tank:13.2, grade:'Regular' }, '2023':{ mpg:35, tank:13.2, grade:'Regular' }, '2024':{ mpg:35, tank:13.2, grade:'Regular' } },
+    'Tiguan':    { '2020':{ mpg:24, tank:15.9, grade:'Regular' }, '2021':{ mpg:24, tank:15.9, grade:'Regular' }, '2022':{ mpg:24, tank:15.9, grade:'Regular' }, '2023':{ mpg:24, tank:15.9, grade:'Regular' }, '2024':{ mpg:25, tank:15.9, grade:'Regular' } },
+    'Atlas':     { '2020':{ mpg:20, tank:18.6, grade:'Regular' }, '2021':{ mpg:20, tank:18.6, grade:'Regular' }, '2022':{ mpg:20, tank:18.6, grade:'Regular' }, '2023':{ mpg:21, tank:18.6, grade:'Regular' }, '2024':{ mpg:21, tank:18.6, grade:'Regular' } },
+  },
+}
+
+const GRADE_COLOR = { Regular:'#ff3b30', 'Mid-grade':'#ff9f0a', Premium:'#0a84ff', Electric:'#30d158' }
+const YEARS = ['2024','2023','2022','2021','2020','2019','2018']
 
 const GRADE_COLOR = { Regular:'#ff3b30', 'Mid-grade':'#ff9f0a', Premium:'#0a84ff', Electric:'#30d158' }
 
 export default function VehiclePage() {
   const router = useRouter()
-  const [selectedCar, setSelectedCar] = useState(0)
-  const [customMpg,   setCustomMpg]   = useState(null)
-  const [customTank,  setCustomTank]  = useState(null)
-  const [fillAlert,   setFillAlert]   = useState('half')
-  const [stopPref,    setStopPref]    = useState('any')
-  const [saved,       setSaved]       = useState(false)
-  const [saving,      setSaving]      = useState(false)
+  const [make,      setMake]      = useState('')
+  const [model,     setModel]     = useState('')
+  const [year,      setYear]      = useState('')
+  const [fillAlert, setFillAlert] = useState('half')
+  const [stopPref,  setStopPref]  = useState('any')
+  const [saved,     setSaved]     = useState(false)
+  const [saving,    setSaving]    = useState(false)
 
-  const car = CARS[selectedCar]
-  const mpg  = customMpg  ?? car.mpg
-  const tank = customTank ?? car.tank
+  const makes  = Object.keys(CAR_DB).sort()
+  const models = make ? Object.keys(CAR_DB[make]).sort() : []
+  const years  = (make && model) ? Object.keys(CAR_DB[make][model]).sort().reverse() : []
+  const specs  = (make && model && year && CAR_DB[make]?.[model]?.[year]) ? CAR_DB[make][model][year] : null
+
+  const mpg  = specs?.mpg  ?? 28
+  const tank = specs?.tank ?? 14
 
   const handleSave = async () => {
+    if (!specs) return
     setSaving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         await supabase.from('profiles').update({
-          grade_preference: car.grade,
-          miles_per_week:   Math.round(mpg * 40),
-          tank_size:        Math.round(tank),
+          grade_preference: specs.grade,
+          tank_size:        Math.round(specs.tank),
+          miles_per_week:   Math.round(specs.mpg * 40),
         }).eq('id', user.id)
       }
     } catch(e) {}
@@ -99,81 +194,86 @@ export default function VehiclePage() {
 
       <div style={{maxWidth:700,margin:'0 auto',padding:'88px 20px 100px',animation:'fadeUp .5s ease both'}}>
 
-        {/* Car selector */}
+        {/* Car selector — Make → Model → Year */}
         <div className="gc-card">
-          <div className="gc-label">Select your car</div>
-          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}}>
-            {CARS.map((c,i)=>(
-              <button key={i} className="car-chip"
-                onClick={()=>{setSelectedCar(i);setCustomMpg(null);setCustomTank(null)}}
-                style={{
-                  background: selectedCar===i ? `${GRADE_COLOR[c.grade]}18` : 'rgba(255,255,255,0.5)',
-                  borderColor: selectedCar===i ? `${GRADE_COLOR[c.grade]}50` : 'rgba(0,0,0,0.08)',
-                  color: selectedCar===i ? GRADE_COLOR[c.grade] : 'rgba(26,26,46,.6)',
-                }}>
-                {c.year} {c.make} {c.model}
-              </button>
-            ))}
+          <div className="gc-label">Your vehicle</div>
+
+          {/* Step 1 — Make */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:'rgba(26,26,46,.5)',marginBottom:6}}>Make</div>
+            <select value={make} onChange={e=>{setMake(e.target.value);setModel('');setYear('')}}
+              style={{width:'100%',background:'rgba(255,255,255,0.6)',border:'0.5px solid rgba(255,255,255,0.9)',borderRadius:14,padding:'11px 14px',fontSize:14,color:make?'#1a1a2e':'rgba(26,26,46,.4)',outline:'none',fontFamily:"'DM Sans',sans-serif",backdropFilter:'blur(20px)'}}>
+              <option value="">Select make...</option>
+              {makes.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
           </div>
 
-          {/* Auto-detected grade */}
-          <div style={{background:`${GRADE_COLOR[car.grade]}0d`,border:`1px solid ${GRADE_COLOR[car.grade]}30`,borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:12}}>
-            <div style={{width:40,height:40,borderRadius:12,background:`${GRADE_COLOR[car.grade]}1a`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
-              {car.grade==='Electric'?'⚡':'⛽'}
-            </div>
-            <div>
-              <div style={{fontSize:13,fontWeight:700,color:GRADE_COLOR[car.grade],marginBottom:2}}>
-                Auto-detected: {car.grade} {car.grade!=='Electric'?'unleaded':'(EV)'}
-              </div>
-              <div style={{fontSize:11,color:'rgba(26,26,46,.5)'}}>
-                {car.year} {car.make} {car.model} · {car.mpg} mpg · {car.tank} gal tank
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* MPG + Tank tuning */}
-        <div className="gc-card">
-          <div className="gc-label">Fine-tune your numbers</div>
-
-          <div style={{marginBottom:18}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-              <span style={{fontSize:13,fontWeight:500,color:'rgba(26,26,46,.7)'}}>Miles per gallon</span>
-              <span style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#ff3b30'}}>{mpg} mpg</span>
-            </div>
-            <input type="range" className="gc-range" min={10} max={80} step={1} value={mpg}
-              onChange={e=>setCustomMpg(+e.target.value)}/>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'rgba(26,26,46,.35)'}}>
-              <span>10</span><span>45</span><span>80 mpg</span>
-            </div>
+          {/* Step 2 — Model */}
+          <div style={{marginBottom:14,opacity:make?1:0.4,pointerEvents:make?'auto':'none'}}>
+            <div style={{fontSize:12,fontWeight:600,color:'rgba(26,26,46,.5)',marginBottom:6}}>Model</div>
+            <select value={model} onChange={e=>{setModel(e.target.value);setYear('')}}
+              style={{width:'100%',background:'rgba(255,255,255,0.6)',border:'0.5px solid rgba(255,255,255,0.9)',borderRadius:14,padding:'11px 14px',fontSize:14,color:model?'#1a1a2e':'rgba(26,26,46,.4)',outline:'none',fontFamily:"'DM Sans',sans-serif",backdropFilter:'blur(20px)'}}>
+              <option value="">Select model...</option>
+              {models.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
           </div>
 
-          {car.grade !== 'Electric' && (
-            <div>
-              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                <span style={{fontSize:13,fontWeight:500,color:'rgba(26,26,46,.7)'}}>Tank size</span>
-                <span style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#ff3b30'}}>{tank.toFixed(1)} gal</span>
+          {/* Step 3 — Year */}
+          <div style={{marginBottom:18,opacity:model?1:0.4,pointerEvents:model?'auto':'none'}}>
+            <div style={{fontSize:12,fontWeight:600,color:'rgba(26,26,46,.5)',marginBottom:6}}>Year</div>
+            <select value={year} onChange={e=>setYear(e.target.value)}
+              style={{width:'100%',background:'rgba(255,255,255,0.6)',border:'0.5px solid rgba(255,255,255,0.9)',borderRadius:14,padding:'11px 14px',fontSize:14,color:year?'#1a1a2e':'rgba(26,26,46,.4)',outline:'none',fontFamily:"'DM Sans',sans-serif",backdropFilter:'blur(20px)'}}>
+              <option value="">Select year...</option>
+              {years.map(y=><option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          {/* Auto-detected specs — shows after year selected */}
+          {specs ? (
+            <div style={{background:`${GRADE_COLOR[specs.grade]}0d`,border:`1px solid ${GRADE_COLOR[specs.grade]}30`,borderRadius:18,padding:'16px 18px',display:'flex',alignItems:'center',gap:14}}>
+              <div style={{width:44,height:44,borderRadius:13,background:`${GRADE_COLOR[specs.grade]}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>
+                {specs.grade==='Electric'?'⚡':'⛽'}
               </div>
-              <input type="range" className="gc-range" min={8} max={36} step={0.5} value={tank}
-                onChange={e=>setCustomTank(+e.target.value)}/>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'rgba(26,26,46,.35)'}}>
-                <span>8</span><span>22</span><span>36 gal</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:GRADE_COLOR[specs.grade],marginBottom:4}}>
+                  {year} {make} {model}
+                </div>
+                <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:2}}>Fuel grade</div>
+                    <div style={{fontSize:13,fontWeight:600,color:GRADE_COLOR[specs.grade]}}>{specs.grade}</div>
+                  </div>
+                  {specs.grade !== 'Electric' && <>
+                    <div>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:2}}>City/Hwy MPG</div>
+                      <div style={{fontSize:13,fontWeight:600,color:'#1a1a2e'}}>{specs.mpg} mpg</div>
+                    </div>
+                    <div>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:2}}>Tank size</div>
+                      <div style={{fontSize:13,fontWeight:600,color:'#1a1a2e'}}>{specs.tank} gal</div>
+                    </div>
+                    <div>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:2}}>Full tank range</div>
+                      <div style={{fontSize:13,fontWeight:600,color:'#1a1a2e'}}>{Math.round(specs.mpg * specs.tank)} mi</div>
+                    </div>
+                  </>}
+                  {specs.grade === 'Electric' && (
+                    <div>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:2}}>Efficiency</div>
+                      <div style={{fontSize:13,fontWeight:600,color:GRADE_COLOR['Electric']}}>{specs.mpg} MPGe</div>
+                    </div>
+                  )}
+                </div>
               </div>
+            </div>
+          ) : (
+            <div style={{background:'rgba(255,255,255,0.4)',border:'0.5px solid rgba(255,255,255,0.8)',borderRadius:16,padding:'16px 18px',textAlign:'center',color:'rgba(26,26,46,.35)',fontSize:13}}>
+              Select your make, model, and year to auto-detect fuel grade, MPG, and tank size
             </div>
           )}
-
-          <div style={{marginTop:14,padding:'12px 14px',background:'rgba(255,255,255,0.5)',border:'0.5px solid rgba(255,255,255,0.85)',borderRadius:14,display:'flex',gap:20}}>
-            {[
-              {label:'Range on full tank',val:`${Math.round(mpg*tank)} mi`},
-              {label:'Cost to fill up',  val:`$${(tank*3.15).toFixed(2)}`},
-            ].map(s=>(
-              <div key={s.label}>
-                <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:3}}>{s.label}</div>
-                <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e'}}>{s.val}</div>
-              </div>
-            ))}
-          </div>
         </div>
+
+
 
         {/* Fill-up reminder */}
         <div className="gc-card">
