@@ -16,6 +16,20 @@ function GCIcon({ size = 28 }) {
   )
 }
 
+// ── Apple Maps Deep Link Format ─────────────────────────────
+// maps://maps.apple.com/?saddr=START_LAT,START_LNG&daddr=DEST_LAT,DEST_LNG
+// Adding a waypoint (gas station):
+// maps://maps.apple.com/?saddr=START&daddr=DEST&via=GAS_LAT,GAS_LNG
+//
+// This opens Apple Maps on iPhone with:
+//   → Your location as start
+//   → Gas station as waypoint
+//   → Final destination as end
+//   → Turn-by-turn navigation begins automatically
+//
+// Android fallback:
+// https://www.google.com/maps/dir/?api=1&origin=LAT,LNG&destination=LAT,LNG&waypoints=GAS_LAT,GAS_LNG
+
 export default function GasRoutePage() {
   const router = useRouter()
   const [userCoords, setUserCoords] = useState(null)

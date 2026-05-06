@@ -176,7 +176,21 @@ export default function TripModePage() {
                     </div>
                     <div style={{display:'flex',gap:8}}>
                       <button className="sm-btn sm-btn-green"
-                        onClick={()=>window.open(`https://maps.apple.com/?daddr=${nextStation.name}&dirflag=d`)}>
+                        onClick={()=>{
+                        // Apple Maps: start=current location, destination=final dest, via=gas station
+                        // If on iPhone → opens Apple Maps automatically
+                        // If on Android → opens Google Maps
+                        const isApple = /iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
+                        const stLat = nextStation.id === 1 ? 33.12 : nextStation.id === 2 ? 33.28 : 33.45
+                        const stLng = nextStation.id === 1 ? -85.11 : nextStation.id === 2 ? -85.08 : -85.02
+                        if (isApple) {
+                          // Apple Maps with waypoint
+                          window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${stLat},${stLng}&dirflag=d`)
+                        } else {
+                          // Google Maps fallback
+                          window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${stLat},${stLng}&travelmode=driving`)
+                        }
+                      }}>
                         Navigate in Apple Maps
                       </button>
                       <button className="sm-btn sm-btn-ghost" onClick={()=>{setDismissed(d=>[...d,nextStation.id])}}>

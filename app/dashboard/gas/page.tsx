@@ -572,25 +572,33 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
           </div>
         )}
 
-        {/* Quick actions — link to new pages */}
-        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        {/* Quick actions */}
+        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+          <Link href="/dashboard" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:100,background:"rgba(255,255,255,0.65)",border:"0.5px solid rgba(255,255,255,0.9)",fontSize:12,fontWeight:600,color:"rgba(26,26,46,.6)",textDecoration:"none",backdropFilter:"blur(20px)"}}>🏠 Dashboard</Link>
           {[
             {label:"🛣️ Plan Route",  href:"/dashboard/gas/route",   color:"rgba(255,59,48,0.1)",  bdr:"rgba(255,59,48,0.25)",  txt:"#cc2018"},
             {label:"🚗 Start Trip",  href:"/dashboard/gas/trip",    color:"rgba(48,209,88,0.08)", bdr:"rgba(48,209,88,0.25)",  txt:"#1a7a35"},
             {label:"🔔 Alerts",      href:"/dashboard/gas/alerts",  color:"rgba(255,159,10,0.08)",bdr:"rgba(255,159,10,0.25)", txt:"#854F0B"},
             {label:"⚙️ My Vehicle",  href:"/dashboard/gas/vehicle", color:"rgba(10,132,255,0.08)",bdr:"rgba(10,132,255,0.25)",  txt:"#185FA5"},
+            {label:"💳 My Plan",     href:"/dashboard/billing",     color:"rgba(191,90,242,0.08)",bdr:"rgba(191,90,242,0.25)", txt:"#6b2fa0"},
           ].map(a=>(
-            <Link key={a.href} href={a.href} style={{
-              display:"inline-flex",alignItems:"center",gap:6,
-              padding:"8px 18px",borderRadius:100,
-              background:a.color,border:`0.5px solid ${a.bdr}`,
-              fontSize:12,fontWeight:600,color:a.txt,
-              textDecoration:"none",
-              backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
-              transition:"all .2s",
-            }}>{a.label}</Link>
+            <Link key={a.href} href={a.href} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:100,background:a.color,border:`0.5px solid ${a.bdr}`,fontSize:12,fontWeight:600,color:a.txt,textDecoration:"none",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",transition:"all .2s"}}>{a.label}</Link>
           ))}
         </div>
+
+        {/* After location is set — show start route / plan trip CTA */}
+        {userCoords && !loading && (
+          <div style={{background:"rgba(255,255,255,0.55)",backdropFilter:"blur(24px)",border:"0.5px solid rgba(255,255,255,0.9)",borderRadius:20,padding:"14px 18px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:"rgba(26,26,46,.4)",textTransform:"uppercase",marginBottom:3}}>Location found · {locStatus}</div>
+              <div style={{fontSize:13,fontWeight:500,color:"rgba(26,26,46,.7)"}}>Where are you headed? We'll find cheapest gas on the way.</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <Link href="/dashboard/gas/route" style={{padding:"9px 20px",borderRadius:100,background:"linear-gradient(135deg,#ff3b30,#ff6b35)",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",boxShadow:"0 4px 14px rgba(255,59,48,.3)",whiteSpace:"nowrap"}}>Plan Route →</Link>
+              <Link href="/dashboard/gas/trip"  style={{padding:"9px 20px",borderRadius:100,background:"rgba(48,209,88,.1)",border:"1px solid rgba(48,209,88,.25)",color:"#1a7a35",fontSize:13,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>Start Trip</Link>
+            </div>
+          </div>
+        )}
 
         <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
           {GRADES.map(g=><button key={g} onClick={()=>setGrade(g)} style={{padding:"8px 20px",borderRadius:100,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:.3,transition:"all .25s cubic-bezier(.34,1.56,.64,1)",background:grade===g?"linear-gradient(135deg,#ff3b30,#ff6b35)":T.surface,color:grade===g?"#fff":T.text2,border:grade===g?"none":`1px solid ${T.surfaceBdr}`,boxShadow:grade===g?`0 0 18px rgba(255,59,48,.35),0 4px 12px rgba(255,59,48,.2)`:"none",transform:grade===g?"scale(1.03)":"scale(1)"}}>{g}</button>)}

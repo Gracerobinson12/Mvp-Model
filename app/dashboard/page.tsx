@@ -196,8 +196,9 @@ export default function DashboardPage() {
                     {profile?.business_name && <div style={{fontSize:10,color:'rgba(26,26,46,.35)',marginTop:1}}>{profile.business_name}</div>}
                     <div style={{fontSize:10,color:'rgba(26,26,46,.35)',marginTop:2,textTransform:'capitalize'}}>{userPlan} plan</div>
                   </div>
+                  <Link href="/dashboard" className="dropdown-item" onClick={()=>setMenuOpen(false)}>🏠 Dashboard</Link>
                   <Link href="/dashboard/gas" className="dropdown-item" onClick={()=>setMenuOpen(false)}>⛽ Gas Tracker</Link>
-                  <Link href="/pricing" className="dropdown-item" onClick={()=>setMenuOpen(false)}>💳 Manage Plan</Link>
+                  <Link href="/dashboard/billing" className="dropdown-item" onClick={()=>setMenuOpen(false)}>💳 Manage Plan</Link>
                   <div style={{borderTop:'1px solid rgba(0,0,0,.07)',marginTop:6,paddingTop:6}}>
                     <button className="dropdown-item" style={{color:'#ff453a'}} onClick={signOut}>Sign Out</button>
                   </div>
@@ -257,7 +258,7 @@ export default function DashboardPage() {
                   <div style={{fontSize:12,color:'rgba(26,26,46,.5)'}}>Core Pass · $4.99/mo · 7-day free trial · Cancel anytime</div>
                 </div>
               </div>
-              <Link href="/pricing" style={{padding:'9px 20px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',borderRadius:100,fontSize:13,fontWeight:700,textDecoration:'none',whiteSpace:'nowrap',boxShadow:'0 4px 12px rgba(255,59,48,.3)'}}>Subscribe Now →</Link>
+              <Link href="/dashboard/billing" style={{padding:'9px 20px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',borderRadius:100,fontSize:13,fontWeight:700,textDecoration:'none',whiteSpace:'nowrap',boxShadow:'0 4px 12px rgba(255,59,48,.3)'}}>Subscribe Now →</Link>
             </div>
           )}
 
