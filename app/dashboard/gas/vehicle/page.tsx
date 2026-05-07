@@ -108,7 +108,6 @@ const CAR_DB = {
 const GRADE_COLOR = { Regular:'#ff3b30', 'Mid-grade':'#ff9f0a', Premium:'#0a84ff', Electric:'#30d158' }
 const YEARS = ['2024','2023','2022','2021','2020','2019','2018']
 
-const GRADE_COLOR = { Regular:'#ff3b30', 'Mid-grade':'#ff9f0a', Premium:'#0a84ff', Electric:'#30d158' }
 
 export default function VehiclePage() {
   const router = useRouter()
