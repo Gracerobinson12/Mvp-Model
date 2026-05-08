@@ -82,7 +82,7 @@ function ComingSoonGate() {
             Something big<br/>is coming
           </h1>
           <p style={{fontSize:15,color:'rgba(255,255,255,.5)',lineHeight:1.65,marginBottom:36,maxWidth:340,margin:'0 auto 36px'}}>
-            GratIA Core is in private beta. Enter your access code to get in, or join the waitlist.
+            Gratia Core is in private beta. Enter your access code to get in, or join the waitlist.
           </p>
 
           <div style={{marginBottom:12}}>
@@ -134,7 +134,7 @@ function ComingSoonGate() {
         </div>
 
         <div style={{marginTop:32,fontSize:12,color:'rgba(255,255,255,.2)',textAlign:'center'}}>
-          © 2025 GratIA Core LLC · Business Intelligence Agency
+          © 2025 Gratia Core LLC · Business Intelligence Agency
         </div>
       </div>
     </>
@@ -283,7 +283,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
         {step === 'gate' && <>
           <div style={{display:'flex',justifyContent:'center',marginBottom:20}}><GCIcon size={52}/></div>
           <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,textAlign:'center',color:'#1a1a2e',marginBottom:8}}>Start your free trial</h2>
-          <p style={{fontSize:14,color:'rgba(26,26,46,.55)',textAlign:'center',lineHeight:1.65,marginBottom:22}}>7 days full access · $4.99/mo after · Cancel anytime</p>
+          <p style={{fontSize:14,color:'rgba(26,26,46,.55)',textAlign:'center',lineHeight:1.65,marginBottom:22}}>7-day free trial · $4.99/mo after trial · Card required · Cancel anytime</p>
           <div style={{background:'#f8f7fc',borderRadius:14,padding:'14px 16px',marginBottom:22}}>
             {[
               {icon:'📍',text:'Real-time gas prices at stations near you',live:true},
@@ -307,13 +307,13 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
             style={{...inp(),marginBottom:error?6:10,border:`1.5px solid ${error?'#ff453a':'rgba(0,0,0,.1)'}`}}/>
           {error && <div style={{fontSize:12,color:'#ff453a',marginBottom:10}}>{error}</div>}
           <button onClick={handleContinue} style={{width:'100%',padding:14,background:email.trim()?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(255,59,48,.2)',color:'#fff',border:'none',borderRadius:100,fontSize:15,fontWeight:700,cursor:email.trim()?'pointer':'not-allowed',fontFamily:"'DM Sans',sans-serif"}}>
-            Continue — it's free →
+            Continue →
           </button>
           <div style={{display:'flex',alignItems:'center',gap:10,margin:'14px 0',color:'rgba(26,26,46,.3)',fontSize:12}}>
             <div style={{flex:1,height:1,background:'rgba(0,0,0,.08)'}}/>or<div style={{flex:1,height:1,background:'rgba(0,0,0,.08)'}}/>
           </div>
           <div style={{textAlign:'center',fontSize:13,color:'rgba(26,26,46,.45)'}}>Already have an account?{' '}<Link href="/login" style={{color:'#ff3b30',fontWeight:600,textDecoration:'none'}} onClick={onClose}>Log in →</Link></div>
-          <p style={{fontSize:11,color:'rgba(26,26,46,.3)',textAlign:'center',marginTop:14,lineHeight:1.6}}>No card needed · 7-day free trial · Cancel anytime · <a href="/privacy" style={{color:'rgba(26,26,46,.4)'}}>Privacy</a></p>
+          
         </>}
 
         {step === 'type' && <>
@@ -870,18 +870,17 @@ function LandingPage() {
           <a href="/" style={{textDecoration:'none',display:'flex',alignItems:'center',gap:10}}>
               <GCIcon size={34}/>
               <div style={{display:'flex',flexDirection:'column',lineHeight:1}}>
-                <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:15,fontWeight:900,letterSpacing:-0.5,color:'#1a1a2e'}}>GRAT<span style={{color:'#ff3b30'}}>IA</span> CORE</span>
+                <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:15,fontWeight:900,letterSpacing:-0.5,color:'#1a1a2e'}}>Gratia Core</span>
                 <span style={{fontSize:8,fontWeight:600,letterSpacing:2.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase'}}>Business Intelligence</span>
               </div>
             </a>
           <div className="nav-links">
             <a href="#modules" className="nav-link">Modules</a>
             <a href="#who" className="nav-link">Who it's for</a>
-            <Link href="/pricing" className="nav-link">Pricing</Link>
+            <Link href="/pricing" className="nav-link">View Plans</Link>
             <a href="#about" className="nav-link">About</a>
           </div>
           <div className="nav-actions">
-            <Link href="/pricing" className="btn-login">View Plans</Link>
             <Link href="/login" className="btn-login">Log in</Link>
             <button onClick={() => setShowModal(true)} className="btn-signup">Get Started →</button>
           </div>
@@ -898,7 +897,7 @@ function LandingPage() {
             <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
             <Link href="/pricing" className="btn-secondary">View Plans</Link>
           </div>
-          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>No credit card needed · $4.99/mo after trial · Cancel anytime</div>
+          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>Card required after trial · $4.99/mo · Cancel anytime</div>
           <div className="hero-trust">
             <span className="trust-item">For Drivers</span><div className="trust-dot"/>
             <span className="trust-item">For Freelancers</span><div className="trust-dot"/>
@@ -922,7 +921,7 @@ function LandingPage() {
           <div className="modules-header">
             <div className="section-label">Platform Modules</div>
             <div className="section-title">Everything you need.<br/>Nothing you don't.</div>
-            <p className="section-sub" style={{margin:"0 auto"}}>Each module is personalized to your type and connects to the others automatically.</p>
+            <p className="section-sub" style={{margin:"0 auto"}}>Start with gas intelligence today. More modules unlocking soon.</p>
           </div>
           <div className="modules-grid">
             <div className="module-card featured active" style={{cursor:'default',gridColumn:'span 2'}}>
@@ -998,7 +997,7 @@ function LandingPage() {
           <div className="cta-card">
             <div className="section-label">Get Started Today</div>
             <h2>Your intelligence<br/><span>starts here</span></h2>
-            <p>Take 60 seconds to set up your profile. 7 days free — no card needed. $4.99/mo after trial, cancel anytime.</p>
+            <p>Start with gas intelligence. 7-day free trial. $4.99/mo after trial. Cancel anytime.</p>
             <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
               <button onClick={() => setShowModal(true)} className="btn-primary" style={{fontSize:16,padding:"16px 36px",border:'none'}}>Start Free Trial →</button>
               <Link href="/login" className="btn-secondary" style={{fontSize:16,padding:"16px 28px"}}>Log In</Link>
@@ -1010,15 +1009,15 @@ function LandingPage() {
         <footer className="footer">
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             <GCIcon size={30}/>
-            <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:14,fontWeight:900,letterSpacing:-0.5,color:'#1a1a2e'}}>GRAT<span style={{color:'#ff3b30'}}>IA</span> CORE</span>
+            <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:14,fontWeight:900,letterSpacing:-0.5,color:'#1a1a2e'}}>Gratia Core</span>
           </div>
           <div className="footer-links">
-            <a href="/privacy" className="footer-link">Privacy Policy</a>
-            <a href="/terms" className="footer-link">Terms of Service</a>
+            <a href="/privacy" className="footer-link">Privacy</a>
+            <a href="/terms" className="footer-link">Terms</a>
             <a href="/about" className="footer-link">About</a>
             <a href="/contact" className="footer-link">Contact</a>
           </div>
-          <div className="footer-copy">© 2025 GratIA Core LLC. All rights reserved.</div>
+          <div className="footer-copy">© 2025 Gratia Core LLC. All rights reserved.</div>
         </footer>
       </div>
     </>

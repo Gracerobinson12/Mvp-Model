@@ -175,7 +175,7 @@ export default function DashboardPage() {
           <Link href="/" style={{textDecoration:'none',display:'flex',alignItems:'center',gap:10}}>
             <GCIcon size={32}/>
             <div style={{display:'flex',flexDirection:'column',lineHeight:1}}>
-              <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:13,fontWeight:900,letterSpacing:-.5,color:'#1a1a2e'}}>GRAT<span style={{color:'#ff3b30'}}>IA</span> CORE</span>
+              <span style={{fontFamily:"'Arial Black',Arial,sans-serif",fontSize:13,fontWeight:900,letterSpacing:-.5,color:'#1a1a2e'}}>Gratia Core</span>
               <span style={{fontSize:7,fontWeight:600,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase'}}>Business Intelligence</span>
             </div>
           </Link>
@@ -319,7 +319,7 @@ export default function DashboardPage() {
 
           {/* Bottom note */}
           <div style={{marginTop:28,textAlign:'center',fontSize:11,color:'rgba(26,26,46,.3)',lineHeight:1.6}}>
-            GratIA Core · {state||'Set your state in profile for local prices'} · More modules shipping soon
+            Gratia Core · {state||'Set your state in profile for local prices'} · More modules shipping soon
           </div>
         </div>
       </div>

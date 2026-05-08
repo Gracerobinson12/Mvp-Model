@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Gratia Core — Business Intelligence at Your Fingertips",
   description: "Real-time gas prices, regulatory updates, tariff tracking, and tax deductions — all in one platform built for gig workers, freelancers, and growing businesses.",
-  keywords: "gas prices, gig worker tools, mileage deduction, regulatory updates, business intelligence, freelancer taxes, barter agreements, ideas safe",
+  keywords: "gas prices, gig worker tools, mileage deduction, regulatory updates, business intelligence, freelancer taxes",
   metadataBase: new URL("https://gratiacore.com"),
   openGraph: {
     type: "website",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
   },
   icons: {
-    icon: '/favicon.ico', sizes: 'any' ,
+    icon: "/gratia-core-icon.svg",
     shortcut: "/gratia-core-icon.svg",
     apple: "/gratia-core-icon.svg",
   },
