@@ -284,13 +284,59 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
 
 function LocationModal({onAllow,onDeny,T}:{onAllow:()=>void,onDeny:()=>void,T:Theme}) {
   return (
-    <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.65)",backdropFilter:"blur(14px)",padding:24}}>
-      <div style={{background:T.modalBg,border:`1px solid ${T.modalBdr}`,borderRadius:28,padding:"36px 32px",maxWidth:380,width:"100%",backdropFilter:"blur(40px)",boxShadow:"0 24px 80px rgba(0,0,0,.45)",textAlign:"center",animation:"popIn .4s cubic-bezier(.34,1.56,.64,1)"}}>
-        <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#ff3b30,#ff6b35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,margin:"0 auto 20px",boxShadow:"0 0 32px rgba(255,59,48,.4)"}}>📍</div>
-        <h2 style={{fontSize:26,fontWeight:800,letterSpacing:-.5,color:T.text,marginBottom:10,lineHeight:1.2}}>Find Gas Prices<br/>Near You</h2>
-        <p style={{fontSize:14,color:T.text2,lineHeight:1.6,marginBottom:22}}>We use your location to show real-time gas prices at stations near you and calculate your actual mileage deductions.</p>
-        <button onClick={onAllow} style={{width:"100%",padding:14,background:"linear-gradient(135deg,#ff3b30,#ff6b35)",color:"#fff",border:"none",borderRadius:100,fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:10,boxShadow:"0 0 24px rgba(255,59,48,.4)",fontFamily:"system-ui"}}>Allow Location Access</button>
-        <button onClick={onDeny} style={{width:"100%",padding:12,background:"transparent",color:T.text2,border:`1px solid ${T.inputBdr}`,borderRadius:100,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"system-ui"}}>Enter ZIP code instead</button>
+    <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,.5)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",padding:"0 16px 24px"}}>
+      <div style={{
+        background:T.isDark?"rgba(18,18,24,0.97)":"rgba(255,255,255,0.97)",
+        backdropFilter:"blur(40px)",WebkitBackdropFilter:"blur(40px)",
+        border:`0.5px solid ${T.modalBdr}`,
+        borderRadius:28,
+        padding:"28px 24px",
+        maxWidth:440,width:"100%",
+        boxShadow:"0 -8px 40px rgba(0,0,0,.2)",
+        animation:"slideUp .4s cubic-bezier(.34,1.56,.64,1)",
+      }}>
+        {/* Handle bar */}
+        <div style={{width:36,height:4,borderRadius:2,background:"rgba(0,0,0,.15)",margin:"0 auto 20px"}}/>
+
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:18}}>
+          <div style={{width:56,height:56,borderRadius:18,background:"linear-gradient(135deg,#ff3b30,#ff6b35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0,boxShadow:"0 4px 20px rgba(255,59,48,.4)"}}>📍</div>
+          <div>
+            <div style={{fontSize:18,fontWeight:800,letterSpacing:-.5,color:T.text,marginBottom:4}}>Find gas near you</div>
+            <div style={{fontSize:13,color:T.text2,lineHeight:1.5}}>We'll show real-time prices at stations closest to your location.</div>
+          </div>
+        </div>
+
+        <div style={{background:T.isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)",border:`0.5px solid ${T.inputBdr}`,borderRadius:16,padding:"12px 14px",marginBottom:18}}>
+          {["📍 Real-time prices at stations near you","🛣️ Route finder based on your actual location","🚗 Trip mode with live GPS tracking"].map((f,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,fontSize:13,color:T.text2,marginBottom:i<2?8:0}}>
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={onAllow} style={{
+          width:"100%",padding:15,
+          background:"linear-gradient(135deg,#ff3b30,#ff6b35)",
+          color:"#fff",border:"none",borderRadius:18,
+          fontSize:15,fontWeight:700,cursor:"pointer",
+          marginBottom:10,
+          boxShadow:"0 4px 20px rgba(255,59,48,.4)",
+          fontFamily:"'DM Sans',system-ui,sans-serif",
+        }}>
+          📍 Know your location
+        </button>
+        <button onClick={onDeny} style={{
+          width:"100%",padding:13,
+          background:"transparent",
+          color:T.text2,
+          border:`0.5px solid ${T.inputBdr}`,
+          borderRadius:18,
+          fontSize:14,fontWeight:500,
+          cursor:"pointer",
+          fontFamily:"'DM Sans',system-ui,sans-serif",
+        }}>
+          Enter ZIP code instead
+        </button>
       </div>
     </div>
   )
@@ -381,7 +427,43 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
   const [userCoords,setUserCoords]=useState<Coords|null>(null)
   const [locStatus,setLocStatus]=useState("Awaiting location...")
   const [loading,setLoading]=useState(false)
-  const [modal,setModal]=useState<"location"|"zip"|null>("location")
+  const [modal,setModal]=useState<"location"|"zip"|null>(null)
+
+  // Check permission status on mount — skip modal if already granted
+  useEffect(()=>{
+    const checkPermission = async () => {
+      if (!navigator.geolocation) { setModal("zip"); return }
+      try {
+        // Modern browsers support permissions API
+        const perm = await navigator.permissions?.query({ name: "geolocation" })
+        if (perm?.state === "granted") {
+          // Already have permission — get location silently, no modal
+          setLocStatus("📍 Getting location...")
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              const { latitude:lat, longitude:lng } = pos.coords
+              setUserCoords({lat,lng})
+              setLocStatus("📍 Location found")
+              setModal(null)
+              fetchData(lat,lng)
+            },
+            () => setModal("location"),
+            { enableHighAccuracy:true, timeout:8000, maximumAge:300000 }
+          )
+        } else if (perm?.state === "denied") {
+          // Permission denied — go straight to ZIP
+          setModal("zip")
+        } else {
+          // 'prompt' state — show our custom modal first
+          setModal("location")
+        }
+      } catch {
+        // Fallback — show custom modal
+        setModal("location")
+      }
+    }
+    checkPermission()
+  },[])
   const [mapKey,setMapKey]=useState("init")
   const [showSettings,setShowSettings]=useState(false)
   const [currentPlan,setCurrentPlan]=useState('free')
@@ -521,6 +603,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
             radial-gradient(ellipse 40% 30% at 55% 40%,rgba(48,209,88,0.04) 0%,transparent 45%);
         }
         @keyframes popIn{from{opacity:0;transform:scale(.88) translateY(14px)}to{opacity:1;transform:scale(1) translateY(0)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.28;transform:scale(.58)}}
         @keyframes loadSlide{0%{left:-40%}100%{left:100%}}

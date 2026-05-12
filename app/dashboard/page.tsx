@@ -74,11 +74,12 @@ const NAV_ITEMS = [
 
 export default function DashboardPage() {
   const router  = useRouter()
-  const [user,     setUser]     = useState(null)
-  const [profile,  setProfile]  = useState(null)
-  const [loading,  setLoading]  = useState(true)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [isDark,   setIsDark]   = useState(false)
+  const [user,          setUser]         = useState(null)
+  const [profile,       setProfile]      = useState(null)
+  const [loading,       setLoading]      = useState(true)
+  const [menuOpen,      setMenuOpen]     = useState(false)
+  const [isDark,        setIsDark]       = useState(false)
+  const [selectedState, setSelectedState] = useState('')
   const menuRef = useRef(null)
 
   useEffect(() => {
@@ -108,6 +109,7 @@ export default function DashboardPage() {
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profile) {
         setProfile(profile)
+        setSelectedState(profile.state || 'Alabama')
         await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
       }
       setLoading(false)
@@ -146,8 +148,9 @@ export default function DashboardPage() {
   const userPlan    = profile?.user_type === 'business' ? 'enterprise' : profile?.user_type === 'freelancer' ? 'pro' : 'personal'
   const planStatus  = profile?.plan_status
   const isActive    = planStatus === 'active' || planStatus === 'trialing' || !!profile?.stripe_customer_id
-  const state       = profile?.state
-  const stateGas    = state ? STATE_GAS[state] : null
+  const state          = profile?.state
+  const stateGas       = state ? STATE_GAS[state] : null
+  const selectedStateGas = selectedState ? STATE_GAS[selectedState] : null
   const myModules   = MODULES[userPlan] || MODULES.personal
 
   let daysLeft = null, onTrial = false
@@ -370,29 +373,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Action buttons */}
-              <div style={{display:'flex',gap:8,marginTop:20,flexWrap:'wrap'}}>
-                {[
-                  {label:'⛽ Gas tracker',   href:'/dashboard/gas',         primary:true },
-                  {label:'🛣️ Plan route',     href:'/dashboard/gas/route',   primary:false},
-                  {label:'🚗 Start trip',     href:'/dashboard/gas/trip',    primary:false},
-                  {label:'🗺️ Price map',      href:'/dashboard/gas',         primary:false},
-                ].map(a=>(
-                  <Link key={a.label} href={a.href} style={{
-                    padding:'9px 18px',
-                    borderRadius:100,
-                    fontSize:13,
-                    fontWeight:600,
-                    textDecoration:'none',
-                    transition:'all .2s',
-                    background:a.primary?'linear-gradient(135deg,#ff3b30,#ff6b35)':glass,
-                    color:a.primary?'#fff':ink,
-                    border:a.primary?'none':`0.5px solid ${glassBdr}`,
-                    backdropFilter:'blur(20px)',
-                    boxShadow:a.primary?'0 4px 14px rgba(255,59,48,0.35)':'none',
-                  }}>{a.label}</Link>
-                ))}
-              </div>
+
             </div>
 
             {/* Subscribe banner — only if not active */}

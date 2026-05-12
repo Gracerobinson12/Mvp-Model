@@ -119,6 +119,24 @@ export default function VehiclePage() {
   const [saved,     setSaved]     = useState(false)
   const [saving,    setSaving]    = useState(false)
 
+  // Load saved vehicle from Supabase
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: p } = await supabase.from('profiles')
+        .select('vehicle_make,vehicle_model,vehicle_year,fill_alert,stop_pref')
+        .eq('id', user.id).single()
+      if (!p) return
+      if (p.vehicle_make)  setMake(p.vehicle_make)
+      if (p.vehicle_model) setModel(p.vehicle_model)
+      if (p.vehicle_year)  setYear(p.vehicle_year)
+      if (p.fill_alert)    setFillAlert(p.fill_alert)
+      if (p.stop_pref)     setStopPref(p.stop_pref)
+    }
+    load()
+  }, [])
+
   const makes  = Object.keys(CAR_DB).sort()
   const models = make ? Object.keys(CAR_DB[make]).sort() : []
   const years  = (make && model) ? Object.keys(CAR_DB[make][model]).sort().reverse() : []
@@ -134,9 +152,14 @@ export default function VehiclePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         await supabase.from('profiles').update({
+          vehicle_make:     make,
+          vehicle_model:    model,
+          vehicle_year:     year,
           grade_preference: specs.grade,
           tank_size:        Math.round(specs.tank),
           miles_per_week:   Math.round(specs.mpg * 40),
+          fill_alert:       fillAlert,
+          stop_pref:        stopPref,
         }).eq('id', user.id)
       }
     } catch(e) {}

@@ -767,8 +767,77 @@ function GasTrackerPreview() {
 }
 
 
+function FoundingPopup({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  const CODE = 'FOUNDING100'
+
+  const copy = () => {
+    navigator.clipboard?.writeText(CODE).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:9990,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',padding:'0 16px 24px'}}>
+      <div style={{background:'rgba(255,255,255,.97)',backdropFilter:'blur(40px)',WebkitBackdropFilter:'blur(40px)',borderRadius:'28px 28px 20px 20px',padding:'22px 24px 24px',maxWidth:440,width:'100%',boxShadow:'0 -8px 40px rgba(0,0,0,.15)',animation:'slideUpPopup .4s cubic-bezier(.34,1.56,.64,1) both',fontFamily:"'DM Sans',system-ui,sans-serif",position:'relative'}}>
+        <button onClick={onClose} style={{position:'absolute',top:14,right:14,width:28,height:28,borderRadius:'50%',background:'rgba(0,0,0,.06)',border:'none',cursor:'pointer',fontSize:12,color:'rgba(26,26,46,.4)',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+
+        {/* Handle */}
+        <div style={{width:36,height:4,borderRadius:2,background:'rgba(0,0,0,.1)',margin:'0 auto 18px'}}/>
+
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+          <div style={{width:48,height:48,borderRadius:15,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0,boxShadow:'0 4px 16px rgba(255,59,48,.35)'}}>⛽</div>
+          <div>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:3}}>Founding Member Offer</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,letterSpacing:-.5,color:'#1a1a2e',lineHeight:1.1}}>$4.99/mo for your<br/>first 6 months</div>
+          </div>
+        </div>
+
+        <div style={{fontSize:13,color:'rgba(26,26,46,.55)',lineHeight:1.65,marginBottom:4}}>
+          Core Pass includes real-time gas prices, route finder, and trip mode. Use this code at signup — your rate is locked for 6 months.
+        </div>
+
+        {/* Code box */}
+        <div
+          onClick={copy}
+          style={{background:copied?'rgba(48,209,88,.08)':'rgba(255,59,48,.05)',border:`1.5px dashed ${copied?'rgba(48,209,88,.4)':'rgba(255,59,48,.35)'}`,borderRadius:16,padding:'14px',textAlign:'center',cursor:'pointer',transition:'all .2s',margin:'14px 0'}}>
+          <div style={{fontFamily:'monospace',fontSize:24,fontWeight:700,color:copied?'#30d158':'#ff3b30',letterSpacing:5}}>{CODE}</div>
+          <div style={{fontSize:11,color:copied?'#30d158':'rgba(26,26,46,.4)',marginTop:4,fontWeight:copied?700:400}}>
+            {copied ? '✓ Copied to clipboard!' : 'Tap to copy'}
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{width:'100%',padding:14,borderRadius:100,border:'none',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 16px rgba(255,59,48,.35)',fontFamily:"'DM Sans',sans-serif",marginBottom:10}}>
+          Start Free Trial → Apply Code at Signup
+        </button>
+        <button
+          onClick={onClose}
+          style={{width:'100%',padding:11,borderRadius:100,border:'0.5px solid rgba(0,0,0,.1)',background:'transparent',color:'rgba(26,26,46,.45)',fontSize:13,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+          No thanks
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function LandingPage() {
-  const [showModal, setShowModal] = useState(false)
+  const [showModal,  setShowModal]  = useState(false)
+  const [showPopup,  setShowPopup]  = useState(false)
+
+  useEffect(() => {
+    // Show founding popup after 3 seconds, once per session
+    const seen = sessionStorage.getItem('gc_popup_seen')
+    if (!seen) {
+      const t = setTimeout(() => {
+        setShowPopup(true)
+        sessionStorage.setItem('gc_popup_seen', '1')
+      }, 3000)
+      return () => clearTimeout(t)
+    }
+  }, [])
   return (
     <>
       <style>{`
@@ -780,6 +849,7 @@ function LandingPage() {
         body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.4}
         .bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 70% 50% at 15% 10%,rgba(255,59,48,0.08) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 85% 80%,rgba(255,100,50,0.06) 0%,transparent 55%),linear-gradient(160deg,#f5f4f9 0%,#eceaf2 40%,#f2f0f7 100%)}
         .page{position:relative;z-index:1;min-height:100vh}
+        @keyframes slideUpPopup{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
         @keyframes modalPop{from{opacity:0;transform:scale(.93) translateY(14px)}to{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes navSlide{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
