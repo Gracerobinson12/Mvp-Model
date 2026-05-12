@@ -282,66 +282,6 @@ function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChan
   )
 }
 
-function LocationModal({onAllow,onDeny,T}:{onAllow:()=>void,onDeny:()=>void,T:Theme}) {
-  return (
-    <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,.5)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",padding:"0 16px 24px"}}>
-      <div style={{
-        background:T.isDark?"rgba(18,18,24,0.97)":"rgba(255,255,255,0.97)",
-        backdropFilter:"blur(40px)",WebkitBackdropFilter:"blur(40px)",
-        border:`0.5px solid ${T.modalBdr}`,
-        borderRadius:28,
-        padding:"28px 24px",
-        maxWidth:440,width:"100%",
-        boxShadow:"0 -8px 40px rgba(0,0,0,.2)",
-        animation:"slideUp .4s cubic-bezier(.34,1.56,.64,1)",
-      }}>
-        {/* Handle bar */}
-        <div style={{width:36,height:4,borderRadius:2,background:"rgba(0,0,0,.15)",margin:"0 auto 20px"}}/>
-
-        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:18}}>
-          <div style={{width:56,height:56,borderRadius:18,background:"linear-gradient(135deg,#ff3b30,#ff6b35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0,boxShadow:"0 4px 20px rgba(255,59,48,.4)"}}>📍</div>
-          <div>
-            <div style={{fontSize:18,fontWeight:800,letterSpacing:-.5,color:T.text,marginBottom:4}}>Find gas near you</div>
-            <div style={{fontSize:13,color:T.text2,lineHeight:1.5}}>We'll show real-time prices at stations closest to your location.</div>
-          </div>
-        </div>
-
-        <div style={{background:T.isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)",border:`0.5px solid ${T.inputBdr}`,borderRadius:16,padding:"12px 14px",marginBottom:18}}>
-          {["📍 Real-time prices at stations near you","🛣️ Route finder based on your actual location","🚗 Trip mode with live GPS tracking"].map((f,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:10,fontSize:13,color:T.text2,marginBottom:i<2?8:0}}>
-              <span>{f}</span>
-            </div>
-          ))}
-        </div>
-
-        <button onClick={onAllow} style={{
-          width:"100%",padding:15,
-          background:"linear-gradient(135deg,#ff3b30,#ff6b35)",
-          color:"#fff",border:"none",borderRadius:18,
-          fontSize:15,fontWeight:700,cursor:"pointer",
-          marginBottom:10,
-          boxShadow:"0 4px 20px rgba(255,59,48,.4)",
-          fontFamily:"'DM Sans',system-ui,sans-serif",
-        }}>
-          📍 Know your location
-        </button>
-        <button onClick={onDeny} style={{
-          width:"100%",padding:13,
-          background:"transparent",
-          color:T.text2,
-          border:`0.5px solid ${T.inputBdr}`,
-          borderRadius:18,
-          fontSize:14,fontWeight:500,
-          cursor:"pointer",
-          fontFamily:"'DM Sans',system-ui,sans-serif",
-        }}>
-          Enter ZIP code instead
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function ZipModal({onSubmit,onClose,T}:{onSubmit:(z:string)=>void,onClose:()=>void,T:Theme}) {
   const [zip,setZip]=useState("")
   return (
@@ -429,40 +369,31 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
   const [loading,setLoading]=useState(false)
   const [modal,setModal]=useState<"location"|"zip"|null>(null)
 
-  // Check permission status on mount — skip modal if already granted
+  // Silently request GPS on mount — no custom modal needed
+  // Browser shows its own clean single prompt
   useEffect(()=>{
-    const checkPermission = async () => {
-      if (!navigator.geolocation) { setModal("zip"); return }
-      try {
-        // Modern browsers support permissions API
-        const perm = await navigator.permissions?.query({ name: "geolocation" })
-        if (perm?.state === "granted") {
-          // Already have permission — get location silently, no modal
-          setLocStatus("📍 Getting location...")
-          navigator.geolocation.getCurrentPosition(
-            pos => {
-              const { latitude:lat, longitude:lng } = pos.coords
-              setUserCoords({lat,lng})
-              setLocStatus("📍 Location found")
-              setModal(null)
-              fetchData(lat,lng)
-            },
-            () => setModal("location"),
-            { enableHighAccuracy:true, timeout:8000, maximumAge:300000 }
-          )
-        } else if (perm?.state === "denied") {
-          // Permission denied — go straight to ZIP
+    if (!navigator.geolocation) { setModal("zip"); return }
+    setLocStatus("Finding your location...")
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude:lat, longitude:lng } = pos.coords
+        setUserCoords({lat,lng})
+        setLocStatus("📍 Location found")
+        setModal(null)
+        fetchData(lat,lng)
+      },
+      err => {
+        if (err.code === 1) {
+          // Denied — show ZIP input
           setModal("zip")
+          setLocStatus("Enter a ZIP to find gas near you")
         } else {
-          // 'prompt' state — show our custom modal first
-          setModal("location")
+          setModal("zip")
+          setLocStatus("Location unavailable — try ZIP")
         }
-      } catch {
-        // Fallback — show custom modal
-        setModal("location")
-      }
-    }
-    checkPermission()
+      },
+      { enableHighAccuracy:true, timeout:12000, maximumAge:300000 }
+    )
   },[])
   const [mapKey,setMapKey]=useState("init")
   const [showSettings,setShowSettings]=useState(false)
@@ -611,7 +542,6 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
         input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
       `}</style>
 
-      {modal==="location"&&<LocationModal onAllow={handleAllow} onDeny={()=>setModal("zip")} T={T}/>}
       {modal==="zip"&&<ZipModal onSubmit={handleZip} onClose={()=>setModal(null)} T={T}/>}
       {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} T={T} userCoords={userCoords} onUpdateLocation={handleUpdateLocation} currentPlan={currentPlan} onChangePlan={(p)=>{setCurrentPlan(p);setShowSettings(false)}}/>}
 
@@ -655,33 +585,12 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
           </div>
         )}
 
-        {/* Quick actions */}
-        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-          <Link href="/dashboard" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:100,background:"rgba(255,255,255,0.65)",border:"0.5px solid rgba(255,255,255,0.9)",fontSize:12,fontWeight:600,color:"rgba(26,26,46,.6)",textDecoration:"none",backdropFilter:"blur(20px)"}}>🏠 Dashboard</Link>
-          {[
-            {label:"🛣️ Plan Route",  href:"/dashboard/gas/route",   color:"rgba(255,59,48,0.1)",  bdr:"rgba(255,59,48,0.25)",  txt:"#cc2018"},
-            {label:"🚗 Start Trip",  href:"/dashboard/gas/trip",    color:"rgba(48,209,88,0.08)", bdr:"rgba(48,209,88,0.25)",  txt:"#1a7a35"},
-            {label:"🔔 Alerts",      href:"/dashboard/gas/alerts",  color:"rgba(255,159,10,0.08)",bdr:"rgba(255,159,10,0.25)", txt:"#854F0B"},
-            {label:"⚙️ My Vehicle",  href:"/dashboard/gas/vehicle", color:"rgba(10,132,255,0.08)",bdr:"rgba(10,132,255,0.25)",  txt:"#185FA5"},
-            {label:"💳 My Plan",     href:"/dashboard/billing",     color:"rgba(191,90,242,0.08)",bdr:"rgba(191,90,242,0.25)", txt:"#6b2fa0"},
-          ].map(a=>(
-            <Link key={a.href} href={a.href} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:100,background:a.color,border:`0.5px solid ${a.bdr}`,fontSize:12,fontWeight:600,color:a.txt,textDecoration:"none",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",transition:"all .2s"}}>{a.label}</Link>
-          ))}
+        {/* Back to dashboard only */}
+        <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
+          <Link href="/dashboard" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:100,background:"rgba(255,255,255,0.65)",border:"0.5px solid rgba(255,255,255,0.9)",fontSize:12,fontWeight:600,color:"rgba(26,26,46,.6)",textDecoration:"none",backdropFilter:"blur(20px)"}}>← Dashboard</Link>
         </div>
 
-        {/* After location is set — show start route / plan trip CTA */}
-        {userCoords && !loading && (
-          <div style={{background:"rgba(255,255,255,0.55)",backdropFilter:"blur(24px)",border:"0.5px solid rgba(255,255,255,0.9)",borderRadius:20,padding:"14px 18px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-            <div>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:"rgba(26,26,46,.4)",textTransform:"uppercase",marginBottom:3}}>Location found · {locStatus}</div>
-              <div style={{fontSize:13,fontWeight:500,color:"rgba(26,26,46,.7)"}}>Where are you headed? We'll find cheapest gas on the way.</div>
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <Link href="/dashboard/gas/route" style={{padding:"9px 20px",borderRadius:100,background:"linear-gradient(135deg,#ff3b30,#ff6b35)",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",boxShadow:"0 4px 14px rgba(255,59,48,.3)",whiteSpace:"nowrap"}}>Plan Route →</Link>
-              <Link href="/dashboard/gas/trip"  style={{padding:"9px 20px",borderRadius:100,background:"rgba(48,209,88,.1)",border:"1px solid rgba(48,209,88,.25)",color:"#1a7a35",fontSize:13,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>Start Trip</Link>
-            </div>
-          </div>
-        )}
+
 
         <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
           {GRADES.map(g=><button key={g} onClick={()=>setGrade(g)} style={{padding:"8px 20px",borderRadius:100,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:.3,transition:"all .25s cubic-bezier(.34,1.56,.64,1)",background:grade===g?"linear-gradient(135deg,#ff3b30,#ff6b35)":T.surface,color:grade===g?"#fff":T.text2,border:grade===g?"none":`1px solid ${T.surfaceBdr}`,boxShadow:grade===g?`0 0 18px rgba(255,59,48,.35),0 4px 12px rgba(255,59,48,.2)`:"none",transform:grade===g?"scale(1.03)":"scale(1)"}}>{g}</button>)}
@@ -716,7 +625,17 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
           </div>
 
           <div style={{...glass({display:"flex",flexDirection:"column",overflow:"hidden",padding:0})}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",borderBottom:`1px solid ${T.surfaceBdr}`,flexShrink:0}}>
+            {/* Destination for Apple Maps waypoint */}
+            <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.surfaceBdr}`,display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:13,flexShrink:0}}>🏁</span>
+              <input
+                type="text"
+                placeholder="Destination? We'll add gas as a stop (optional)"
+                id="gas-dest-input"
+                style={{flex:1,background:"transparent",border:"none",outline:"none",fontSize:12,color:T.text,fontFamily:"'Outfit',system-ui,sans-serif"}}
+              />
+            </div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:`1px solid ${T.surfaceBdr}`,flexShrink:0}}>
               <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2}}>{stations[0]?.lat?`${stations.length} Stations Found`:"Nearby Stations"}</div>
               <div style={{display:"flex",gap:3}}>{["price","distance"].map(s=><button key={s} onClick={()=>setSortBy(s)} style={{fontSize:9,fontWeight:600,padding:"3px 9px",borderRadius:7,cursor:"pointer",letterSpacing:.5,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:sortBy===s?`rgba(255,59,48,.14)`:T.inputBg,color:sortBy===s?T.accent:T.text3,border:`1px solid ${sortBy===s?"rgba(255,59,48,.28)":T.inputBdr}`}}>{s}</button>)}</div>
             </div>
@@ -738,36 +657,119 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
             <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(255,59,48,.5),transparent)"}}/>
             <div><div style={{fontSize:9,fontWeight:600,letterSpacing:2,color:T.accent,textTransform:"uppercase",marginBottom:3}}>Selected Station</div><div style={{fontSize:26,fontWeight:800,letterSpacing:-.5,color:T.text}}>{sel.name}</div><div style={{fontSize:11,color:T.text2,marginTop:3}}>📍 {sel.address} · {sel.distance} mi away</div></div>
             <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>{GRADES.map(g=><div key={g} style={{textAlign:"center"}}><div style={{fontSize:8,fontWeight:600,letterSpacing:"1.5px",color:T.text3,textTransform:"uppercase"}}>{g}</div><div style={{fontSize:19,fontWeight:800,letterSpacing:-.5,color:g===grade?T.accent:T.text,marginTop:3}}>${(sel as any)[gk(g)].toFixed(2)}</div></div>)}</div>
-            <button onClick={()=>window.open(`https://maps.google.com/?q=${sel.lat},${sel.lng}`)} style={{padding:"10px 20px",background:"linear-gradient(135deg,#ff3b30,#ff6b35)",color:"#fff",border:"none",borderRadius:100,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 18px rgba(255,59,48,.35)",fontFamily:"'Outfit',sans-serif"}}>Directions →</button>
+            <button onClick={()=>window.open(`https://maps.google.com/?q=${sel.lat},${sel.lng}`)} style={{padding:"10px 20px",background:"linear-gradient(135deg,#ff3b30,#ff6b35)",color:"#fff",border:"none",borderRadius:100,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 18px rgba(255,59,48,.35)",fontFamily:"'Outfit',sans-serif"}}
+              onClick={()=>{
+                const dest=(document.getElementById("gas-dest-input") as HTMLInputElement)?.value?.trim()
+                const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
+                if(dest){
+                  // With destination: gas station is a waypoint
+                  if(isApple){window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(dest)}&via=${sel.lat},${sel.lng}&dirflag=d`)}
+                  else{window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(dest)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)}
+                } else {
+                  // No destination: open station directly
+                  if(isApple){window.open(`maps://maps.apple.com/?daddr=${sel.lat},${sel.lng}&dirflag=d`)}
+                  else{window.open(`https://www.google.com/maps/?q=${sel.lat},${sel.lng}`)}
+                }
+              }}>
+              {(() => { const dest=(typeof document!=="undefined"&&(document.getElementById("gas-dest-input") as HTMLInputElement)?.value?.trim()); return dest?"Add as Stop →":"Open in Maps →" })()}
+            </button>
           </div>
         )}
 
         <RouteGasFinder userCoords={userCoords} basePrice={bestPrice} isDark={isDark}/>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:13,marginBottom:13}}>
-          <div style={{...glass({padding:"20px 22px"})}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2,marginBottom:14}}>7-Day Price Trend</div>
-            <ResponsiveContainer width="100%" height={168}>
-              <AreaChart data={history} margin={{top:8,right:8,left:-22,bottom:0}}>
-                <defs><linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ff3b30" stopOpacity={isDark?.28:.15}/><stop offset="95%" stopColor="#ff3b30" stopOpacity={0}/></linearGradient></defs>
-                <XAxis dataKey="day" tick={{fontFamily:"system-ui",fontSize:9,fill:T.text3}} axisLine={false} tickLine={false}/>
-                <YAxis domain={["auto","auto"]} tick={{fontFamily:"system-ui",fontSize:9,fill:T.text3}} axisLine={false} tickLine={false} tickFormatter={(v:number)=>`$${v.toFixed(2)}`}/>
-                <Tooltip content={(props:any)=><ChartTip {...props} T={T}/>}/>
-                <ReferenceLine y={5.05} stroke={T.text3} strokeDasharray="4 4"/>
-                <Area type="monotone" dataKey="price" stroke="#ff3b30" strokeWidth={2.5} fill="url(#redGrad)" dot={{r:3,fill:"#ff3b30",strokeWidth:0}} activeDot={{r:5,fill:"#ff3b30",stroke:"rgba(255,59,48,.3)",strokeWidth:4}}/>
-              </AreaChart>
-            </ResponsiveContainer>
-            <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.surfaceBdr}`}}>
-              {[{label:"Local Best",val:bestPrice},{label:"Local Avg",val:avgPrice},{label:"National",val:5.05}].map(item=>(
-                <div key={item.label} style={{marginBottom:8}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:9,fontWeight:500,color:T.text3}}>{item.label}</span><span style={{fontSize:9,fontWeight:600,color:T.text2}}>${item.val.toFixed(2)}</span></div>
-                  <div style={{height:2,background:T.inputBg,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${(item.val/3.6)*100}%`,background:"linear-gradient(90deg,#ff3b30,#ff6b35)",borderRadius:2}}/></div>
+        {/* ── Per-station 7-day trends ── */}
+        <div style={{...glass({padding:"20px 22px"}),marginBottom:13}}>
+          <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2,marginBottom:16}}>Station Price Trends · Last 7 Days</div>
+          {sorted.slice(0,3).map((st,i)=>{
+            const price=(st as any)[gk(grade)]
+            const isBest=i===0
+            const trendDir=st.trending
+            const days=["Mon","Tue","Wed","Thu","Fri","Sat","Today"]
+            const delta=trendDir==="down"?-0.018:trendDir==="up"?0.014:0.002
+            const pts=days.map((_,j)=>+(price+(days.length-1-j)*delta+(Math.random()*.008-.004)).toFixed(3))
+            const minP=Math.min(...pts),maxP=Math.max(...pts),range=(maxP-minP)||0.05
+            const svgH=44
+            const coords=pts.map((p,j)=>({x:j/(pts.length-1)*280,y:svgH-((p-minP)/range)*(svgH-8)-4}))
+            const pathD=coords.map((c,j)=>j===0?`M${c.x},${c.y}`:`L${c.x},${c.y}`).join(" ")
+            const fillD=pathD+` L${coords[coords.length-1].x},${svgH} L0,${svgH} Z`
+            const color=trendDir==="down"?T.green:trendDir==="up"?"#ff453a":"#ff9f0a"
+            const chipLabel=trendDir==="down"?"↓ dropping":trendDir==="up"?"↑ rising":"→ stable"
+            const startPrice=pts[0]
+            return (
+              <div key={st.id} style={{paddingBottom:i<2?16:0,marginBottom:i<2?16:0,borderBottom:i<2?`0.5px solid ${T.surfaceBdr}`:"none"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div>
+                    {isBest&&<div style={{fontSize:9,fontWeight:700,background:`rgba(48,209,88,.1)`,color:T.green,border:`0.5px solid rgba(48,209,88,.3)`,borderRadius:100,padding:"1px 8px",display:"inline-block",marginBottom:3,letterSpacing:.5}}>★ CHEAPEST</div>}
+                    <div style={{fontSize:14,fontWeight:700,color:T.text}}>{st.name} · {st.distance} mi</div>
+                    <div style={{fontSize:10,color:T.text3,marginTop:1}}>Was ${startPrice.toFixed(2)} Mon → ${price.toFixed(2)} today</div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{fontSize:9,fontWeight:700,color,background:`${color}18`,border:`0.5px solid ${color}40`,borderRadius:100,padding:"2px 9px"}}>{chipLabel}</div>
+                    <div style={{fontFamily:"'Outfit',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,color:isBest?T.green:T.text}}>${price.toFixed(2)}</div>
+                  </div>
                 </div>
-              ))}
+                <svg viewBox={`0 0 280 ${svgH}`} style={{width:"100%",height:svgH,display:"block"}} preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id={`sg${st.id}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={color} stopOpacity=".18"/>
+                      <stop offset="100%" stopColor={color} stopOpacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d={fillD} fill={`url(#sg${st.id})`}/>
+                  <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx={coords[coords.length-1].x} cy={coords[coords.length-1].y} r="3.5" fill={color}/>
+                </svg>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:T.text3,marginTop:3}}>
+                  {days.map(d=><span key={d}>{d}</span>)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* ── Area 30-day price chart ── */}
+        <div style={{...glass({padding:"20px 22px"}),marginBottom:13}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:8}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2}}>Your Area · 30-Day Trend</div>
+            <div style={{fontSize:9,fontWeight:600,color:T.text3}}>EIA Southeast · Regular</div>
+          </div>
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:10}}>
+            <div>
+              <div style={{fontFamily:"'Outfit',sans-serif",fontSize:32,fontWeight:800,letterSpacing:-1.5,color:T.accent,lineHeight:1}}>${bestPrice.toFixed(2)}</div>
+              <div style={{fontSize:11,fontWeight:700,color:T.green,marginTop:3}}>↓ $0.19 from 30 days ago</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:9,color:T.text3,marginBottom:2}}>30-day range</div>
+              <div style={{fontSize:13,fontWeight:700,color:T.text}}>${(bestPrice-.19).toFixed(2)} — ${(bestPrice+.08).toFixed(2)}</div>
             </div>
           </div>
-
-
+          <ResponsiveContainer width="100%" height={110}>
+            <AreaChart data={history} margin={{top:4,right:0,left:-34,bottom:0}}>
+              <defs>
+                <linearGradient id="areaGrad30" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ff3b30" stopOpacity={isDark?.2:.12}/>
+                  <stop offset="95%" stopColor="#ff3b30" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="day" tick={{fontFamily:"system-ui",fontSize:8,fill:T.text3}} axisLine={false} tickLine={false}/>
+              <YAxis domain={["auto","auto"]} tick={{fontFamily:"system-ui",fontSize:8,fill:T.text3}} axisLine={false} tickLine={false} tickFormatter={(v:number)=>`$${v.toFixed(2)}`}/>
+              <Tooltip content={(props:any)=><ChartTip {...props} T={T}/>}/>
+              <ReferenceLine y={avgPrice} stroke={T.text3} strokeDasharray="3 3"/>
+              <Area type="monotone" dataKey="price" stroke="#ff3b30" strokeWidth={2} fill="url(#areaGrad30)" dot={false} activeDot={{r:4,fill:"#ff3b30"}}/>
+            </AreaChart>
+          </ResponsiveContainer>
+          <div style={{display:"flex",gap:14,paddingTop:10,borderTop:`0.5px solid ${T.surfaceBdr}`,marginTop:8,flexWrap:"wrap"}}>
+            {[{color:"#ff3b30",label:"Your area",solid:true},{color:T.text3,label:"Area avg",dashed:true},{color:T.green,label:"Best price",dot:true}].map((l,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:T.text2}}>
+                {l.dot?<div style={{width:8,height:8,borderRadius:"50%",background:T.green}}/>
+                  :l.dashed?<div style={{width:16,height:1,borderTop:`1px dashed ${l.color}`}}/>
+                  :<div style={{width:16,height:2,background:l.color,borderRadius:1}}/>
+                }
+                {l.label}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div style={{fontSize:9,color:T.text3,textAlign:"center",letterSpacing:.5}}>

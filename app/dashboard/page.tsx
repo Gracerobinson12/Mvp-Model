@@ -343,35 +343,52 @@ export default function DashboardPage() {
               {/* Subtle top line */}
               <div style={{position:'absolute',top:0,left:0,right:0,height:1.5,background:'linear-gradient(90deg,transparent,rgba(255,59,48,0.5),transparent)'}}/>
 
-              <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:16}}>
+              {/* Option 2 hero — greeting left, price card right */}
+              <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:16,position:'relative',zIndex:1}}>
                 <div>
-                  <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:ink3,textTransform:'uppercase',marginBottom:8}}>{greeting}</div>
-                  <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:'clamp(28px,4vw,44px)',fontWeight:900,letterSpacing:-2,color:ink,lineHeight:1,marginBottom:6}}>
-                    Welcome back,<br/><span style={{color:'#ff3b30'}}>{displayName}</span> 👋
-                  </h1>
-                  {state && (
-                    <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(255,59,48,0.08)',border:'0.5px solid rgba(255,59,48,0.2)',borderRadius:100,padding:'3px 12px',fontSize:12,fontWeight:600,color:'#cc2018',marginTop:8}}>
-                      📍 {state}
-                    </div>
-                  )}
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:ink3,textTransform:'uppercase',marginBottom:6}}>{greeting}{profile?.first_name ? `, ${profile.first_name}` : ''}</div>
+
+                  {/* State dropdown */}
+                  <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'rgba(255,59,48,0.06)',border:'0.5px solid rgba(255,59,48,0.2)',borderRadius:100,padding:'6px 8px 6px 12px',marginBottom:12}}>
+                    <span style={{fontSize:13}}>📍</span>
+                    <select
+                      value={selectedState}
+                      onChange={e=>{
+                        setSelectedState(e.target.value)
+                        supabase.from('profiles').update({state:e.target.value}).eq('id',user?.id).then(()=>{})
+                      }}
+                      style={{background:'none',border:'none',outline:'none',fontSize:13,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",padding:0,appearance:'none',WebkitAppearance:'none'}}>
+                      {['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'].map(s=>(
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <span style={{fontSize:10,color:'#cc2018',opacity:.7}}>▾</span>
+                  </div>
+
+                  <div style={{fontSize:13,color:ink2,lineHeight:1.7}}>
+                    Your gas intelligence is ready.<br/>Prices updated weekly via EIA.gov.
+                  </div>
                 </div>
 
-                {stateGas && (
-                  <div style={{textAlign:'right'}}>
-                    <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:ink3,textTransform:'uppercase',marginBottom:4}}>{state} avg gas</div>
-                    <div style={{fontFamily:"'Sora',sans-serif",fontSize:52,fontWeight:900,letterSpacing:-3,color:'#ff3b30',lineHeight:0.9}}>${stateGas.avg.toFixed(2)}</div>
-                    <div style={{fontSize:12,fontWeight:700,marginTop:6,color:stateGas.trend==='↓'?'#30d158':stateGas.trend==='↑'?'#ff453a':ink3}}>
-                      {stateGas.trend} {stateGas.change} this week · EIA.gov
+                {/* Price card box */}
+                {selectedStateGas ? (
+                  <div style={{background:'rgba(255,59,48,0.08)',border:'0.5px solid rgba(255,59,48,0.2)',borderRadius:18,padding:'14px 20px',textAlign:'center',minWidth:160,flexShrink:0}}>
+                    <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(255,59,48,.6)',textTransform:'uppercase',marginBottom:6}}>{selectedState} avg gas</div>
+                    <div style={{fontFamily:"'Sora',sans-serif",fontSize:42,fontWeight:900,letterSpacing:-2.5,color:'#ff3b30',lineHeight:1}}>${selectedStateGas.avg.toFixed(2)}</div>
+                    <div style={{fontSize:11,fontWeight:700,marginTop:6,color:selectedStateGas.trend==='↓'?'#30d158':selectedStateGas.trend==='↑'?'#ff453a':ink3}}>
+                      {selectedStateGas.trend} {selectedStateGas.change} this week
                     </div>
+                    <div style={{fontSize:9,color:ink3,marginTop:2}}>Regular · EIA.gov</div>
                   </div>
-                )}
-                {!stateGas && (
-                  <div style={{textAlign:'right',opacity:.4}}>
-                    <div style={{fontSize:12,color:ink3}}>Add your state to see</div>
-                    <div style={{fontSize:12,color:ink3}}>local gas prices here</div>
+                ) : (
+                  <div style={{background:'rgba(255,59,48,0.05)',border:'0.5px solid rgba(255,59,48,0.12)',borderRadius:18,padding:'14px 20px',textAlign:'center',minWidth:160,opacity:.6}}>
+                    <div style={{fontSize:12,color:ink3}}>Select your state</div>
                   </div>
                 )}
               </div>
+
+              <div style={{height:'0.5px',background:sepColor,margin:'16px 0',position:'relative',zIndex:1}}/>
+              <div style={{fontSize:12,color:ink3,position:'relative',zIndex:1}}>Gratia Core · Business Intelligence Agency</div>
 
 
             </div>
