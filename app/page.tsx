@@ -834,7 +834,7 @@ function LandingPage() {
       const t = setTimeout(() => {
         setShowPopup(true)
         sessionStorage.setItem('gc_popup_seen', '1')
-      }, 3000)
+      }, 2000)
       return () => clearTimeout(t)
     }
   }, [])
