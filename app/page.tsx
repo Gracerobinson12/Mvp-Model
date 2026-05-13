@@ -1067,7 +1067,7 @@ function LandingPage() {
           <div className="cta-card">
             <div className="section-label">Get Started Today</div>
             <h2>Your intelligence<br/><span>starts here</span></h2>
-            <p>Start with gas intelligence. 7-day free trial. $4.99/mo after trial. Cancel anytime.</p>
+            <p>Start with gas intelligence. 7-day free trial. $9.99/mo after trial. Cancel anytime.</p>
             <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
               <button onClick={() => setShowModal(true)} className="btn-primary" style={{fontSize:16,padding:"16px 36px",border:'none'}}>Start Free Trial →</button>
               <Link href="/login" className="btn-secondary" style={{fontSize:16,padding:"16px 28px"}}>Log In</Link>

@@ -17,7 +17,7 @@ const PLANS = [
   {
     id: 'core',
     name: 'Core',
-    price: 4.99,
+    price: 9.99,
     color: '#ff3b30',
     gradient: 'linear-gradient(135deg,#ff3b30,#ff6b35)',
     live: true,
