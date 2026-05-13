@@ -967,7 +967,7 @@ function LandingPage() {
             <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
             <Link href="/pricing" className="btn-secondary">View Plans</Link>
           </div>
-          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>Card required after trial · $4.99/mo · Cancel anytime</div>
+          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>Card required after trial · $9.99/mo · Cancel anytime</div>
           <div className="hero-trust">
             <span className="trust-item">For Drivers</span><div className="trust-dot"/>
             <span className="trust-item">For Freelancers</span><div className="trust-dot"/>
