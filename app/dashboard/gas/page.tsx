@@ -554,7 +554,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-              <Link href="/" style={{fontSize:11,color:T.text3,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>← Back</Link>
+              <Link href="/dashboard" style={{fontSize:11,color:T.text3,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>← Dashboard</Link>
             </div>
             <div style={{fontSize:10,fontWeight:600,letterSpacing:"2.5px",color:T.accent,textTransform:"uppercase",marginBottom:4}}>⛽ Gas Tracker · Fuel Intelligence</div>
             <div style={{fontFamily:"'Sora',sans-serif",fontSize:40,fontWeight:900,letterSpacing:-2,lineHeight:1}}>GAS <span style={{color:T.accent}}>PRICES</span></div>
@@ -1005,8 +1005,8 @@ function SubscribeScreen() {
           </p>
         </div>
 
-        <button onClick={()=>router.push('/')} style={{marginTop:20,background:'none',border:'none',color:'rgba(26,26,46,.35)',fontSize:12,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-          ← Back to home
+        <button onClick={()=>router.push('/dashboard')} style={{marginTop:20,background:'none',border:'none',color:'rgba(26,26,46,.35)',fontSize:12,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+          ← Back to dashboard
         </button>
       </div>
     </>

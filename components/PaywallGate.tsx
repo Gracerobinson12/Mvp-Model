@@ -18,7 +18,7 @@ export function usePaywall(planRequired: 'driver' | 'freelancer' | 'business' = 
   useEffect(() => {
     const check = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+      if (!user) { router.push('/'); return }
       setUser(user)
 
       const { data: profile } = await supabase
@@ -41,7 +41,9 @@ export function usePaywall(planRequired: 'driver' | 'freelancer' | 'business' = 
 
       // ── KEY FIX: during trial = full access to everything ──
       // Only check plan level if trial is over
-      const paidActive = profile?.plan_status === 'active' || profile?.plan_status === 'trialing'
+      const paidActive = profile?.plan_status === 'active' 
+        || profile?.plan_status === 'trialing'
+        || (!!profile?.stripe_customer_id && profile?.plan_status !== 'canceled' && profile?.plan_status !== 'taste')
       const planHierarchy: Record<string, number> = { driver:1, freelancer:2, business:3, free:0 }
       const requiredLevel = planHierarchy[planRequired] || 1
       const userLevel     = planHierarchy[profile?.plan || 'free'] || 0
@@ -102,7 +104,7 @@ export function PaywallScreen({ planRequired = 'driver' }: { planRequired?: stri
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+      if (!user) { router.push('/'); return }
       const { data: profile } = await supabase.from('profiles').select('user_type').eq('id', user.id).single()
       const res = await fetch('/api/create-checkout', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -230,7 +232,7 @@ export function TasteTimer({ onExpire }: { onExpire: () => void }) {
 
       <div style={{flex:1}}>
         <div style={{fontSize:13,fontWeight:700,color:'#fff',marginBottom:2}}>
-          {urgent ? '⚡ Preview ending soon!' : '⛽ Free preview — enjoy GratIA Core'}
+          {urgent ? '⚡ Preview ending soon!' : '⛽ Free preview — enjoy Gratia Core'}
         </div>
         <div style={{fontSize:11,color:'rgba(255,255,255,.6)'}}>
           {urgent ? 'Subscribe to keep full access' : `${seconds}s left · No card required to explore`}
