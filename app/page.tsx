@@ -134,7 +134,7 @@ function ComingSoonGate() {
         </div>
 
         <div style={{marginTop:32,fontSize:12,color:'rgba(255,255,255,.2)',textAlign:'center'}}>
-          © 2025 Gratia Core LLC · Business Intelligence Agency
+          © 2026 Gratia Core Enterprise LLC · Business Intelligence Agency
         </div>
       </div>
     </>
@@ -283,7 +283,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
         {step === 'gate' && <>
           <div style={{display:'flex',justifyContent:'center',marginBottom:20}}><GCIcon size={52}/></div>
           <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,textAlign:'center',color:'#1a1a2e',marginBottom:8}}>Start your free trial</h2>
-          <p style={{fontSize:14,color:'rgba(26,26,46,.55)',textAlign:'center',lineHeight:1.65,marginBottom:22}}>7-day free trial · $4.99/mo after trial · Card required · Cancel anytime</p>
+          <p style={{fontSize:14,color:'rgba(26,26,46,.55)',textAlign:'center',lineHeight:1.65,marginBottom:22}}>7-day free trial · Card required · Cancel anytime</p>
           <div style={{background:'#f8f7fc',borderRadius:14,padding:'14px 16px',marginBottom:22}}>
             {[
               {icon:'📍',text:'Real-time gas prices at stations near you',live:true},
@@ -334,7 +334,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
                     <span style={{fontSize:9,fontWeight:700,color:'#1a7a35',background:'rgba(48,209,88,.1)',border:'1px solid rgba(48,209,88,.2)',borderRadius:100,padding:'1px 7px'}}>Live Now</span>
                   </div>
                   <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Everyday drivers and creators</div>
-                  <div style={{fontSize:10,fontWeight:700,color:'#ff3b30'}}>Core Pass · $4.99/mo</div>
+                  <div style={{fontSize:10,fontWeight:700,color:'#ff3b30'}}>Core Pass · </div>
                 </div>
                 <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='driver'?'#ff3b30':'rgba(0,0,0,.15)'}`,background:userCat==='driver'?'#ff3b30':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {userCat==='driver' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
@@ -362,7 +362,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
                     <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.4)',background:'rgba(0,0,0,.05)',border:'1px solid rgba(0,0,0,.08)',borderRadius:100,padding:'1px 7px'}}>Coming Soon</span>
                   </div>
                   <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Freelancers, gig workers, contractors</div>
-                  <div style={{fontSize:10,fontWeight:700,color:'#0a84ff'}}>Pro Pass · $9.99/mo</div>
+                  <div style={{fontSize:10,fontWeight:700,color:'#0a84ff'}}>Pro Pass · </div>
                 </div>
                 <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='freelancer'?'#0a84ff':'rgba(0,0,0,.15)'}`,background:userCat==='freelancer'?'#0a84ff':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {userCat==='freelancer' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
@@ -959,7 +959,7 @@ function LandingPage() {
         <section className="hero">
           <div className="hero-badge">
             <div className="hero-badge-dot">⚡</div>
-            Now in Early Access · First 20 members get 20 days free
+            Now in Early Access · 
           </div>
           <h1>Business<br/><span className="accent">intelligence</span><br/><span className="light-word">at your fingertips</span></h1>
           <p className="hero-sub">Real-time gas prices, regulatory updates, tariff tracking, and tax deductions — all in one platform built for gig workers, freelancers, and growing businesses.</p>
@@ -967,7 +967,7 @@ function LandingPage() {
             <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
             <Link href="/pricing" className="btn-secondary">View Plans</Link>
           </div>
-          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>Card required after trial · $9.99/mo · Cancel anytime</div>
+          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>Card required for trial and subscription · $9.99/mo · Cancel anytime</div>
           <div className="hero-trust">
             <span className="trust-item">For Drivers</span><div className="trust-dot"/>
             <span className="trust-item">For Freelancers</span><div className="trust-dot"/>
@@ -1072,7 +1072,7 @@ function LandingPage() {
               <button onClick={() => setShowModal(true)} className="btn-primary" style={{fontSize:16,padding:"16px 36px",border:'none'}}>Start Free Trial →</button>
               <Link href="/login" className="btn-secondary" style={{fontSize:16,padding:"16px 28px"}}>Log In</Link>
             </div>
-            <div style={{marginTop:16,fontSize:12,color:"var(--ink-3)"}}>No credit card · 7-day free trial · $4.99/mo after · Cancel anytime</div>
+            <div style={{marginTop:16,fontSize:12,color:"var(--ink-3)"}}>· 7-day free trial · $9.99/mo after · Cancel anytime</div>
           </div>
         </section>
 
@@ -1087,7 +1087,7 @@ function LandingPage() {
             <a href="/about" className="footer-link">About</a>
             <a href="/contact" className="footer-link">Contact</a>
           </div>
-          <div className="footer-copy">© 2025 Gratia Core LLC. All rights reserved.</div>
+          <div className="footer-copy">© 2026 Gratia Core Enterprise LLC. All rights reserved.</div>
         </footer>
       </div>
     </>

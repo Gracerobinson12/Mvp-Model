@@ -34,7 +34,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 19.99,
+    price: ,
     color: '#0a84ff',
     gradient: 'linear-gradient(135deg,#0a84ff,#30a0ff)',
     live: false,
@@ -51,7 +51,7 @@ const PLANS = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 79.99,
+    price: ,
     color: '#bf5af2',
     gradient: 'linear-gradient(135deg,#bf5af2,#da8fff)',
     live: false,
