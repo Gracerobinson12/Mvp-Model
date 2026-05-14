@@ -17,7 +17,7 @@ const PLANS = [
   {
     id: 'core',
     name: 'Core',
-    price: 4.99,
+    price: 9.99,
     showPrice: true,
     color: '#ff3b30',
     gradient: 'linear-gradient(135deg,#ff3b30,#ff6b35)',
@@ -132,6 +132,19 @@ export default function PricingPage() {
             Start with gas intelligence today. Pro and Enterprise modules launching soon — Core founding members get priority access and locked pricing.
           </p>
         </div>
+        
+        {/* Founding member callout */}
+        <div style={{background:'rgba(255,59,48,0.06)',border:'0.5px solid rgba(255,59,48,0.2)',borderRadius:24,padding:'24px 28px',marginBottom:32,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,animation:'fadeUp .5s ease .3s both'}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:6}}>🎁 Founding Member Offer</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:4}}>Lock in $4.99/mo for 6 months</div>
+            <div style={{fontSize:13,color:'rgba(26,26,46,.55)'}}>Use code <strong style={{fontFamily:'monospace',fontSize:15,color:'#ff3b30',letterSpacing:2}}>FOUNDING100</strong> at signup · Rate locked even after we raise prices</div>
+          </div>
+          <button onClick={handleStart}
+            style={{padding:'12px 28px',borderRadius:100,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 4px 16px rgba(255,59,48,.35)',whiteSpace:'nowrap'}}>
+            Claim Founding Price →
+          </button>
+        </div>
 
         {/* Plans */}
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:16,marginBottom:40}}>
@@ -197,18 +210,7 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Founding member callout */}
-        <div style={{background:'rgba(255,59,48,0.06)',border:'0.5px solid rgba(255,59,48,0.2)',borderRadius:24,padding:'24px 28px',marginBottom:32,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,animation:'fadeUp .5s ease .3s both'}}>
-          <div>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:6}}>🎁 Founding Member Offer</div>
-            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:4}}>Lock in $4.99/mo for 6 months</div>
-            <div style={{fontSize:13,color:'rgba(26,26,46,.55)'}}>Use code <strong style={{fontFamily:'monospace',fontSize:15,color:'#ff3b30',letterSpacing:2}}>FOUNDING100</strong> at signup · Rate locked even after we raise prices</div>
-          </div>
-          <button onClick={handleStart}
-            style={{padding:'12px 28px',borderRadius:100,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 4px 16px rgba(255,59,48,.35)',whiteSpace:'nowrap'}}>
-            Claim Founding Price →
-          </button>
-        </div>
+        
 
         {/* Trust signals */}
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,animation:'fadeUp .5s ease .35s both'}}>
