@@ -274,7 +274,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
                     <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.4)',background:'rgba(0,0,0,.05)',border:'1px solid rgba(0,0,0,.08)',borderRadius:100,padding:'1px 7px'}}>Coming Soon</span>
                   </div>
                   <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Freelancers, gig workers, contractors</div>
-                  <div style={{fontSize:10,fontWeight:700,color:'#0a84ff'}}>Pro Pass · $9.99/mo</div>
+                  <div style={{fontSize:10,fontWeight:700,color:'#0a84ff'}}>Pro Pass · </div>
                 </div>
                 <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='freelancer'?'#0a84ff':'rgba(0,0,0,.15)'}`,background:userCat==='freelancer'?'#0a84ff':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {userCat==='freelancer' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
@@ -316,7 +316,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
                     <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.4)',background:'rgba(0,0,0,.05)',border:'1px solid rgba(0,0,0,.08)',borderRadius:100,padding:'1px 7px'}}>Coming Soon</span>
                   </div>
                   <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Business owners, operators, teams</div>
-                  <div style={{fontSize:10,fontWeight:700,color:'#30d158'}}>Enterprise Pass · $19.99/mo</div>
+                  <div style={{fontSize:10,fontWeight:700,color:'#30d158'}}>Enterprise Pass · </div>
                 </div>
                 <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='business'?'#30d158':'rgba(0,0,0,.15)'}`,background:userCat==='business'?'#30d158':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {userCat==='business' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}

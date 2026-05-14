@@ -585,10 +585,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
           </div>
         )}
 
-        {/* Back to dashboard only */}
-        <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
-          <Link href="/dashboard" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 18px",borderRadius:100,background:"rgba(255,255,255,0.65)",border:"0.5px solid rgba(255,255,255,0.9)",fontSize:12,fontWeight:600,color:"rgba(26,26,46,.6)",textDecoration:"none",backdropFilter:"blur(20px)"}}>← Dashboard</Link>
-        </div>
+
 
 
 
