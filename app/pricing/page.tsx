@@ -134,7 +134,7 @@ export default function PricingPage() {
         <div style={{background:'rgba(255,59,48,0.06)',border:'0.5px solid rgba(255,59,48,0.2)',borderRadius:24,padding:'24px 28px',marginBottom:32,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,animation:'fadeUp .5s ease .3s both'}}>
           <div>
             <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:6}}>🎁 Founding Member Offer</div>
-            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:4}}>Lock in $4.99/mo for 6 months</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',marginBottom:4}}>Lock in $4.99/mo for 6 months on the Core Plan</div>
             <div style={{fontSize:13,color:'rgba(26,26,46,.55)'}}>Use code <strong style={{fontFamily:'monospace',fontSize:15,color:'#ff3b30',letterSpacing:2}}>FOUNDING100</strong> at signup · Rate locked even after we raise prices</div>
           </div>
           <button onClick={handleStart}

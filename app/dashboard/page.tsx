@@ -60,16 +60,13 @@ const MODULE_META = {
 }
 
 const NAV_ITEMS = [
-  { icon:'🏠', label:'Dashboard',    sub:'Your home base',        href:'/dashboard',             section:'main' },
-  { icon:'⛽', label:'Gas tracker',  sub:'Live prices near you',  href:'/dashboard/gas',         section:'main' },
-  { icon:'🛣️', label:'Route finder', sub:'Cheapest on any trip',  href:'/dashboard/gas/route',   section:'main' },
-  { icon:'🚗', label:'Trip mode',    sub:'Live GPS tracking',     href:'/dashboard/gas/trip',    section:'main' },
-  { icon:'🔔', label:'Alerts',       sub:'Tank & price alerts',   href:'/dashboard/gas/alerts',  section:'main' },
-  { icon:'⚙️', label:'My vehicle',   sub:'Make, model & grade',   href:'/dashboard/gas/vehicle', section:'main' },
-  { icon:'💡', label:'Idea Vault',   sub:'Coming soon',           href:null,                     section:'soon' },
-  { icon:'🤝', label:'Barter & Trade',sub:'Coming soon',          href:null,                     section:'soon' },
-  { icon:'💳', label:'My plan',      sub:'Billing & upgrades',    href:'/dashboard/billing',     section:'account' },
-  { icon:'🚪', label:'Sign out',     sub:null,                    href:'signout',                section:'account' },
+  { icon:'🏠', label:'Dashboard',      sub:'Your home base',       href:'/dashboard',         section:'main' },
+  { icon:'⛽', label:'Gas tracker',    sub:'Live prices near you', href:'/dashboard/gas',     section:'main' },
+  { icon:'💡', label:'Idea Vault',     sub:'Coming soon',          href:null,                 section:'soon' },
+  { icon:'🤝', label:'Barter & Trade', sub:'Coming soon',          href:null,                 section:'soon' },
+  { icon:'🧾', label:'Deduction Teller',sub:'Coming soon',         href:null,                 section:'soon' },
+  { icon:'💳', label:'My plan',        sub:'Billing & upgrades',   href:'/dashboard/billing', section:'account' },
+  { icon:'🚪', label:'Sign out',       sub:null,                   href:'signout',            section:'account' },
 ]
 
 export default function DashboardPage() {
@@ -190,7 +187,7 @@ export default function DashboardPage() {
   })
 
   const sections = [
-    { key:'main',    label:'Gas intelligence' },
+    { key:'main',    label:'Navigation' },
     { key:'soon',    label:'Coming soon'       },
     { key:'account', label:'Account'           },
   ]
