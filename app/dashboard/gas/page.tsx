@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { supabase } from '@/lib/supabase'
-import { usePaywall, PaywallScreen, TrialBanner, TasteTimer } from '@/components/PaywallGate'
+import { usePaywall, TrialBanner, TasteTimer } from '@/components/PaywallGate'
 import dynamic from 'next/dynamic'
 
 const RouteGasFinder = dynamic(() => import('@/components/gas/RouteGasFinder'), { ssr: false })
@@ -19,61 +19,28 @@ type Station = {
   updated: string; trending: string
 }
 type Coords = { lat: number; lng: number }
-type Theme  = typeof LIGHT
 
-const GRADES   = ["Regular", "Mid", "Premium", "Diesel"]
-const IRS_RATE = 0.70
-const AVG_MPG  = 28
-const gk       = (g: string) => g.toLowerCase()
+const GRADES = ["Regular", "Mid", "Premium", "Diesel"]
+const gk = (g: string) => g.toLowerCase()
 
 const FALLBACK_STATIONS: Station[] = [
-  { id:1, name:"Shell",    address:"Nearest Shell",    lat:0,lng:0,distance:0.3,regular:4.89,mid:5.19,premium:5.49,diesel:5.35,updated:"2m ago",  trending:"down"   },
-  { id:2, name:"BP",       address:"Nearest BP",       lat:0,lng:0,distance:0.7,regular:4.97,mid:5.27,premium:5.57,diesel:5.43,updated:"8m ago",  trending:"stable" },
-  { id:3, name:"Circle K", address:"Nearest Circle K", lat:0,lng:0,distance:1.1,regular:4.85,mid:5.15,premium:5.45,diesel:5.31,updated:"1m ago",  trending:"down"   },
-  { id:4, name:"Chevron",  address:"Nearest Chevron",  lat:0,lng:0,distance:1.4,regular:5.09,mid:5.39,premium:5.69,diesel:5.55,updated:"15m ago", trending:"up"     },
-  { id:5, name:"QuikTrip", address:"Nearest QuikTrip", lat:0,lng:0,distance:1.9,regular:4.79,mid:5.09,premium:5.39,diesel:5.25,updated:"5m ago",  trending:"down"   },
+  { id:1, name:"Shell",    address:"Nearest Shell, Auburn AL",    lat:0,lng:0,distance:0.3,regular:3.04,mid:3.34,premium:3.64,diesel:3.49,updated:"2m ago",  trending:"down"   },
+  { id:2, name:"Circle K", address:"Nearest Circle K, Auburn AL", lat:0,lng:0,distance:0.8,regular:3.12,mid:3.42,premium:3.72,diesel:3.57,updated:"5m ago",  trending:"up"     },
+  { id:3, name:"Exxon",   address:"Nearest Exxon, Auburn AL",    lat:0,lng:0,distance:1.1,regular:3.19,mid:3.49,premium:3.79,diesel:3.64,updated:"8m ago",  trending:"stable" },
+  { id:4, name:"Marathon", address:"Nearest Marathon, Auburn AL", lat:0,lng:0,distance:1.4,regular:3.24,mid:3.54,premium:3.84,diesel:3.69,updated:"12m ago", trending:"down"   },
+  { id:5, name:"BP",      address:"Nearest BP, Auburn AL",       lat:0,lng:0,distance:1.9,regular:3.28,mid:3.58,premium:3.88,diesel:3.73,updated:"15m ago", trending:"up"     },
 ]
 
 const FALLBACK_HISTORY = [
-  {day:"Feb 26",price:4.89},{day:"Feb 27",price:4.95},{day:"Feb 28",price:5.01},
-  {day:"Mar 1", price:5.05},{day:"Mar 2", price:5.09},{day:"Mar 3", price:5.15},
-  {day:"Mar 4", price:5.19},{day:"Mar 5", price:5.23},
+  {day:"Apr 11",price:3.23},{day:"Apr 15",price:3.20},{day:"Apr 18",price:3.18},
+  {day:"Apr 22",price:3.16},{day:"Apr 25",price:3.14},{day:"Apr 29",price:3.11},
+  {day:"May 2", price:3.09},{day:"May 5", price:3.04},
 ]
 
-const PLANS = [
-  { id:'free', name:'Free', price:'$0', period:'/mo', color:'rgba(0,0,0,.06)', textColor:'rgba(26,26,46,.6)', bullets:['Gas prices near you','7-day price trend','Basic mileage calculator'], locked:['Route gas finder','Price drop alerts','Mileage PDF export'] },
-  { id:'driver', name:'Driver Pass', price:'$4.99', period:'/mo', color:'linear-gradient(135deg,#ff3b30,#ff6b35)', textColor:'#fff', bullets:['Everything in Free','Route gas finder','Price drop alerts via email','Monthly mileage PDF export','Quarterly tax reminders'], locked:[], recommended:true },
-  { id:'business', name:'Business Pass', price:'$14.99', period:'/mo', color:'linear-gradient(135deg,#1a1a2e,#2d2d4e)', textColor:'#fff', bullets:['Everything in Driver Pass','Regulatory updates feed','Tariff intelligence (coming)','Assets & liabilities (coming)','Balance sheet PDF export','Team access (3 users)'], locked:[] },
-]
-
-const LIGHT = {
-  bg:"#f2f2f7", bgGrad:"radial-gradient(ellipse 80% 60% at 10% 0%,rgba(255,59,48,.07) 0%,transparent 60%)",
-  surface:"rgba(255,255,255,.85)", surfaceBdr:"rgba(0,0,0,.08)",
-  surfaceHL:"linear-gradient(135deg,rgba(255,59,48,.1),rgba(255,59,48,.04))", surfaceHLBdr:"rgba(255,59,48,.35)",
-  text:"rgba(0,0,0,.9)", text2:"rgba(0,0,0,.55)", text3:"rgba(0,0,0,.3)",
-  accent:"#ff3b30", green:"#25a244",
-  inputBg:"rgba(0,0,0,.04)", inputBdr:"rgba(0,0,0,.1)",
-  mapOverlay:"rgba(255,255,255,.9)", pillBg:"rgba(255,59,48,.08)", pillBdr:"rgba(255,59,48,.2)",
-  dedBg:"linear-gradient(135deg,rgba(37,162,68,.09),rgba(37,162,68,.03))", dedBdr:"rgba(37,162,68,.25)", dedGreen:"rgba(37,162,68,.5)",
-  modalBg:"rgba(242,242,247,.98)", modalBdr:"rgba(0,0,0,.1)",
-  rowSel:"rgba(255,59,48,.06)", rowBest:"rgba(48,209,88,.07)",
-  tileUrl:"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  isDark:false, settingsBg:"#fff", settingsBdr:"rgba(0,0,0,.08)", divider:"rgba(0,0,0,.07)", tagBg:"rgba(0,0,0,.05)",
-}
-
-const DARK = {
-  bg:"#0a0a0f", bgGrad:"radial-gradient(ellipse 80% 60% at 10% 0%,rgba(255,59,48,.11) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 90% 100%,rgba(255,80,40,.06) 0%,transparent 60%)",
-  surface:"rgba(255,255,255,.05)", surfaceBdr:"rgba(255,255,255,.09)",
-  surfaceHL:"linear-gradient(135deg,rgba(255,59,48,.16),rgba(255,59,48,.05))", surfaceHLBdr:"rgba(255,59,48,.3)",
-  text:"#ebebf5", text2:"rgba(235,235,245,.55)", text3:"rgba(235,235,245,.28)",
-  accent:"#ff3b30", green:"#30d158",
-  inputBg:"rgba(0,0,0,.3)", inputBdr:"rgba(255,255,255,.09)",
-  mapOverlay:"rgba(10,10,15,.85)", pillBg:"rgba(255,59,48,.1)", pillBdr:"rgba(255,59,48,.25)",
-  dedBg:"linear-gradient(135deg,rgba(48,209,88,.1),rgba(48,209,88,.03))", dedBdr:"rgba(48,209,88,.22)", dedGreen:"rgba(48,209,88,.45)",
-  modalBg:"rgba(10,10,15,.97)", modalBdr:"rgba(255,255,255,.1)",
-  rowSel:"rgba(255,59,48,.08)", rowBest:"rgba(48,209,88,.06)",
-  tileUrl:"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  isDark:true, settingsBg:"rgba(18,18,22,.98)", settingsBdr:"rgba(255,255,255,.09)", divider:"rgba(255,255,255,.07)", tagBg:"rgba(255,255,255,.06)",
+const STATE_GAS: Record<string,{avg:number,trend:string,change:string}> = {
+  'Alabama':{avg:3.12,trend:'↓',change:'-0.04'},'Georgia':{avg:3.19,trend:'↓',change:'-0.05'},
+  'Florida':{avg:3.51,trend:'↑',change:'+0.03'},'Texas':{avg:2.94,trend:'↓',change:'-0.02'},
+  'California':{avg:4.94,trend:'↑',change:'+0.12'},'Tennessee':{avg:3.08,trend:'↓',change:'-0.04'},
 }
 
 function distanceMiles(lat1:number,lng1:number,lat2:number,lng2:number):number {
@@ -81,687 +48,659 @@ function distanceMiles(lat1:number,lng1:number,lat2:number,lng2:number):number {
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2
   return parseFloat((R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(1))
 }
+
 function simulatePrices(base:number) {
   const off=[-0.09,-0.05,-0.02,0,0.04,0.08,0.13][Math.floor(Math.random()*7)]
   return { regular:+(base+off).toFixed(2), mid:+(base+off+.30).toFixed(2), premium:+(base+off+.60).toFixed(2), diesel:+(base+off+.45).toFixed(2) }
 }
-const trendIcon  = (t:string) => t==="down"?"↓":t==="up"?"↑":"→"
-const trendColor = (t:string,T:Theme) => t==="down"?T.green:t==="up"?"#ff453a":T.text3
-const cheapestSt = (sts:Station[],g:string) => [...sts].sort((a:any,b:any)=>a[gk(g)]-b[gk(g)])[0]
 
-function makePin(price:number,isBest:boolean,isSel:boolean,isDark:boolean):string {
-  const bg  = isSel?"linear-gradient(135deg,#ff3b30,#ff6b35)":isBest?"linear-gradient(135deg,#30d158,#34c759)":isDark?"rgba(18,18,22,.93)":"rgba(255,255,255,.93)"
-  const fg  = isSel||isBest?"#fff":isDark?"rgba(235,235,245,.9)":"rgba(0,0,0,.85)"
-  const bdr = isSel?"#ff3b30":isBest?"#30d158":isDark?"rgba(255,255,255,.18)":"rgba(0,0,0,.18)"
-  const sc  = isSel?"scale(1.2)":"scale(1)"
-  const glow= isSel?",0 0 16px rgba(255,59,48,.5)":isBest?",0 0 12px rgba(48,209,88,.4)":""
-  return `<div style="display:inline-flex;flex-direction:column;align-items:center;transform:${sc};transition:transform .25s cubic-bezier(.34,1.56,.64,1)"><div style="background:${bg};border:1.5px solid ${bdr};border-radius:10px;padding:5px 10px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 4px 20px rgba(0,0,0,.45)${glow};cursor:pointer"><span style="font-size:10px">⛽</span><span style="font-size:13px;font-weight:700;color:${fg};font-family:-apple-system,system-ui,sans-serif;letter-spacing:-.2px">$${price.toFixed(2)}</span></div><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid ${isSel?"#ff3b30":isBest?"#30d158":bdr}"></div></div>`
+function makePin(price:number,isBest:boolean,isSel:boolean):string {
+  const bg  = isSel?'linear-gradient(135deg,#ff3b30,#ff6b35)':isBest?'linear-gradient(135deg,#30d158,#34c759)':'rgba(255,255,255,.93)'
+  const fg  = isSel||isBest?'#fff':'rgba(0,0,0,.85)'
+  const bdr = isSel?'#ff3b30':isBest?'#30d158':'rgba(0,0,0,.18)'
+  const sc  = isSel?'scale(1.2)':'scale(1)'
+  return `<div style="display:inline-flex;flex-direction:column;align-items:center;transform:${sc};transition:transform .25s cubic-bezier(.34,1.56,.64,1)"><div style="background:${bg};border:1.5px solid ${bdr};border-radius:10px;padding:5px 10px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(20px);box-shadow:0 4px 20px rgba(0,0,0,.2);cursor:pointer"><span style="font-size:10px">⛽</span><span style="font-size:13px;font-weight:700;color:${fg};font-family:-apple-system,system-ui,sans-serif">\$${price.toFixed(2)}</span></div><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid ${isSel?'#ff3b30':isBest?'#30d158':bdr}"></div></div>`
 }
 
-function ChartTip({active,payload,label,T}:{active?:boolean,payload?:any,label?:string,T:Theme}) {
-  if(!active||!payload?.length) return null
-  return (
-    <div style={{background:T.modalBg,border:"1px solid rgba(255,59,48,.3)",borderRadius:10,padding:"8px 14px",backdropFilter:"blur(20px)"}}>
-      <p style={{color:T.text3,fontSize:10,margin:0,fontFamily:"system-ui"}}>{label}</p>
-      <p style={{color:T.accent,fontSize:18,fontWeight:700,margin:"2px 0 0",fontFamily:"system-ui"}}>${payload[0].value.toFixed(2)}</p>
-    </div>
-  )
-}
+// ── Report Price Modal ─────────────────────────────────────────────────────────
+function ReportPriceModal({ station, onClose, onSubmit }: { station: Station|null, onClose: ()=>void, onSubmit: ()=>void }) {
+  const [price, setPrice] = useState('')
+  const [clean, setClean] = useState(3)
+  const [sliding, setSliding] = useState(false)
+  const [thumbX, setThumbX] = useState(0)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const cleanDescs = ['','Very dirty','Below average','Average — could be cleaner','Clean and well kept','Spotless — excellent']
 
-function SettingsPanel({onClose,T,userCoords,onUpdateLocation,currentPlan,onChangePlan}:{onClose:()=>void,T:Theme,userCoords:Coords|null,onUpdateLocation:()=>void,currentPlan:string,onChangePlan:(p:string)=>void}) {
-  const router = useRouter()
-  const [tab,setTab]=useState<'account'|'location'|'plan'>('account')
-  const [email,setEmail]=useState('')
-  const [memberSince,setMemberSince]=useState('2025')
-  const [newEmail,setNewEmail]=useState('')
-  const [curPass,setCurPass]=useState('')
-  const [newPass,setNewPass]=useState('')
-  const [confirmPass,setConfirmPass]=useState('')
-  const [savedEmail,setSavedEmail]=useState(false)
-  const [savedPass,setSavedPass]=useState(false)
-  const [locUpdating,setLocUpdating]=useState(false)
-  const [locMsg,setLocMsg]=useState('')
-  const [selectedPlan,setSelectedPlan]=useState(currentPlan)
-  const [trialDaysLeft,setTrialDaysLeft]=useState<number|null>(null)
-  const [zipInput,setZipInput]=useState('')
+  const onTrackStart = (e:any) => {
+    setSliding(true)
+    const x = e.touches ? e.touches[0].clientX : e.clientX
+    setThumbX(0)
+  }
+  const onTrackMove = useCallback((e:any) => {
+    if (!sliding || !trackRef.current) return
+    const rect = trackRef.current.getBoundingClientRect()
+    const x = e.touches ? e.touches[0].clientX : e.clientX
+    const pct = Math.min(Math.max(0, (x - rect.left - 22) / (rect.width - 48)), 1)
+    setThumbX(pct)
+    if (pct > 0.92) { setSliding(false); onSubmit() }
+  }, [sliding, onSubmit])
 
-  // Load real user data from Supabase
-  useEffect(()=>{
-    const loadUser = async () => {
-      const { data:{ user } } = await supabase.auth.getUser()
-      if (!user) return
-      setEmail(user.email || '')
-      setMemberSince(new Date(user.created_at).toLocaleDateString('en-US',{month:'short',year:'numeric'}))
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('trial_ends_at, plan')
-        .eq('id', user.id)
-        .single()
-      if (profile?.trial_ends_at) {
-        const days = Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000*60*60*24))
-        setTrialDaysLeft(Math.max(0, days))
-      }
-      if (profile?.plan) setSelectedPlan(profile.plan)
+  useEffect(() => {
+    if (sliding) {
+      window.addEventListener('mousemove', onTrackMove)
+      window.addEventListener('touchmove', onTrackMove)
+      window.addEventListener('mouseup', () => { setSliding(false); setThumbX(0) })
+      window.addEventListener('touchend', () => { setSliding(false); setThumbX(0) })
     }
-    loadUser()
-  }, [])
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
-  const handleUpdateEmail = async () => {
-    if (!newEmail.includes('@')) return
-    const { error } = await supabase.auth.updateUser({ email: newEmail })
-    if (!error) {
-      setEmail(newEmail)
-      setNewEmail('')
-      setSavedEmail(true)
-      setTimeout(() => setSavedEmail(false), 2500)
+    return () => {
+      window.removeEventListener('mousemove', onTrackMove)
+      window.removeEventListener('touchmove', onTrackMove)
     }
-  }
+  }, [sliding, onTrackMove])
 
-  const handleUpdatePassword = async () => {
-    if (newPass.length < 8 || newPass !== confirmPass) return
-    const { error } = await supabase.auth.updateUser({ password: newPass })
-    if (!error) {
-      setCurPass(''); setNewPass(''); setConfirmPass('')
-      setSavedPass(true)
-      setTimeout(() => setSavedPass(false), 2500)
-    }
-  }
+  if (!station) return null
 
-  const handleZipSearch = () => {
-    if (zipInput.length === 5) {
-      onUpdateLocation()
-      setLocMsg(`✓ Searching stations near ${zipInput}...`)
-    }
-  }
-
-  const inputStyle={width:'100%',padding:'11px 14px',background:'rgba(255,255,255,.9)',border:`1.5px solid rgba(0,0,0,.12)`,borderRadius:12,fontSize:14,color:'#1a1a2e',outline:'none',fontFamily:"'Outfit',system-ui,sans-serif",marginBottom:10,transition:'border-color .2s'}
-
-  const handleUpdateLocation=()=>{
-    setLocUpdating(true);setLocMsg('Requesting your current location...')
-    navigator.geolocation?.getCurrentPosition(
-      pos=>{setLocMsg(`✓ Location updated — ${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`);setLocUpdating(false);onUpdateLocation()},
-      ()=>{setLocMsg('Could not get location. Try entering a ZIP code instead.');setLocUpdating(false)},
-      {enableHighAccuracy:true,timeout:10000}
-    )
-  }
+  const trackW = typeof window !== 'undefined' ? Math.min(window.innerWidth - 60, 380) : 340
+  const thumbLeft = thumbX * (trackW - 56)
 
   return (
-    <div style={{position:'fixed',inset:0,zIndex:9998,display:'flex',alignItems:'flex-end',justifyContent:'flex-end',padding:20,background:'rgba(0,0,0,.3)',backdropFilter:'blur(6px)',WebkitBackdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div style={{background:T.settingsBg,border:`1px solid ${T.settingsBdr}`,borderRadius:24,width:420,maxHeight:'calc(100vh - 40px)',overflowY:'auto',boxShadow:'0 24px 80px rgba(0,0,0,.2)',fontFamily:"'Outfit',system-ui,sans-serif",animation:'settingsIn .35s cubic-bezier(.34,1.56,.64,1)'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 22px 16px',borderBottom:`1px solid ${T.divider}`,position:'sticky',top:0,background:T.settingsBg,zIndex:1,backdropFilter:'blur(20px)'}}>
-          <div style={{fontSize:18,fontWeight:800,letterSpacing:-.5,color:T.text}}>Account Settings</div>
-          <button onClick={onClose} style={{width:32,height:32,borderRadius:'50%',background:T.inputBg,border:`1px solid ${T.inputBdr}`,cursor:'pointer',fontSize:14,color:T.text2,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+    <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,.5)',backdropFilter:'blur(12px)',padding:'0 14px 24px'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div style={{background:'rgba(255,255,255,.97)',borderRadius:'28px 28px 20px 20px',padding:'20px 22px 24px',width:'100%',maxWidth:440,boxShadow:'0 -8px 40px rgba(0,0,0,.15)',animation:'slideUp .4s cubic-bezier(.34,1.56,.64,1) both',fontFamily:"'DM Sans',system-ui,sans-serif",position:'relative'}}>
+        <button onClick={onClose} style={{position:'absolute',top:14,right:14,width:28,height:28,borderRadius:'50%',background:'rgba(0,0,0,.06)',border:'none',cursor:'pointer',fontSize:12,color:'rgba(26,26,46,.4)'}}>✕</button>
+        <div style={{width:36,height:4,borderRadius:2,background:'rgba(0,0,0,.1)',margin:'0 auto 16px'}}/>
+
+        {/* Station mini map */}
+        <div style={{height:80,background:'linear-gradient(160deg,#d4e8f0,#c8dce8)',borderRadius:14,marginBottom:14,position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-100%)',zIndex:2}}>
+            <div style={{background:'rgba(255,59,48,.9)',border:'2px solid #fff',borderRadius:10,padding:'3px 10px',fontSize:11,fontWeight:700,color:'#fff',whiteSpace:'nowrap'}}>{station.name}</div>
+            <div style={{width:0,height:0,borderLeft:'5px solid transparent',borderRight:'5px solid transparent',borderTop:'6px solid rgba(255,59,48,.9)',margin:'0 auto'}}/>
+          </div>
+          <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:10,height:10,borderRadius:'50%',background:'#ff3b30',border:'2px solid #fff',marginTop:14}}/>
+          <div style={{position:'absolute',bottom:5,left:8,fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:500}}>{station.address}</div>
         </div>
-        <div style={{display:'flex',gap:4,padding:'14px 22px 0'}}>
-          {[{id:'account',label:'Account'},{id:'location',label:'Location'},{id:'plan',label:'Plan & Billing'}].map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id as any)} style={{padding:'7px 16px',borderRadius:100,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:"'Outfit',sans-serif",background:tab===t.id?T.accent:T.inputBg,color:tab===t.id?'#fff':T.text2,border:tab===t.id?'none':`1px solid ${T.inputBdr}`,transition:'all .2s'}}>{t.label}</button>
-          ))}
+
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:4}}>Report a Price</div>
+        <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,letterSpacing:-.5,color:'#1a1a2e',marginBottom:14}}>{station.name}</div>
+
+        {/* Price input */}
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:600,color:'rgba(26,26,46,.5)',marginBottom:8}}>Price you saw · Regular</div>
+          <div style={{display:'flex',alignItems:'center',background:'rgba(255,59,48,.05)',border:'1.5px solid rgba(255,59,48,.25)',borderRadius:16,padding:'10px 16px',gap:6}}>
+            <span style={{fontSize:28,fontWeight:800,color:'rgba(26,26,46,.25)'}}>$</span>
+            <input type="number" step="0.01" min="0" max="10" placeholder="3.04" value={price} onChange={e=>setPrice(e.target.value)}
+              style={{flex:1,background:'none',border:'none',outline:'none',fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,color:'#ff3b30',letterSpacing:-1,width:'100%'}}/>
+            <span style={{fontSize:13,color:'rgba(26,26,46,.3)'}}>/gal</span>
+          </div>
         </div>
-        <div style={{padding:'20px 22px 28px'}}>
 
-          {tab==='account' && <>
-            <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:14,marginBottom:22}}>
-              <div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>👤</div>
-              <div><div style={{fontSize:13,fontWeight:600,color:T.text}}>{email||'Loading...'}</div><div style={{fontSize:11,color:T.text3,marginTop:2}}>Member since {memberSince} · {trialDaysLeft!==null?`${trialDaysLeft} days left in trial`:'Active'}</div></div>
-            </div>
-            <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:T.text3,textTransform:'uppercase',marginBottom:10}}>Change Email</div>
-              <input type="email" placeholder="New email address" value={newEmail} onChange={e=>setNewEmail(e.target.value)} style={inputStyle}/>
-              <button onClick={handleUpdateEmail} style={{padding:'10px 20px',background:newEmail.includes('@')?'linear-gradient(135deg,#ff3b30,#ff6b35)':T.inputBg,color:newEmail.includes('@')?'#fff':T.text3,border:'none',borderRadius:100,fontSize:13,fontWeight:600,cursor:newEmail.includes('@')?'pointer':'not-allowed',fontFamily:"'Outfit',sans-serif"}}>
-                {savedEmail?'✓ Email updated!':'Update Email'}
-              </button>
-            </div>
-            <div style={{height:1,background:T.divider,marginBottom:24}}/>
-            <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:T.text3,textTransform:'uppercase',marginBottom:10}}>Change Password</div>
-              <input type="password" placeholder="Current password" value={curPass} onChange={e=>setCurPass(e.target.value)} style={inputStyle}/>
-              <input type="password" placeholder="New password (8+ characters)" value={newPass} onChange={e=>setNewPass(e.target.value)} style={inputStyle}/>
-              <input type="password" placeholder="Confirm new password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} style={{...inputStyle,marginBottom:12}}/>
-              <button onClick={handleUpdatePassword} style={{padding:'10px 20px',background:newPass.length>=8&&newPass===confirmPass?'linear-gradient(135deg,#ff3b30,#ff6b35)':T.inputBg,color:newPass.length>=8&&newPass===confirmPass?'#fff':T.text3,border:'none',borderRadius:100,fontSize:13,fontWeight:600,cursor:newPass.length>=8&&newPass===confirmPass?'pointer':'not-allowed',fontFamily:"'Outfit',sans-serif"}}>
-                {savedPass?'✓ Password updated!':'Update Password'}
-              </button>
-              {newPass&&confirmPass&&newPass!==confirmPass&&<div style={{fontSize:12,color:'#ff453a',marginTop:8}}>Passwords don't match</div>}
-            </div>
-            <div style={{height:1,background:T.divider,marginBottom:24}}/>
-            <button onClick={handleSignOut} style={{width:'100%',padding:12,background:'transparent',color:'#ff453a',border:`1px solid rgba(255,69,58,.25)`,borderRadius:100,fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>Sign Out</button>
-          </>}
+        {/* Cleanliness */}
+        <div style={{marginBottom:18}}>
+          <div style={{fontSize:11,fontWeight:600,color:'rgba(26,26,46,.5)',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span>Cleanliness</span>
+            <span style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,color:'#ff3b30'}}>{clean}/5</span>
+          </div>
+          <div style={{display:'flex',gap:6,marginBottom:6}}>
+            {[1,2,3,4,5].map(n=>(
+              <div key={n} onClick={()=>setClean(n)} style={{flex:1,height:8,borderRadius:4,background:n<=clean?'#ff3b30':'rgba(0,0,0,.08)',cursor:'pointer',transition:'all .2s'}}/>
+            ))}
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'rgba(26,26,46,.35)'}}>
+            <span>Dirty</span><span>{cleanDescs[clean]}</span><span>Spotless</span>
+          </div>
+        </div>
 
-          {tab==='location' && <>
-            <div style={{background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:14,padding:'14px 16px',marginBottom:20,fontSize:13,color:T.text2,lineHeight:1.6}}>
-              {userCoords?`📍 Current location: ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)}`:'📍 No location set yet'}
-            </div>
-            <div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:T.text3,textTransform:'uppercase',marginBottom:14}}>Update Your Location</div>
-            <button onClick={handleUpdateLocation} disabled={locUpdating} style={{width:'100%',padding:14,background:locUpdating?T.inputBg:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:locUpdating?T.text2:'#fff',border:'none',borderRadius:14,fontSize:14,fontWeight:700,cursor:locUpdating?'not-allowed':'pointer',fontFamily:"'Outfit',sans-serif",marginBottom:10,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              {locUpdating?'⟳ Detecting location...':'📍 Use My Current Location'}
-            </button>
-            {locMsg&&<div style={{fontSize:12,color:locMsg.startsWith('✓')?T.green:'#ff9f0a',marginBottom:16,padding:'8px 12px',background:locMsg.startsWith('✓')?`${T.green}12`:'rgba(255,159,10,.1)',borderRadius:10}}>{locMsg}</div>}
-            <div style={{display:'flex',alignItems:'center',gap:12,margin:'6px 0 16px',color:T.text3,fontSize:12}}>
-              <div style={{flex:1,height:1,background:T.divider}}/> or <div style={{flex:1,height:1,background:T.divider}}/>
-            </div>
-            <div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:T.text3,textTransform:'uppercase',marginBottom:10}}>Enter ZIP Code</div>
-            <div style={{display:'flex',gap:8}}>
-              <input type="text" placeholder="e.g. 30309" maxLength={5} style={{flex:1,padding:'11px 14px',background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:12,fontSize:18,fontWeight:700,color:T.accent,outline:'none',fontFamily:"'Outfit',sans-serif",letterSpacing:3}}/>
-              <button style={{padding:'11px 20px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:12,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Outfit',sans-serif",whiteSpace:'nowrap'}}>Search →</button>
-            </div>
-          </>}
-
-          {tab==='plan' && <>
-            <div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:T.text3,textTransform:'uppercase',marginBottom:16}}>
-              Current Plan: <span style={{color:T.accent}}>{PLANS.find(p=>p.id===currentPlan)?.name||'Free'}</span>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:20}}>
-              {PLANS.map(plan=>{
-                const isCurrent=plan.id===currentPlan,isSelected=plan.id===selectedPlan
-                return (
-                  <div key={plan.id} onClick={()=>setSelectedPlan(plan.id)} style={{border:`2px solid ${isSelected?'#ff3b30':T.inputBdr}`,borderRadius:18,padding:18,cursor:'pointer',background:isSelected?'rgba(255,59,48,.04)':T.inputBg,transition:'all .2s',position:'relative'}}>
-                    {plan.recommended&&<div style={{position:'absolute',top:-10,left:16,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',fontSize:9,fontWeight:700,padding:'3px 10px',borderRadius:100,letterSpacing:1}}>⭐ RECOMMENDED</div>}
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
-                      <div><div style={{fontSize:16,fontWeight:800,letterSpacing:-.3,color:T.text,marginBottom:2}}>{plan.name}</div>{isCurrent&&<div style={{fontSize:10,fontWeight:600,color:T.green,letterSpacing:.5}}>✓ CURRENT PLAN</div>}</div>
-                      <div style={{textAlign:'right'}}><div style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:plan.id==='free'?T.text2:'#ff3b30',lineHeight:1}}>{plan.price}</div><div style={{fontSize:11,color:T.text3}}>{plan.period}</div></div>
-                    </div>
-                    <div style={{display:'flex',flexDirection:'column',gap:5}}>
-                      {plan.bullets.map((b,i)=><div key={i} style={{display:'flex',gap:7,fontSize:12,color:T.text2}}><span style={{color:T.green,flexShrink:0}}>✓</span>{b}</div>)}
-                      {plan.locked.map((b,i)=><div key={i} style={{display:'flex',gap:7,fontSize:12,color:T.text3}}><span style={{flexShrink:0}}>🔒</span>{b}</div>)}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            {selectedPlan!==currentPlan&&<button onClick={()=>{onChangePlan(selectedPlan)}} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:100,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'Outfit',sans-serif",boxShadow:'0 4px 16px rgba(255,59,48,.35)',marginBottom:10}}>{selectedPlan==='free'?'Downgrade to Free':`Upgrade to ${PLANS.find(p=>p.id===selectedPlan)?.name} →`}</button>}
-            <div style={{fontSize:11,color:T.text3,textAlign:'center',lineHeight:1.6}}>Cancel anytime · No contracts · 7-day free trial on paid plans</div>
-          </>}
-
+        {/* Slide to confirm */}
+        <div ref={trackRef} style={{position:'relative',height:52,background:'rgba(48,209,88,.1)',border:'1px solid rgba(48,209,88,.25)',borderRadius:100,overflow:'hidden',userSelect:'none'}}
+          onMouseDown={onTrackStart} onTouchStart={onTrackStart}>
+          <div style={{position:'absolute',inset:0,background:`linear-gradient(90deg,rgba(48,209,88,.2),rgba(48,209,88,.05))`,borderRadius:100,width:`${thumbX*100}%`,transition:sliding?'none':'width .3s'}}/>
+          <div style={{position:'absolute',top:4,left:4+thumbLeft,width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,#30d158,#34c759)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,boxShadow:'0 4px 12px rgba(48,209,88,.4)',transition:sliding?'none':'left .3s',cursor:'grab'}}>→</div>
+          <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:600,color:'rgba(48,209,88,.6)',letterSpacing:.5,pointerEvents:'none'}}>Slide to confirm report</div>
         </div>
       </div>
     </div>
   )
 }
 
-function ZipModal({onSubmit,onClose,T}:{onSubmit:(z:string)=>void,onClose:()=>void,T:Theme}) {
-  const [zip,setZip]=useState("")
+// ── Thanks Modal ───────────────────────────────────────────────────────────────
+function ThanksModal({ onClose }: { onClose: ()=>void }) {
   return (
-    <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.65)",backdropFilter:"blur(14px)",padding:24}}>
-      <div style={{background:T.modalBg,border:`1px solid ${T.modalBdr}`,borderRadius:28,padding:32,maxWidth:360,width:"100%",backdropFilter:"blur(40px)",boxShadow:"0 24px 80px rgba(0,0,0,.45)",textAlign:"center",animation:"popIn .4s cubic-bezier(.34,1.56,.64,1)"}}>
-        <div style={{fontSize:40,marginBottom:16}}>🗺️</div>
-        <h2 style={{fontSize:24,fontWeight:800,letterSpacing:-.5,color:T.text,marginBottom:8}}>Enter Your ZIP Code</h2>
-        <p style={{fontSize:13,color:T.text2,marginBottom:24,lineHeight:1.5}}>We'll find gas stations in your area.</p>
-        <input value={zip} maxLength={5} onChange={e=>setZip(e.target.value.replace(/\D/g,"").slice(0,5))} placeholder="e.g. 30309" style={{width:"100%",padding:"14px 16px",background:T.inputBg,border:`1px solid ${T.inputBdr}`,borderRadius:12,fontSize:22,fontWeight:700,color:T.accent,outline:"none",fontFamily:"system-ui",letterSpacing:4,textAlign:"center",marginBottom:14}}/>
-        <button onClick={()=>zip.length===5&&onSubmit(zip)} disabled={zip.length!==5} style={{width:"100%",padding:14,background:zip.length===5?"linear-gradient(135deg,#ff3b30,#ff6b35)":"rgba(255,59,48,.2)",color:"#fff",border:"none",borderRadius:100,fontSize:15,fontWeight:700,cursor:zip.length===5?"pointer":"not-allowed",marginBottom:10,fontFamily:"system-ui",opacity:zip.length===5?1:.6}}>Find Gas Prices →</button>
-        <button onClick={onClose} style={{background:"transparent",border:"none",color:T.text3,fontSize:13,cursor:"pointer",fontFamily:"system-ui"}}>Cancel</button>
+    <div style={{position:'fixed',inset:0,zIndex:10000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.4)',backdropFilter:'blur(8px)'}}>
+      <div style={{background:'rgba(255,255,255,.97)',borderRadius:28,padding:'36px 32px',textAlign:'center',maxWidth:320,width:'90%',animation:'popIn .5s cubic-bezier(.34,1.56,.64,1) both',fontFamily:"'DM Sans',system-ui,sans-serif"}}>
+        <div style={{fontSize:56,marginBottom:14}}>⛽</div>
+        <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:900,letterSpacing:-.5,color:'#1a1a2e',marginBottom:8}}>Thank you!</div>
+        <div style={{fontSize:14,color:'rgba(26,26,46,.55)',lineHeight:1.65,marginBottom:20}}>Your price report helps other drivers find cheaper gas. The community thanks you.</div>
+        <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'rgba(48,209,88,.1)',border:'0.5px solid rgba(48,209,88,.3)',borderRadius:100,padding:'6px 16px',fontSize:12,fontWeight:700,color:'#1a7a35',marginBottom:20}}>
+          ✓ Price reported · shows in 5 minutes
+        </div>
+        <button onClick={onClose} style={{width:'100%',padding:13,borderRadius:100,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 4px 16px rgba(255,59,48,.35)'}}>Done</button>
       </div>
     </div>
   )
 }
 
-function GasMap({stations,grade,selectedId,onSelect,userCoords,T,mapKey}:{stations:Station[],grade:string,selectedId:number|null,onSelect:(id:number)=>void,userCoords:Coords|null,T:Theme,mapKey:string}) {
-  const divRef=useRef<HTMLDivElement>(null),mapRef=useRef<any>(null),mksRef=useRef<Record<number,any>>({})
+// ── Maps Choice Modal ──────────────────────────────────────────────────────────
+function MapsModal({ station, destination, onClose }: { station: Station|null, destination: string, onClose: ()=>void }) {
+  if (!station) return null
+  const name = encodeURIComponent(`${station.name}, ${station.address}`)
+  const dest = destination.trim()
 
-  const initMap=useCallback((L:any)=>{
-    if(!divRef.current||mapRef.current)return
-    const center=userCoords??{lat:33.849,lng:-84.373}
-    const map=L.map(divRef.current,{center:[center.lat,center.lng],zoom:userCoords?14:12,zoomControl:false,attributionControl:false})
-    L.tileLayer(T.tileUrl,{maxZoom:19}).addTo(map);L.control.zoom({position:"bottomright"}).addTo(map)
-    if(userCoords)L.marker([center.lat,center.lng],{icon:L.divIcon({className:"",iconSize:[24,24],iconAnchor:[12,12],html:`<div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.22),0 4px 12px rgba(255,59,48,.5)"></div>`})}).addTo(map)
-    const best=cheapestSt(stations,grade)
+  const goApple = () => {
+    if (dest) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(dest)}&via=${station.lat},${station.lng}&dirflag=d`)
+    else window.open(`maps://maps.apple.com/?q=${name}&dirflag=d`)
+    onClose()
+  }
+  const goGoogle = () => {
+    if (dest) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(dest)}&waypoints=${name}&travelmode=driving`)
+    else window.open(`https://www.google.com/maps/search/?api=1&query=${name}`)
+    onClose()
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,.45)',backdropFilter:'blur(10px)',padding:'0 14px 24px'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div style={{background:'rgba(255,255,255,.97)',borderRadius:'24px 24px 18px 18px',padding:20,width:'100%',maxWidth:440,animation:'slideUp .35s cubic-bezier(.34,1.56,.64,1) both',fontFamily:"'DM Sans',system-ui,sans-serif"}}>
+        <div style={{width:36,height:4,borderRadius:2,background:'rgba(0,0,0,.1)',margin:'0 auto 16px'}}/>
+        <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:4}}>Open in maps</div>
+        <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:900,letterSpacing:-.5,color:'#1a1a2e',marginBottom:16}}>{station.name} · {station.address}</div>
+
+        <button onClick={goApple} style={{width:'100%',padding:'13px 16px',background:'rgba(0,0,0,.04)',border:'0.5px solid rgba(0,0,0,.08)',borderRadius:16,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',gap:12,marginBottom:8,color:'#1a1a2e',textAlign:'left'}}>
+          <span style={{fontSize:24}}>🗺️</span>
+          <div><div>Apple Maps</div><div style={{fontSize:11,fontWeight:400,color:'rgba(26,26,46,.45)',marginTop:1}}>iPhone · iPad · Mac{dest?' · Gas as waypoint':''}</div></div>
+        </button>
+        <button onClick={goGoogle} style={{width:'100%',padding:'13px 16px',background:'rgba(66,133,244,.07)',border:'0.5px solid rgba(66,133,244,.2)',borderRadius:16,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',gap:12,marginBottom:12,color:'#1a1a2e',textAlign:'left'}}>
+          <span style={{fontSize:24}}>📍</span>
+          <div><div>Google Maps</div><div style={{fontSize:11,fontWeight:400,color:'rgba(26,26,46,.45)',marginTop:1}}>All devices · Android{dest?' · Gas as waypoint':''}</div></div>
+        </button>
+        <button onClick={onClose} style={{width:'100%',padding:11,borderRadius:100,border:'0.5px solid rgba(0,0,0,.08)',background:'transparent',fontSize:13,color:'rgba(26,26,46,.4)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Gas Map Component ──────────────────────────────────────────────────────────
+function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius }:{
+  stations: Station[], grade: string, selectedId: number|null,
+  onSelect: (id:number)=>void, userCoords: {lat:number,lng:number}|null, radius: number
+}) {
+  const divRef = useRef<HTMLDivElement>(null), mapRef = useRef<any>(null), mksRef = useRef<Record<number,any>>({})
+  const best = stations.length ? [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0] : null
+
+  const initMap = useCallback((L:any) => {
+    if (!divRef.current || mapRef.current) return
+    const center = userCoords ?? {lat:32.6099,lng:-85.4808}
+    const map = L.map(divRef.current, {center:[center.lat,center.lng],zoom:13,zoomControl:false,attributionControl:false})
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map)
+    L.control.zoom({position:'bottomright'}).addTo(map)
+    if (userCoords) L.marker([center.lat,center.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.2),0 4px 12px rgba(255,59,48,.4)"></div>`})}).addTo(map)
     stations.forEach(st=>{
-      if(!st.lat&&!st.lng)return
-      const m=L.marker([st.lat,st.lng],{icon:L.divIcon({className:"",iconSize:[80,52],iconAnchor:[40,52],html:makePin(st[gk(grade)],st.id===best?.id,false,T.isDark)})}).addTo(map).on("click",()=>onSelect(st.id))
-      m.bindPopup(`<div style="font-family:system-ui;min-width:160px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:6px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:8px">📍 ${st.address}</div><div style="font-size:10px;color:rgba(26,26,46,.4)">${st.distance} mi away · ${st.updated}</div></div>`)
+      if (!st.lat && !st.lng) return
+      const m = L.marker([st.lat,st.lng],{icon:L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin((st as any)[gk(grade)],st.id===best?.id,false)})}).addTo(map).on('click',()=>onSelect(st.id))
       mksRef.current[st.id]=m
     })
-    mapRef.current=map
+    mapRef.current = map
   },[])
 
   useEffect(()=>{
     const boot=(L:any)=>initMap(L)
-    if((window as any).L){boot((window as any).L);return}
-    if(!document.querySelector("#leaflet-css")){const lnk=document.createElement("link");lnk.id="leaflet-css";lnk.rel="stylesheet";lnk.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";document.head.appendChild(lnk)}
-    if(!document.querySelector("#leaflet-js")){const sc=document.createElement("script");sc.id="leaflet-js";sc.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";sc.onload=()=>boot((window as any).L);document.head.appendChild(sc)}else{const wait=setInterval(()=>{if((window as any).L){clearInterval(wait);boot((window as any).L)}},100)}
+    if ((window as any).L){boot((window as any).L);return}
+    if (!document.querySelector('#leaflet-css')){const l=document.createElement('link');l.id='leaflet-css';l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(l)}
+    if (!document.querySelector('#leaflet-js')){const s=document.createElement('script');s.id='leaflet-js';s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=()=>boot((window as any).L);document.head.appendChild(s)}
+    else{const w=setInterval(()=>{if((window as any).L){clearInterval(w);boot((window as any).L)}},100)}
     return ()=>{if(mapRef.current){mapRef.current.remove();mapRef.current=null;mksRef.current={}}}
   },[])
 
   useEffect(()=>{
-    if(!(window as any).L||!mapRef.current||!stations.length)return
-    const L=(window as any).L,best=cheapestSt(stations,grade)
-    stations.forEach(st=>{const m=mksRef.current[st.id];if(!m)return;m.setIcon(L.divIcon({className:"",iconSize:[80,52],iconAnchor:[40,52],html:makePin(st[gk(grade)],st.id===best?.id,st.id===selectedId,T.isDark)}))})
-  },[grade,selectedId,T.isDark])
+    if (!(window as any).L||!mapRef.current||!stations.length) return
+    const L=(window as any).L,b=[...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0]
+    stations.forEach(st=>{const m=mksRef.current[st.id];if(!m)return;m.setIcon(L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin((st as any)[gk(grade)],st.id===b?.id,st.id===selectedId)}))})
+  },[grade,selectedId,radius])
 
   useEffect(()=>{
-    if(!mapRef.current||!selectedId)return
+    if (!mapRef.current||!selectedId) return
     const st=stations.find(s=>s.id===selectedId)
-    if(st?.lat&&st?.lng){mapRef.current.panTo([st.lat,st.lng],{animate:true,duration:.6});mksRef.current[selectedId]?.openPopup()}
+    if (st?.lat&&st?.lng) mapRef.current.panTo([st.lat,st.lng],{animate:true,duration:.5})
   },[selectedId])
 
   return (
     <>
-      <style>{`
-        .leaflet-popup-content-wrapper{background:${T.modalBg}!important;border:1px solid ${T.surfaceHLBdr}!important;border-radius:14px!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;color:${T.text}!important;backdrop-filter:blur(20px)!important}
-        .leaflet-popup-content{margin:12px 14px!important}.leaflet-popup-tip{background:${T.modalBg}!important}
-        .leaflet-popup-close-button{color:${T.text3}!important;font-size:16px!important;top:8px!important;right:10px!important}
-        .leaflet-control-zoom{border:none!important}.leaflet-control-zoom a{background:${T.modalBg}!important;backdrop-filter:blur(12px)!important;color:${T.text2}!important;border:1px solid ${T.surfaceBdr}!important;margin-bottom:3px!important;border-radius:8px!important;display:block!important}
-        .leaflet-control-zoom a:hover{background:rgba(255,59,48,.15)!important;color:#ff3b30!important}
-      `}</style>
-      <div ref={divRef} style={{width:"100%",height:"100%",borderRadius:20}}/>
+      <style>{`.leaflet-control-zoom{border:none!important}.leaflet-control-zoom a{background:rgba(255,255,255,.9)!important;border:1px solid rgba(0,0,0,.1)!important;margin-bottom:3px!important;border-radius:8px!important;display:block!important}`}</style>
+      <div ref={divRef} style={{width:'100%',height:'100%',borderRadius:18}}/>
     </>
   )
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
+// ── Main Gas Page ──────────────────────────────────────────────────────────────
+function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
+  const [grade, setGrade]           = useState('Regular')
+  const [stations, setStations]     = useState<Station[]>(FALLBACK_STATIONS)
+  const [history, setHistory]       = useState(FALLBACK_HISTORY)
+  const [userCoords, setUserCoords] = useState<{lat:number,lng:number}|null>(null)
+  const [locStatus, setLocStatus]   = useState('Finding your location...')
+  const [loading, setLoading]       = useState(false)
+  const [mapKey, setMapKey]         = useState('init')
+  const [selId, setSelId]           = useState<number|null>(null)
+  const [isDark, setIsDark]         = useState(false)
+  const [radius, setRadius]         = useState(2) // 1=5mi 2=10mi 3=15mi 4=30mi
+  const [favorites, setFavorites]   = useState<Set<number>>(new Set())
+  const [destination, setDest]      = useState('')
+  const [reportStation, setReportStation] = useState<Station|null>(null)
+  const [showThanks, setShowThanks] = useState(false)
+  const [mapsStation, setMapsStation]     = useState<Station|null>(null)
+  const [zipModal, setZipModal]     = useState(false)
+  const [userState, setUserState]   = useState('Alabama')
 
-  // daysLeft passed in from wrapper
+  const RADIUS_LABELS = ['5 miles','10 miles','15 miles','30 miles']
+  const RADIUS_COUNTS = [3,6,11,18]
 
-  const [isDark,setIsDark]=useState(false)
-  const [grade,setGrade]=useState("Regular")
-  const [sortBy,setSortBy]=useState("price")
-  const [selId,setSelId]=useState<number|null>(null)
-  const [miles,setMiles]=useState(150)
-  const [tank,setTank]=useState(14)
-  const [stations,setStations]=useState<Station[]>(FALLBACK_STATIONS)
-  const [history,setHistory]=useState(FALLBACK_HISTORY)
-  const [userCoords,setUserCoords]=useState<Coords|null>(null)
-  const [locStatus,setLocStatus]=useState("Awaiting location...")
-  const [loading,setLoading]=useState(false)
-  const [modal,setModal]=useState<"location"|"zip"|null>(null)
-
-  // Silently request GPS on mount — no custom modal needed
-  // Browser shows its own clean single prompt
+  // Silent GPS on mount
   useEffect(()=>{
-    if (!navigator.geolocation) { setModal("zip"); return }
-    setLocStatus("Finding your location...")
+    if (!navigator.geolocation){setZipModal(true);return}
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude:lat, longitude:lng } = pos.coords
+      pos=>{
+        const {latitude:lat,longitude:lng}=pos.coords
         setUserCoords({lat,lng})
-        setLocStatus("📍 Location found")
-        setModal(null)
+        setLocStatus('📍 Location found')
         fetchData(lat,lng)
       },
-      err => {
-        if (err.code === 1) {
-          // Denied — show ZIP input
-          setModal("zip")
-          setLocStatus("Enter a ZIP to find gas near you")
-        } else {
-          setModal("zip")
-          setLocStatus("Location unavailable — try ZIP")
-        }
+      err=>{
+        if(err.code===1){setZipModal(true);setLocStatus('Enter ZIP to find gas near you')}
+        else{setZipModal(true)}
       },
-      { enableHighAccuracy:true, timeout:12000, maximumAge:300000 }
-    )
-  },[])
-  const [mapKey,setMapKey]=useState("init")
-  const [showSettings,setShowSettings]=useState(false)
-  const [currentPlan,setCurrentPlan]=useState('free')
-
-  const T=isDark?DARK:LIGHT
-  const glass=(extra={})=>({background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",...extra})
-
-  // Save location + preferences back to Supabase
-  const savePreferences = useCallback(async (lat:number, lng:number, grade:string, miles:number, tank:number) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('profiles').update({
-      last_location_lat: lat,
-      last_location_lng: lng,
-      last_seen_at:      new Date().toISOString(),
-      grade_preference:  grade,
-      miles_per_week:    miles,
-      tank_size:         tank,
-    }).eq('id', user.id)
-  }, [])
-
-  // Log gas search to history
-  const logSearch = useCallback(async (lat:number, lng:number, grade:string, bestPrice:number) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('gas_searches').insert({
-      user_id:    user.id,
-      lat,
-      lng,
-      grade,
-      best_price: bestPrice,
-    }).catch(() => {}) // silent fail — not critical
-  }, [])
-
-  const fetchData=useCallback(async(lat:number,lng:number)=>{
-    setLoading(true);setLocStatus("Fetching prices near you...")
-    try {
-      const eiaRes=await fetch("/api/gas-prices");const eiaData=await eiaRes.json()
-      const base=eiaData.prices?.[0]?.price??3.15
-      if(eiaData.prices?.length){setHistory([...eiaData.prices].reverse().map((p:any)=>({day:p.period.slice(5),price:p.price})))}
-      const stRes=await fetch(`/api/stations?lat=${lat}&lng=${lng}`);const stData=await stRes.json()
-      if(stData.stations?.length){
-        const enriched:Station[]=stData.stations.map((st:any,i:number)=>({...st,id:i+1,...simulatePrices(base),distance:distanceMiles(lat,lng,st.lat,st.lng),trending:["down","stable","up"][Math.floor(Math.random()*3)],updated:`${Math.floor(Math.random()*10)+1}m ago`}))
-        setStations(enriched);setLocStatus(`${enriched.length} stations found · Live prices`);setMapKey(`${lat.toFixed(4)}-${lng.toFixed(4)}-${Date.now()}`)
-      } else {setLocStatus("Sample data · No nearby stations found");setMapKey(`fallback-${Date.now()}`)}
-    } catch(e){setLocStatus("Sample data · Check connection");setMapKey(`fallback-${Date.now()}`)}
-    setLoading(false)
-  },[])
-
-  // Load saved preferences AFTER fetchData is defined
-  useEffect(()=>{
-    const loadPrefs = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('last_location_lat,last_location_lng,grade_preference,miles_per_week,tank_size')
-          .eq('id', user.id)
-          .single()
-        if (!profile) return
-        if (profile.grade_preference) setGrade(profile.grade_preference)
-        if (profile.miles_per_week)   setMiles(profile.miles_per_week)
-        if (profile.tank_size)        setTank(profile.tank_size)
-        // Restore last location — skip modal if we have it
-        if (profile.last_location_lat && profile.last_location_lng) {
-          const lat = parseFloat(profile.last_location_lat)
-          const lng = parseFloat(profile.last_location_lng)
-          setUserCoords({lat, lng})
-          setLocStatus('📍 Last location restored')
-          setModal(null)
-          fetchData(lat, lng)
-        }
-      } catch(e) { /* silent fail */ }
-    }
-    loadPrefs()
-  }, [fetchData])
-
-  const handleAllow=useCallback(()=>{
-    setModal(null)
-    if(!navigator.geolocation){setModal("zip");return}
-    setLocStatus("Requesting location...")
-    navigator.geolocation.getCurrentPosition(
-      pos=>{const{latitude:lat,longitude:lng}=pos.coords;setUserCoords({lat,lng});setLocStatus("📍 Location found");fetchData(lat,lng);savePreferences(lat,lng,grade,miles,tank)},
-      err=>{setLocStatus(err.code===1?"Location denied · Try ZIP":"Location unavailable · Try ZIP");setModal("zip");setLoading(false)},
       {enableHighAccuracy:true,timeout:12000,maximumAge:300000}
     )
-  },[fetchData])
+    // Load preferences
+    loadPrefs()
+  },[])
 
-  const handleZip=useCallback((zip:string)=>{
-    setModal(null);setLocStatus(`ZIP ${zip} · Finding stations...`)
-    const lat=33.749,lng=-84.388
-    setUserCoords({lat,lng});setMapKey(`zip-${zip}-${Date.now()}`);fetchData(lat,lng)
-    savePreferences(lat,lng,grade,miles,tank)
-  },[fetchData,savePreferences,grade,miles,tank])
+  const loadPrefs = async () => {
+    try {
+      const {data:{user}} = await supabase.auth.getUser()
+      if (!user) return
+      const {data:p} = await supabase.from('profiles').select('state,grade_preference,last_location_lat,last_location_lng').eq('id',user.id).single()
+      if (p?.state) setUserState(p.state)
+      if (p?.grade_preference) setGrade(p.grade_preference)
+      if (p?.last_location_lat && p?.last_location_lng) {
+        const lat=parseFloat(p.last_location_lat), lng=parseFloat(p.last_location_lng)
+        setUserCoords({lat,lng}); setLocStatus('📍 Location restored'); fetchData(lat,lng)
+      }
+    } catch(e){}
+  }
 
-  const handleUpdateLocation=useCallback(()=>{
-    if(!navigator.geolocation)return
-    navigator.geolocation.getCurrentPosition(
-      pos=>{const{latitude:lat,longitude:lng}=pos.coords;setUserCoords({lat,lng});setLocStatus("📍 Location updated");setMapKey(`${lat.toFixed(4)}-${lng.toFixed(4)}-${Date.now()}`);fetchData(lat,lng)},
-      ()=>setLocStatus("Could not update location"),
-      {enableHighAccuracy:true,timeout:10000}
-    )
-  },[fetchData])
+  const fetchData = useCallback(async(lat:number,lng:number)=>{
+    setLoading(true); setLocStatus('Fetching prices near you...')
+    try {
+      const eiaRes=await fetch('/api/gas-prices'); const eiaData=await eiaRes.json()
+      const base=eiaData.prices?.[0]?.price??3.15
+      if(eiaData.prices?.length) setHistory([...eiaData.prices].reverse().map((p:any)=>({day:p.period.slice(5),price:p.price})))
+      const stRes=await fetch(`/api/stations?lat=${lat}&lng=${lng}`); const stData=await stRes.json()
+      if(stData.stations?.length){
+        const enriched=stData.stations.map((st:any,i:number)=>({
+          ...st,id:i+1,...simulatePrices(base),
+          distance:distanceMiles(lat,lng,st.lat,st.lng),
+          trending:['down','stable','up'][Math.floor(Math.random()*3)],
+          updated:`${Math.floor(Math.random()*10)+1}m ago`
+        }))
+        setStations(enriched); setLocStatus(`${enriched.length} stations found`)
+        setMapKey(`${lat.toFixed(3)}-${lng.toFixed(3)}-${Date.now()}`)
+      } else { setLocStatus('Sample data shown'); setMapKey(`fallback-${Date.now()}`) }
+    } catch(e){ setLocStatus('Sample data shown'); setMapKey(`fallback-${Date.now()}`) }
+    setLoading(false)
+    // Save location
+    try {
+      const {data:{user}} = await supabase.auth.getUser()
+      if (user) await supabase.from('profiles').update({last_location_lat:lat,last_location_lng:lng,last_seen_at:new Date().toISOString()}).eq('id',user.id)
+    } catch(e){}
+  },[])
 
-  useEffect(()=>{
-    if(!userCoords)return
-    const id=navigator.geolocation?.watchPosition(
-      pos=>{const{latitude:lat,longitude:lng}=pos.coords;const moved=distanceMiles(userCoords.lat,userCoords.lng,lat,lng);if(moved>0.1){setUserCoords({lat,lng});fetchData(lat,lng)}},
-      ()=>{},{enableHighAccuracy:true,maximumAge:60000}
-    )
-    return ()=>{if(id)navigator.geolocation?.clearWatch(id)}
-  },[userCoords?.lat,userCoords?.lng])
+  const toggleFav = (id:number) => {
+    setFavorites(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n})
+  }
 
-  const best=cheapestSt(stations,grade)
-  const bestPrice=best?.[gk(grade)]??3.09
-  const avgPrice=stations.reduce((s,st)=>s+(st as any)[gk(grade)],0)/stations.length
-  const sel=stations.find(s=>s.id===selId)
-  const deduction=(miles*4.33*IRS_RATE).toFixed(2)
-  const monthlyGas=((miles/AVG_MPG)*bestPrice*4.33).toFixed(2)
-  const weeklyGas=((miles/AVG_MPG)*bestPrice).toFixed(2)
-  const fillCost=(tank*bestPrice).toFixed(2)
-  const saving=((avgPrice-bestPrice)*tank).toFixed(2)
-  const sorted=[...stations].sort((a,b)=>sortBy==="price"?(a as any)[gk(grade)]-(b as any)[gk(grade)]:a.distance-b.distance)
-  const toggle=(id:number)=>setSelId(p=>p===id?null:id)
+  const sorted = [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])
+  const best   = sorted[0]
+  const sel    = stations.find(s=>s.id===selId)
+  const bestPrice = best?.[gk(grade)]??3.04
+  const avgPrice  = stations.reduce((s,st)=>s+(st as any)[gk(grade)],0)/stations.length
+  const spread    = stations.length ? Math.max(...stations.map((s:any)=>s[gk(grade)]))-Math.min(...stations.map((s:any)=>s[gk(grade)])) : 0
+  const stateGas  = STATE_GAS[userState]
+  const favStations = sorted.filter(s=>favorites.has(s.id))
+  const displayedCount = Math.min(RADIUS_COUNTS[radius-1], sorted.length)
+
+  const glass = (extra:any={})=>({
+    background:'rgba(255,255,255,.65)',
+    backdropFilter:'blur(32px)',WebkitBackdropFilter:'blur(32px)',
+    border:'0.5px solid rgba(255,255,255,.92)',
+    borderRadius:18,boxShadow:'0 2px 10px rgba(0,0,0,.05)',...extra
+  })
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{background:${T.bg}!important;transition:background .4s}
-        .gc-mesh{position:fixed;inset:0;pointer-events:none;z-index:0;
-          background:
-            radial-gradient(ellipse 60% 40% at 15% 5%,rgba(255,59,48,0.09) 0%,transparent 55%),
-            radial-gradient(ellipse 50% 35% at 85% 85%,rgba(10,132,255,0.06) 0%,transparent 50%),
-            radial-gradient(ellipse 40% 30% at 55% 40%,rgba(48,209,88,0.04) 0%,transparent 45%);
-        }
-        @keyframes popIn{from{opacity:0;transform:scale(.88) translateY(14px)}to{opacity:1;transform:scale(1) translateY(0)}}
-        @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.28;transform:scale(.58)}}
+        body{background:#f0eff4;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes lp{0%,100%{opacity:1}50%{opacity:.25}}
         @keyframes loadSlide{0%{left:-40%}100%{left:100%}}
-        @keyframes settingsIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-        input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+        @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+        input[type=range]{width:100%;accent-color:#ff3b30;cursor:pointer}
+        .st-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:0.5px solid rgba(0,0,0,.05);cursor:pointer;transition:background .15s}
+        .st-row:last-child{border-bottom:none}
+        .st-row:hover{background:rgba(255,255,255,.5)}
+        .st-row.selected{background:rgba(255,59,48,.05)}
+        .star-btn{background:none;border:none;cursor:pointer;font-size:18px;transition:transform .2s;flex-shrink:0;padding:2px;line-height:1}
+        .star-btn:hover{transform:scale(1.25)}
       `}</style>
 
-      {modal==="zip"&&<ZipModal onSubmit={handleZip} onClose={()=>setModal(null)} T={T}/>}
-      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} T={T} userCoords={userCoords} onUpdateLocation={handleUpdateLocation} currentPlan={currentPlan} onChangePlan={(p)=>{setCurrentPlan(p);setShowSettings(false)}}/>}
+      {/* Modals */}
+      {reportStation && !showThanks && <ReportPriceModal station={reportStation} onClose={()=>setReportStation(null)} onSubmit={()=>{setReportStation(null);setShowThanks(true)}}/>}
+      {showThanks && <ThanksModal onClose={()=>setShowThanks(false)}/>}
+      {mapsStation && <MapsModal station={mapsStation} destination={destination} onClose={()=>setMapsStation(null)}/>}
 
-      <div style={{background:T.bg,backgroundImage:T.bgGrad,minHeight:"100vh",fontFamily:"'Outfit',system-ui,sans-serif",color:T.text,padding:22,transition:"background .4s,color .3s"}}>
+      <div style={{background:'#f0eff4',backgroundImage:'radial-gradient(ellipse 70% 50% at 15% 5%,rgba(255,59,48,.09) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 85% 85%,rgba(10,132,255,.06) 0%,transparent 50%)',minHeight:'100vh',padding:'14px 14px 80px',color:'#1a1a2e'}}>
 
-        {/* ── TRIAL COUNTDOWN BANNER ── */}
         <TrialBanner daysLeft={daysLeft}/>
 
         {/* Header */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,flexWrap:"wrap",gap:10}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
           <div>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-              <Link href="/dashboard" style={{fontSize:11,color:T.text3,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>← Dashboard</Link>
-            </div>
-            <div style={{fontSize:10,fontWeight:600,letterSpacing:"2.5px",color:T.accent,textTransform:"uppercase",marginBottom:4}}>⛽ Gas Tracker · Fuel Intelligence</div>
-            <div style={{fontFamily:"'Sora',sans-serif",fontSize:40,fontWeight:900,letterSpacing:-2,lineHeight:1}}>GAS <span style={{color:T.accent}}>PRICES</span></div>
+            <Link href="/dashboard" style={{fontSize:11,color:'rgba(26,26,46,.4)',textDecoration:'none',display:'flex',alignItems:'center',gap:4,marginBottom:6}}>← Dashboard</Link>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:'2.5px',color:'#ff3b30',textTransform:'uppercase',marginBottom:4}}>⛽ Fuel Intelligence</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,letterSpacing:-2,lineHeight:1}}>GAS <span style={{color:'#ff3b30'}}>PRICES</span></div>
           </div>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <button onClick={handleUpdateLocation} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}>📍 Update Location</button>
-              <button onClick={()=>setIsDark(d=>!d)} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",cursor:"pointer",color:T.text2,fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:T.surface,border:`1px solid ${T.surfaceBdr}`,borderRadius:20,backdropFilter:"blur(24px)"}}><span style={{fontSize:14}}>{isDark?"☀️":"🌙"}</span></button>
-
+          <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6}}>
+            <div style={{display:'flex',alignItems:'center',gap:5,background:'rgba(255,59,48,.08)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:100,padding:'5px 12px',fontSize:10,fontWeight:700,color:'#cc2018'}}>
+              <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease infinite'}}/>
+              {loading?'FETCHING...':'LIVE · EIA DATA'}
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:6,background:T.pillBg,border:`1px solid ${T.pillBdr}`,borderRadius:100,padding:"6px 14px",fontSize:10,fontWeight:600,letterSpacing:1,color:T.accent}}>
-              <div style={{width:7,height:7,background:T.accent,borderRadius:"50%",animation:"lp 1.4s ease-in-out infinite",boxShadow:`0 0 5px ${T.accent}`}}/>
-              {loading?"FETCHING...":"LIVE · EIA DATA"}
-            </div>
-            <div style={{fontSize:10,color:T.text3,letterSpacing:.3}}>{locStatus}</div>
-          </div>
-        </div>
-
-        {loading&&<div style={{height:2,background:T.inputBg,borderRadius:1,overflow:"hidden",marginBottom:16,position:"relative"}}><div style={{position:"absolute",height:"100%",width:"40%",background:`linear-gradient(90deg,transparent,${T.accent},transparent)`,borderRadius:1,animation:"loadSlide 1.2s ease-in-out infinite"}}/></div>}
-
-        {!userCoords&&!modal&&(
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:T.pillBg,border:`1px solid ${T.pillBdr}`,borderRadius:14,padding:"10px 16px",marginBottom:16,flexWrap:"wrap",gap:8}}>
-            <span style={{fontSize:12,color:T.text2}}>📍 Using sample data — enable location for real prices near you</span>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={handleAllow} style={{padding:"6px 16px",background:`linear-gradient(135deg,${T.accent},#ff6b35)`,color:"#fff",border:"none",borderRadius:100,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>Allow Location</button>
-              <button onClick={()=>setModal("zip")} style={{padding:"6px 14px",...glass({cursor:"pointer",color:T.text2,fontSize:12,fontWeight:500,fontFamily:"'Outfit',sans-serif"})}}>Use ZIP</button>
-            </div>
-          </div>
-        )}
-
-
-
-
-
-        <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
-          {GRADES.map(g=><button key={g} onClick={()=>setGrade(g)} style={{padding:"8px 20px",borderRadius:100,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:.3,transition:"all .25s cubic-bezier(.34,1.56,.64,1)",background:grade===g?"linear-gradient(135deg,#ff3b30,#ff6b35)":T.surface,color:grade===g?"#fff":T.text2,border:grade===g?"none":`1px solid ${T.surfaceBdr}`,boxShadow:grade===g?`0 0 18px rgba(255,59,48,.35),0 4px 12px rgba(255,59,48,.2)`:"none",transform:grade===g?"scale(1.03)":"scale(1)"}}>{g}</button>)}
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:11,marginBottom:16}}>
-          <div style={{background:T.surfaceHL,border:`1px solid ${T.surfaceHLBdr}`,borderRadius:20,padding:"16px 18px",position:"relative",overflow:"hidden",boxShadow:`0 0 0 1px rgba(255,59,48,.08),0 8px 24px rgba(255,59,48,.1)`}}>
-            <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(255,59,48,.5),transparent)"}}/>
-            <div style={{fontSize:9,fontWeight:600,letterSpacing:"1.5px",color:T.accent,textTransform:"uppercase",marginBottom:7}}>Cheapest Nearby</div>
-            <div style={{fontSize:30,fontWeight:800,letterSpacing:-1,color:T.accent}}>${bestPrice.toFixed(2)}</div>
-            <div style={{fontSize:11,color:T.text2,marginTop:5}}>{best?.name} · {best?.distance} mi</div>
-          </div>
-          {[
-            {label:"Area Average",val:`$${avgPrice.toFixed(2)}`,sub:`Save $${saving}/fill-up`,ok:true},
-            {label:"Fill-Up Cost",val:`$${fillCost}`,sub:`${tank}gal · best price`},
-            {label:"7-Day Trend",val:"↓ $0.19",sub:"vs last week",grn:true},
-            {label:"Natl Average",val:"$5.05",sub:"$0.16 under national",ok:true},
-          ].map(k=><div key={k.label} style={{...glass({padding:"16px 18px"})}}><div style={{fontSize:9,fontWeight:600,letterSpacing:"1.5px",color:T.text3,textTransform:"uppercase",marginBottom:7}}>{k.label}</div><div style={{fontSize:30,fontWeight:800,letterSpacing:-1,color:k.grn?T.green:T.text}}>{k.val}</div><div style={{fontSize:11,color:k.ok?T.green:T.text2,marginTop:5}}>{k.sub}</div></div>)}
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 295px",gap:13,marginBottom:13,height:440}}>
-          <div style={{borderRadius:20,overflow:"hidden",border:`1px solid ${T.surfaceBdr}`,position:"relative",boxShadow:"0 8px 32px rgba(0,0,0,.12)"}}>
-            <GasMap key={mapKey} mapKey={mapKey} stations={stations} grade={grade} selectedId={selId} onSelect={toggle} userCoords={userCoords} T={T}/>
-            <div style={{position:"absolute",top:13,left:13,zIndex:999,background:T.mapOverlay,backdropFilter:"blur(24px)",border:`1px solid ${T.surfaceHLBdr}`,borderRadius:14,padding:"11px 15px",pointerEvents:"none",boxShadow:"0 4px 20px rgba(0,0,0,.15)"}}>
-              <div style={{fontSize:9,fontWeight:600,letterSpacing:2,color:T.accent,textTransform:"uppercase",marginBottom:2}}>Best Price</div>
-              <div style={{fontSize:24,fontWeight:800,letterSpacing:-1,color:T.text}}>${bestPrice.toFixed(2)}</div>
-              <div style={{fontSize:10,color:T.text2,marginTop:1}}>{best?.name} · {best?.distance} mi</div>
-            </div>
-            <button onClick={handleUpdateLocation} style={{position:"absolute",bottom:13,left:13,zIndex:999,background:T.mapOverlay,backdropFilter:"blur(20px)",border:`1px solid ${T.surfaceBdr}`,borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:11,fontWeight:600,color:T.text2,fontFamily:"'Outfit',sans-serif",display:"flex",alignItems:"center",gap:5}}>
-              📍 {userCoords?"Update Location":"Enable Location"}
+            <div style={{fontSize:10,color:'rgba(26,26,46,.4)'}}>{locStatus}</div>
+            <button onClick={()=>navigator.geolocation?.getCurrentPosition(p=>{const{latitude:lat,longitude:lng}=p.coords;setUserCoords({lat,lng});fetchData(lat,lng)},()=>{},{enableHighAccuracy:true,timeout:8000})} style={{background:'rgba(255,255,255,.65)',border:'0.5px solid rgba(255,255,255,.9)',borderRadius:100,padding:'5px 12px',fontSize:11,fontWeight:600,color:'rgba(26,26,46,.6)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+              📍 Update location
             </button>
           </div>
-
-          <div style={{...glass({display:"flex",flexDirection:"column",overflow:"hidden",padding:0})}}>
-            {/* Destination for Apple Maps waypoint */}
-            <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.surfaceBdr}`,display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:13,flexShrink:0}}>🏁</span>
-              <input
-                type="text"
-                placeholder="Destination? We'll add gas as a stop (optional)"
-                id="gas-dest-input"
-                style={{flex:1,background:"transparent",border:"none",outline:"none",fontSize:12,color:T.text,fontFamily:"'Outfit',system-ui,sans-serif"}}
-              />
-            </div>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:`1px solid ${T.surfaceBdr}`,flexShrink:0}}>
-              <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2}}>{stations[0]?.lat?`${stations.length} Stations Found`:"Nearby Stations"}</div>
-              <div style={{display:"flex",gap:3}}>{["price","distance"].map(s=><button key={s} onClick={()=>setSortBy(s)} style={{fontSize:9,fontWeight:600,padding:"3px 9px",borderRadius:7,cursor:"pointer",letterSpacing:.5,fontFamily:"'Outfit',sans-serif",transition:"all .2s",background:sortBy===s?`rgba(255,59,48,.14)`:T.inputBg,color:sortBy===s?T.accent:T.text3,border:`1px solid ${sortBy===s?"rgba(255,59,48,.28)":T.inputBdr}`}}>{s}</button>)}</div>
-            </div>
-            <div style={{flex:1,overflowY:"auto",scrollbarWidth:"thin"}}>
-              {sorted.map((st,i)=>{
-                const p=(st as any)[gk(grade)],ib=best&&st.id===best.id,is=st.id===selId
-                return <div key={st.id} onClick={()=>toggle(st.id)} style={{display:"flex",alignItems:"center",padding:"12px 16px",gap:11,borderBottom:`1px solid ${T.surfaceBdr}`,cursor:"pointer",borderLeft:`2.5px solid ${is?T.accent:ib?T.green:"transparent"}`,background:is?T.rowSel:ib?T.rowBest:"transparent",transition:"background .18s"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:i===0?T.green:T.text3,minWidth:15,textAlign:"center"}}>{i===0?"★":`${i+1}`}</div>
-                  <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:700,color:T.text}}>{st.name}</div><div style={{fontSize:9,color:T.text3,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{st.address}</div><div style={{fontSize:9,color:T.text3,marginTop:1}}>{st.distance} mi away</div></div>
-                  <div style={{textAlign:"right"}}><div style={{fontSize:21,fontWeight:800,letterSpacing:-.5,color:ib?T.green:T.text,lineHeight:1}}>${p.toFixed(2)}</div><div style={{fontSize:11,fontWeight:700,color:trendColor(st.trending,T),marginTop:2}}>{trendIcon(st.trending)}</div><div style={{fontSize:8,color:T.text3,marginTop:2}}>{st.updated}</div></div>
-                </div>
-              })}
-            </div>
-          </div>
         </div>
 
-        {sel&&(
-          <div style={{background:T.surfaceHL,border:`1px solid ${T.surfaceHLBdr}`,borderRadius:20,padding:"16px 20px",marginBottom:13,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:14,animation:"fadeUp .3s cubic-bezier(.34,1.56,.64,1)",position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(255,59,48,.5),transparent)"}}/>
-            <div><div style={{fontSize:9,fontWeight:600,letterSpacing:2,color:T.accent,textTransform:"uppercase",marginBottom:3}}>Selected Station</div><div style={{fontSize:26,fontWeight:800,letterSpacing:-.5,color:T.text}}>{sel.name}</div><div style={{fontSize:11,color:T.text2,marginTop:3}}>📍 {sel.address} · {sel.distance} mi away</div></div>
-            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>{GRADES.map(g=><div key={g} style={{textAlign:"center"}}><div style={{fontSize:8,fontWeight:600,letterSpacing:"1.5px",color:T.text3,textTransform:"uppercase"}}>{g}</div><div style={{fontSize:19,fontWeight:800,letterSpacing:-.5,color:g===grade?T.accent:T.text,marginTop:3}}>${(sel as any)[gk(g)].toFixed(2)}</div></div>)}</div>
-            <button onClick={()=>window.open(`https://maps.google.com/?q=${sel.lat},${sel.lng}`)} style={{padding:"10px 20px",background:"linear-gradient(135deg,#ff3b30,#ff6b35)",color:"#fff",border:"none",borderRadius:100,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 0 18px rgba(255,59,48,.35)",fontFamily:"'Outfit',sans-serif"}}
-              onClick={()=>{
-                const dest=(document.getElementById("gas-dest-input") as HTMLInputElement)?.value?.trim()
-                const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
-                if(dest){
-                  // With destination: gas station is a waypoint
-                  if(isApple){window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(dest)}&via=${sel.lat},${sel.lng}&dirflag=d`)}
-                  else{window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(dest)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)}
-                } else {
-                  // No destination: open station directly
-                  if(isApple){window.open(`maps://maps.apple.com/?daddr=${sel.lat},${sel.lng}&dirflag=d`)}
-                  else{window.open(`https://www.google.com/maps/?q=${sel.lat},${sel.lng}`)}
-                }
-              }}>
-              {(() => { const dest=(typeof document!=="undefined"&&(document.getElementById("gas-dest-input") as HTMLInputElement)?.value?.trim()); return dest?"Add as Stop →":"Open in Maps →" })()}
+        {loading && <div style={{height:2,background:'rgba(0,0,0,.06)',borderRadius:1,overflow:'hidden',marginBottom:12,position:'relative'}}><div style={{position:'absolute',height:'100%',width:'40%',background:'linear-gradient(90deg,transparent,#ff3b30,transparent)',animation:'loadSlide 1.2s ease-in-out infinite'}}/></div>}
+
+        {/* Grade pills */}
+        <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+          {GRADES.map(g=>(
+            <button key={g} onClick={()=>setGrade(g)} style={{padding:'7px 16px',borderRadius:100,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",border:'0.5px solid',transition:'all .2s',background:grade===g?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(255,255,255,.65)',color:grade===g?'#fff':'rgba(26,26,46,.6)',borderColor:grade===g?'transparent':'rgba(255,255,255,.9)',boxShadow:grade===g?'0 4px 12px rgba(255,59,48,.3)':'none'}}>
+              {g}
             </button>
-          </div>
-        )}
-
-        <RouteGasFinder userCoords={userCoords} basePrice={bestPrice} isDark={isDark}/>
-
-        {/* ── Per-station 7-day trends ── */}
-        <div style={{...glass({padding:"20px 22px"}),marginBottom:13}}>
-          <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2,marginBottom:16}}>Station Price Trends · Last 7 Days</div>
-          {sorted.slice(0,3).map((st,i)=>{
-            const price=(st as any)[gk(grade)]
-            const isBest=i===0
-            const trendDir=st.trending
-            const days=["Mon","Tue","Wed","Thu","Fri","Sat","Today"]
-            const delta=trendDir==="down"?-0.018:trendDir==="up"?0.014:0.002
-            const pts=days.map((_,j)=>+(price+(days.length-1-j)*delta+(Math.random()*.008-.004)).toFixed(3))
-            const minP=Math.min(...pts),maxP=Math.max(...pts),range=(maxP-minP)||0.05
-            const svgH=44
-            const coords=pts.map((p,j)=>({x:j/(pts.length-1)*280,y:svgH-((p-minP)/range)*(svgH-8)-4}))
-            const pathD=coords.map((c,j)=>j===0?`M${c.x},${c.y}`:`L${c.x},${c.y}`).join(" ")
-            const fillD=pathD+` L${coords[coords.length-1].x},${svgH} L0,${svgH} Z`
-            const color=trendDir==="down"?T.green:trendDir==="up"?"#ff453a":"#ff9f0a"
-            const chipLabel=trendDir==="down"?"↓ dropping":trendDir==="up"?"↑ rising":"→ stable"
-            const startPrice=pts[0]
-            return (
-              <div key={st.id} style={{paddingBottom:i<2?16:0,marginBottom:i<2?16:0,borderBottom:i<2?`0.5px solid ${T.surfaceBdr}`:"none"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                  <div>
-                    {isBest&&<div style={{fontSize:9,fontWeight:700,background:`rgba(48,209,88,.1)`,color:T.green,border:`0.5px solid rgba(48,209,88,.3)`,borderRadius:100,padding:"1px 8px",display:"inline-block",marginBottom:3,letterSpacing:.5}}>★ CHEAPEST</div>}
-                    <div style={{fontSize:14,fontWeight:700,color:T.text}}>{st.name} · {st.distance} mi</div>
-                    <div style={{fontSize:10,color:T.text3,marginTop:1}}>Was ${startPrice.toFixed(2)} Mon → ${price.toFixed(2)} today</div>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{fontSize:9,fontWeight:700,color,background:`${color}18`,border:`0.5px solid ${color}40`,borderRadius:100,padding:"2px 9px"}}>{chipLabel}</div>
-                    <div style={{fontFamily:"'Outfit',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,color:isBest?T.green:T.text}}>${price.toFixed(2)}</div>
-                  </div>
-                </div>
-                <svg viewBox={`0 0 280 ${svgH}`} style={{width:"100%",height:svgH,display:"block"}} preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id={`sg${st.id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={color} stopOpacity=".18"/>
-                      <stop offset="100%" stopColor={color} stopOpacity="0"/>
-                    </linearGradient>
-                  </defs>
-                  <path d={fillD} fill={`url(#sg${st.id})`}/>
-                  <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx={coords[coords.length-1].x} cy={coords[coords.length-1].y} r="3.5" fill={color}/>
-                </svg>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:T.text3,marginTop:3}}>
-                  {days.map(d=><span key={d}>{d}</span>)}
-                </div>
-              </div>
-            )
-          })}
+          ))}
         </div>
 
-        {/* ── Area 30-day price chart ── */}
-        <div style={{...glass({padding:"20px 22px"}),marginBottom:13}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:8}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:"1.5px",textTransform:"uppercase",color:T.text2}}>Your Area · 30-Day Trend</div>
-            <div style={{fontSize:9,fontWeight:600,color:T.text3}}>EIA Southeast · Regular</div>
+        {/* Map */}
+        <div style={{height:190,...glass({overflow:'hidden',padding:0,marginBottom:10,position:'relative'})}}>
+          <GasMap key={mapKey} stations={sorted.slice(0,displayedCount)} grade={grade} selectedId={selId} onSelect={id=>setSelId(p=>p===id?null:id)} userCoords={userCoords} radius={radius}/>
+          {/* Best price overlay */}
+          <div style={{position:'absolute',top:10,left:10,zIndex:999,background:'rgba(255,255,255,.9)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 12px',pointerEvents:'none'}}>
+            <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:2}}>Best price</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:900,letterSpacing:-1,color:'#1a1a2e',lineHeight:1}}>${bestPrice.toFixed(2)}</div>
+            <div style={{fontSize:9,color:'rgba(26,26,46,.5)',marginTop:2}}>{best?.name}</div>
           </div>
-          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:10}}>
+          {/* Report button */}
+          <button onClick={()=>setReportStation(sel||sorted[0])} style={{position:'absolute',bottom:8,right:8,zIndex:999,background:'rgba(255,255,255,.85)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'5px 12px',fontSize:10,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+            📍 Report a price
+          </button>
+        </div>
+
+        {/* Radius slider */}
+        <div style={{...glass({padding:'12px 16px',marginBottom:12})}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:600,color:'rgba(26,26,46,.5)'}}>Search radius</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:900,letterSpacing:-1,color:'#ff3b30'}}>{RADIUS_LABELS[radius-1]}</div>
+          </div>
+          <input type="range" min={1} max={4} step={1} value={radius} onChange={e=>setRadius(+e.target.value)}/>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'rgba(26,26,46,.35)',marginTop:3}}>
+            <span>5 mi</span><span>10 mi</span><span>15 mi</span><span>30 mi</span>
+          </div>
+        </div>
+
+        {/* Cheapest KPI */}
+        <div style={{background:'rgba(255,59,48,.07)',border:'0.5px solid rgba(255,59,48,.22)',borderRadius:18,padding:'14px 18px',marginBottom:10,position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:0,left:0,right:0,height:1.5,background:'linear-gradient(90deg,transparent,#ff3b30,transparent)'}}/>
+          <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
             <div>
-              <div style={{fontFamily:"'Outfit',sans-serif",fontSize:32,fontWeight:800,letterSpacing:-1.5,color:T.accent,lineHeight:1}}>${bestPrice.toFixed(2)}</div>
-              <div style={{fontSize:11,fontWeight:700,color:T.green,marginTop:3}}>↓ $0.19 from 30 days ago</div>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:4}}>Cheapest nearby</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:36,fontWeight:900,letterSpacing:-2,color:'#ff3b30',lineHeight:1}}>${bestPrice.toFixed(2)}</div>
+              <div style={{fontSize:12,color:'rgba(26,26,46,.5)',marginTop:5}}>{best?.name} · {best?.address} · {best?.distance} mi</div>
             </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:9,color:T.text3,marginBottom:2}}>30-day range</div>
-              <div style={{fontSize:13,fontWeight:700,color:T.text}}>${(bestPrice-.19).toFixed(2)} — ${(bestPrice+.08).toFixed(2)}</div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:3}}>Price spread</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:900,letterSpacing:-1,color:'#ff9f0a'}}>${spread.toFixed(2)}</div>
+              <div style={{fontSize:10,color:'rgba(26,26,46,.4)'}}>cheapest → priciest</div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={110}>
+        </div>
+
+        {/* Area avg VS State avg */}
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+          <div style={{...glass({padding:'14px 16px',flex:1})}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)',marginBottom:5}}>Area average</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:24,fontWeight:900,letterSpacing:-1.5,color:'#1a1a2e',lineHeight:1}}>${avgPrice.toFixed(2)}</div>
+            <div style={{fontSize:11,color:'rgba(26,26,46,.45)',marginTop:4}}>{displayedCount} stations</div>
+          </div>
+
+          <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+            <div style={{width:34,height:34,borderRadius:'50%',background:'rgba(255,255,255,.65)',backdropFilter:'blur(20px)',border:'0.5px solid rgba(255,255,255,.92)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:'rgba(26,26,46,.4)',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>vs</div>
+            <div style={{fontSize:8,fontWeight:700,color:'rgba(26,26,46,.3)',letterSpacing:.5}}>EIA</div>
+          </div>
+
+          <div style={{...glass({padding:'14px 16px',flex:1,background:'rgba(48,209,88,.07)',border:'0.5px solid rgba(48,209,88,.25)'})}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)',marginBottom:5}}>{userState} avg</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:24,fontWeight:900,letterSpacing:-1.5,color:'#30d158',lineHeight:1}}>${stateGas?.avg.toFixed(2)??'—'}</div>
+            <div style={{fontSize:11,color:'#30d158',marginTop:4}}>
+              {stateGas ? (bestPrice < stateGas.avg ? '↓ below state avg' : '↑ above state avg') : 'EIA.gov'}
+            </div>
+          </div>
+        </div>
+
+        {/* Station list */}
+        <div style={{...glass({overflow:'hidden',marginBottom:12,padding:0})}}>
+          <div style={{padding:'10px 16px',borderBottom:'0.5px solid rgba(0,0,0,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)'}}>{displayedCount} Stations · {RADIUS_LABELS[radius-1]}</div>
+            <div style={{display:'flex',gap:4}}>
+              <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,59,48,.1)',color:'#cc2018',border:'0.5px solid rgba(255,59,48,.25)',fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Price</button>
+              <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,255,255,.5)',color:'rgba(26,26,46,.4)',border:'0.5px solid rgba(0,0,0,.08)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Distance</button>
+            </div>
+          </div>
+          {/* Destination input */}
+          <div style={{padding:'9px 16px',borderBottom:'0.5px solid rgba(0,0,0,.05)',display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:13}}>🏁</span>
+            <input value={destination} onChange={e=>setDest(e.target.value)} placeholder="Add destination — gas becomes a waypoint (optional)" style={{flex:1,background:'none',border:'none',outline:'none',fontSize:11,color:'rgba(26,26,46,.6)',fontFamily:"'DM Sans',sans-serif"}}/>
+          </div>
+          {sorted.slice(0,displayedCount).map((st,i)=>(
+            <div key={st.id} className={`st-row${selId===st.id?' selected':''}`} onClick={()=>setSelId(p=>p===st.id?null:st.id)}>
+              <div style={{fontSize:11,fontWeight:700,color:i===0?'#30d158':'rgba(26,26,46,.35)',minWidth:14,textAlign:'center'}}>{i===0?'★':i+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>{st.name}</div>
+                <div style={{fontSize:10,color:'rgba(26,26,46,.4)',marginTop:1}}>{st.address} · {st.distance} mi</div>
+              </div>
+              <button className="star-btn" onClick={e=>{e.stopPropagation();toggleFav(st.id)}}>{favorites.has(st.id)?'⭐':'☆'}</button>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:i===0?'#30d158':'#1a1a2e'}}>${(st as any)[gk(grade)].toFixed(2)}</div>
+                <div style={{fontSize:11,fontWeight:700,color:st.trending==='down'?'#30d158':st.trending==='up'?'#ff453a':'rgba(26,26,46,.35)'}}>{st.trending==='down'?'↓':st.trending==='up'?'↑':'→'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Selected station */}
+        {sel && (
+          <div style={{background:'rgba(255,59,48,.07)',border:'0.5px solid rgba(255,59,48,.22)',borderRadius:20,padding:'16px 18px',marginBottom:12,position:'relative',overflow:'hidden',animation:'fadeUp .3s ease'}}>
+            <div style={{position:'absolute',top:0,left:0,right:0,height:1.5,background:'linear-gradient(90deg,transparent,#ff3b30,transparent)'}}/>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:4}}>
+              <div>
+                <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:4}}>Selected Station</div>
+                <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:900,letterSpacing:-.5,color:'#1a1a2e'}}>{sel.name}</div>
+                <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginTop:2}}>📍 {sel.address} · {sel.distance} mi away</div>
+              </div>
+              <button className="star-btn" onClick={()=>toggleFav(sel.id)} style={{fontSize:22}}>{favorites.has(sel.id)?'⭐':'☆'}</button>
+            </div>
+            <div style={{display:'flex',gap:14,flexWrap:'wrap',margin:'12px 0'}}>
+              {GRADES.map(g=>(
+                <div key={g} style={{textAlign:'center'}}>
+                  <div style={{fontSize:8,fontWeight:700,letterSpacing:'1.5px',color:'rgba(26,26,46,.4)',textTransform:'uppercase'}}>{g}</div>
+                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:800,letterSpacing:-.5,color:g===grade?'#ff3b30':'#1a1a2e',marginTop:3}}>${(sel as any)[gk(g)].toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <button onClick={()=>setMapsStation(sel)} style={{flex:1,padding:'11px 16px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:14,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 4px 12px rgba(255,59,48,.3)'}}>
+                🗺️ Open in Maps →
+              </button>
+              <button onClick={()=>setReportStation(sel)} style={{padding:'11px 14px',background:'rgba(255,255,255,.65)',border:'0.5px solid rgba(255,255,255,.9)',borderRadius:14,fontSize:12,fontWeight:600,color:'rgba(26,26,46,.6)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+                📍 Report price
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Favorites price trends */}
+        <div style={{...glass({padding:'18px',marginBottom:12})}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)'}}>
+              {favStations.length > 0 ? '⭐ Favorite Station Trends' : 'Station Price Trends · Last 7 Days'}
+            </div>
+            {favStations.length === 0 && (
+              <div style={{fontSize:11,color:'rgba(26,26,46,.4)'}}>
+                ☆ Star a station to track its price trend
+              </div>
+            )}
+          </div>
+
+          {favStations.length > 0 ? (
+            favStations.map((st,i)=>{
+              const price = (st as any)[gk(grade)]
+              const trendDir = st.trending
+              const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Today']
+              const delta = trendDir==='down'?-0.018:trendDir==='up'?0.014:0.002
+              const pts = days.map((_,j)=>+(price+(days.length-1-j)*delta+(Math.random()*.008-.004)).toFixed(3))
+              const minP=Math.min(...pts),maxP=Math.max(...pts),range=(maxP-minP)||0.05
+              const svgH=44
+              const coords=pts.map((p,j)=>({x:j/(pts.length-1)*280,y:svgH-((p-minP)/range)*(svgH-8)-4}))
+              const pathD=coords.map((c,j)=>j===0?`M${c.x},${c.y}`:`L${c.x},${c.y}`).join(' ')
+              const fillD=pathD+` L${coords[coords.length-1].x},${svgH} L0,${svgH} Z`
+              const color = trendDir==='down'?'#30d158':trendDir==='up'?'#ff453a':'#ff9f0a'
+              return (
+                <div key={st.id} style={{paddingBottom:i<favStations.length-1?16:0,marginBottom:i<favStations.length-1?16:0,borderBottom:i<favStations.length-1?'0.5px solid rgba(0,0,0,.06)':'none'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8}}>
+                    <div>
+                      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+                        <span style={{fontSize:14}}>⭐</span>
+                        <span style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>{st.name}</span>
+                        {st.id===sorted[0]?.id && <span style={{fontSize:9,fontWeight:700,background:'rgba(48,209,88,.1)',color:'#1a7a35',border:'0.5px solid rgba(48,209,88,.3)',borderRadius:100,padding:'1px 7px'}}>CHEAPEST</span>}
+                      </div>
+                      <div style={{fontSize:10,color:'rgba(26,26,46,.4)'}}>{st.address} · {st.distance} mi · Was ${pts[0].toFixed(2)} Mon</div>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{fontSize:9,fontWeight:700,color,background:`${color}18`,border:`0.5px solid ${color}40`,borderRadius:100,padding:'2px 9px'}}>{trendDir==='down'?'↓ dropping':trendDir==='up'?'↑ rising':'→ stable'}</div>
+                      <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:st.id===sorted[0]?.id?'#30d158':'#1a1a2e'}}>${price.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <svg viewBox={`0 0 280 ${svgH}`} style={{width:'100%',height:svgH,display:'block'}} preserveAspectRatio="none">
+                    <defs><linearGradient id={`fg${st.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity=".18"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+                    <path d={fillD} fill={`url(#fg${st.id})`}/>
+                    <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx={coords[coords.length-1].x} cy={coords[coords.length-1].y} r="3.5" fill={color}/>
+                  </svg>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'rgba(26,26,46,.35)',marginTop:3}}>
+                    {days.map(d=><span key={d}>{d}</span>)}
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            // Show top 3 when no favorites
+            sorted.slice(0,3).map((st,i)=>{
+              const price = (st as any)[gk(grade)]
+              const trendDir = st.trending
+              const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Today']
+              const delta = trendDir==='down'?-0.018:trendDir==='up'?0.014:0.002
+              const pts = days.map((_,j)=>+(price+(days.length-1-j)*delta+(Math.random()*.008-.004)).toFixed(3))
+              const minP=Math.min(...pts),maxP=Math.max(...pts),range=(maxP-minP)||0.05
+              const svgH=44
+              const coords=pts.map((p,j)=>({x:j/(pts.length-1)*280,y:svgH-((p-minP)/range)*(svgH-8)-4}))
+              const pathD=coords.map((c,j)=>j===0?`M${c.x},${c.y}`:`L${c.x},${c.y}`).join(' ')
+              const fillD=pathD+` L${coords[coords.length-1].x},${svgH} L0,${svgH} Z`
+              const color = trendDir==='down'?'#30d158':trendDir==='up'?'#ff453a':'#ff9f0a'
+              return (
+                <div key={st.id} style={{paddingBottom:i<2?16:0,marginBottom:i<2?16:0,borderBottom:i<2?'0.5px solid rgba(0,0,0,.06)':'none'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8}}>
+                    <div>
+                      {i===0 && <div style={{fontSize:9,fontWeight:700,background:'rgba(48,209,88,.1)',color:'#1a7a35',border:'0.5px solid rgba(48,209,88,.3)',borderRadius:100,padding:'1px 8px',display:'inline-block',marginBottom:3}}>★ CHEAPEST</div>}
+                      <div style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>{st.name} · {st.address}</div>
+                      <div style={{fontSize:10,color:'rgba(26,26,46,.4)',marginTop:1}}>{st.distance} mi · Was ${pts[0].toFixed(2)} Mon → ${price.toFixed(2)} today</div>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{fontSize:9,fontWeight:700,color,background:`${color}18`,border:`0.5px solid ${color}40`,borderRadius:100,padding:'2px 9px'}}>{trendDir==='down'?'↓ dropping':trendDir==='up'?'↑ rising':'→ stable'}</div>
+                      <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:i===0?'#30d158':'#1a1a2e'}}>${price.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <svg viewBox={`0 0 280 ${svgH}`} style={{width:'100%',height:svgH,display:'block'}} preserveAspectRatio="none">
+                    <defs><linearGradient id={`dg${st.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity=".18"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+                    <path d={fillD} fill={`url(#dg${st.id})`}/>
+                    <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx={coords[coords.length-1].x} cy={coords[coords.length-1].y} r="3.5" fill={color}/>
+                  </svg>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'rgba(26,26,46,.35)',marginTop:3}}>
+                    {days.map(d=><span key={d}>{d}</span>)}
+                  </div>
+                </div>
+              )
+            })
+          )}
+
+          {/* Add favorites CTA */}
+          {favStations.length === 0 && (
+            <div style={{marginTop:14,padding:'10px 14px',background:'rgba(255,59,48,.05)',border:'0.5px solid rgba(255,59,48,.15)',borderRadius:12,display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:16}}>☆</span>
+              <div style={{fontSize:12,color:'rgba(26,26,46,.5)',lineHeight:1.5}}>
+                Tap the <strong>☆</strong> star next to any station to track its price trend here
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Area 30-day chart */}
+        <div style={{...glass({padding:'18px',marginBottom:12})}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)'}}>Your Area · 30-Day Trend</div>
+            <div style={{fontSize:9,fontWeight:600,color:'rgba(26,26,46,.4)'}}>EIA {userState} Region · Regular</div>
+          </div>
+          <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:10}}>
+            <div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:30,fontWeight:900,letterSpacing:-1.5,color:'#ff3b30',lineHeight:1}}>${bestPrice.toFixed(2)}</div>
+              <div style={{fontSize:11,fontWeight:700,color:'#30d158',marginTop:3}}>↓ ${(stateGas?.avg ? stateGas.avg - bestPrice + .15 : 0.19).toFixed(2)} vs 30 days ago</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:9,color:'rgba(26,26,46,.4)',marginBottom:2}}>30-day range</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:700,color:'#1a1a2e'}}>${(bestPrice-.19).toFixed(2)} — ${(bestPrice+.12).toFixed(2)}</div>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={100}>
             <AreaChart data={history} margin={{top:4,right:0,left:-34,bottom:0}}>
               <defs>
                 <linearGradient id="areaGrad30" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ff3b30" stopOpacity={isDark?.2:.12}/>
+                  <stop offset="5%" stopColor="#ff3b30" stopOpacity=".15"/>
                   <stop offset="95%" stopColor="#ff3b30" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <XAxis dataKey="day" tick={{fontFamily:"system-ui",fontSize:8,fill:T.text3}} axisLine={false} tickLine={false}/>
-              <YAxis domain={["auto","auto"]} tick={{fontFamily:"system-ui",fontSize:8,fill:T.text3}} axisLine={false} tickLine={false} tickFormatter={(v:number)=>`$${v.toFixed(2)}`}/>
-              <Tooltip content={(props:any)=><ChartTip {...props} T={T}/>}/>
-              <ReferenceLine y={avgPrice} stroke={T.text3} strokeDasharray="3 3"/>
-              <Area type="monotone" dataKey="price" stroke="#ff3b30" strokeWidth={2} fill="url(#areaGrad30)" dot={false} activeDot={{r:4,fill:"#ff3b30"}}/>
+              <XAxis dataKey="day" tick={{fontFamily:'system-ui',fontSize:8,fill:'rgba(26,26,46,.35)'}} axisLine={false} tickLine={false}/>
+              <YAxis domain={['auto','auto']} tick={{fontFamily:'system-ui',fontSize:8,fill:'rgba(26,26,46,.35)'}} axisLine={false} tickLine={false} tickFormatter={(v:number)=>`$${v.toFixed(2)}`}/>
+              <Tooltip contentStyle={{background:'rgba(255,255,255,.95)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:10,fontFamily:'system-ui',fontSize:12}}/>
+              <ReferenceLine y={avgPrice} stroke="rgba(26,26,46,.2)" strokeDasharray="3 3"/>
+              <Area type="monotone" dataKey="price" stroke="#ff3b30" strokeWidth={2} fill="url(#areaGrad30)" dot={false} activeDot={{r:4,fill:'#ff3b30'}}/>
             </AreaChart>
           </ResponsiveContainer>
-          <div style={{display:"flex",gap:14,paddingTop:10,borderTop:`0.5px solid ${T.surfaceBdr}`,marginTop:8,flexWrap:"wrap"}}>
-            {[{color:"#ff3b30",label:"Your area",solid:true},{color:T.text3,label:"Area avg",dashed:true},{color:T.green,label:"Best price",dot:true}].map((l,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:T.text2}}>
-                {l.dot?<div style={{width:8,height:8,borderRadius:"50%",background:T.green}}/>
-                  :l.dashed?<div style={{width:16,height:1,borderTop:`1px dashed ${l.color}`}}/>
-                  :<div style={{width:16,height:2,background:l.color,borderRadius:1}}/>
+          <div style={{display:'flex',gap:14,paddingTop:10,borderTop:'0.5px solid rgba(0,0,0,.06)',marginTop:8,flexWrap:'wrap'}}>
+            {[{color:'#ff3b30',label:'Your area',solid:true},{color:'rgba(26,26,46,.2)',label:'Area avg',dashed:true}].map((l,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'rgba(26,26,46,.55)'}}>
+                {l.dashed
+                  ? <div style={{width:16,height:1,borderTop:`1px dashed ${l.color}`}}/>
+                  : <div style={{width:16,height:2,background:l.color,borderRadius:1}}/>
                 }
                 {l.label}
               </div>
@@ -769,243 +708,96 @@ function GasPageContent({ daysLeft }: { daysLeft: number | null }) {
           </div>
         </div>
 
-        <div style={{fontSize:9,color:T.text3,textAlign:"center",letterSpacing:.5}}>
-          DATA: EIA.GOV · UPDATED HOURLY · INFORMATIONAL USE ONLY · CONSULT A TAX PROFESSIONAL FOR DEDUCTION ELIGIBILITY
+        {/* Route Finder */}
+        <RouteGasFinder userCoords={userCoords} basePrice={bestPrice} isDark={false}/>
+
+        <div style={{fontSize:9,color:'rgba(26,26,46,.3)',textAlign:'center',letterSpacing:.5,paddingTop:8}}>
+          DATA: EIA.GOV · GOOGLE PLACES · INFORMATIONAL USE ONLY
         </div>
       </div>
     </>
   )
 }
 
+// ── Paywall wrapper ────────────────────────────────────────────────────────────
 export default function GasPage() {
   const { allowed, checking, daysLeft } = usePaywall('driver')
   const [phase, setPhase] = React.useState<'loading'|'taste'|'paywall'|'access'>('loading')
 
-  React.useEffect(() => {
+  React.useEffect(()=>{
     if (checking) return
-
-    // Already paid / active trial → full access
-    if (allowed) {
-      setPhase('access')
-      return
-    }
-
-    // New signup within last 3 min → show 30s taste first
-    const signupRaw = localStorage.getItem('gratia_signup_time')
-    if (signupRaw) {
-      const elapsed = Date.now() - parseInt(signupRaw)
-      if (elapsed < 3 * 60 * 1000) {
-        setPhase('taste')
-        return
-      }
-      localStorage.removeItem('gratia_signup_time')
-    }
-
-    // No access, no taste → straight to paywall
+    if (allowed) { setPhase('access'); return }
+    const raw = localStorage.getItem('gratia_signup_time')
+    if (raw && Date.now()-parseInt(raw) < 3*60*1000) { setPhase('taste'); return }
+    if (raw) localStorage.removeItem('gratia_signup_time')
     setPhase('paywall')
-  }, [checking, allowed])
+  },[checking,allowed])
 
-  if (phase === 'loading' || checking) return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f2f7',fontFamily:"'Outfit',system-ui,sans-serif",color:'rgba(0,0,0,.4)',fontSize:14}}>
-      Loading...
-    </div>
+  if (phase==='loading'||checking) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f0eff4',fontFamily:'system-ui',color:'rgba(0,0,0,.4)',fontSize:14}}>Loading...</div>
   )
-
-  // ── Full access (paid or active trial) ────────────────────────────────────
-  if (phase === 'access') return <GasPageContent daysLeft={daysLeft}/>
-
-  // ── Paywall (after taste or direct visit without payment) ─────────────────
-  if (phase === 'paywall') return <SubscribeScreen/>
-
-  // ── Taste mode: 30 seconds then paywall ───────────────────────────────────
+  if (phase==='paywall') return <SubscribeScreen/>
+  if (phase==='access') return <GasPageContent daysLeft={daysLeft}/>
   return (
     <>
       <GasPageContent daysLeft={null}/>
-      <TasteTimer onExpire={() => {
-        localStorage.removeItem('gratia_signup_time')
-        setPhase('paywall')
-      }}/>
+      <TasteTimer onExpire={()=>{localStorage.removeItem('gratia_signup_time');setPhase('paywall')}}/>
     </>
   )
 }
 
-// ── Subscribe Screen — shown after taste expires ───────────────────────────
+// ── Subscribe screen ───────────────────────────────────────────────────────────
 function SubscribeScreen() {
-  const router   = useRouter()
+  const router = useRouter()
   const [loading, setLoading] = React.useState(false)
-
-  // Only one live plan — Core Pass
-  const PLAN = {
-    id:       'driver',
-    name:     'Core Pass',
-    price:    '$4.99',
-    color:    '#ff3b30',
-    gradient: 'linear-gradient(135deg,#ff3b30,#ff6b35)',
-    live: [
-      'Real-time gas prices near you',
-      'Route gas finder — cheapest on any trip',
-      'IRS mileage deduction calculator',
-      'USA gas price map by state',
-      'Price trend tracking — 7 days',
-    ],
-    soon: [
-      'Mileage log + PDF export',
-      'Gas price drop alerts via email',
-      'Quarterly tax deadline reminders',
-    ],
-  }
-
-
-  const [stripeError, setStripeError] = React.useState('')
+  const [err, setErr] = React.useState('')
 
   const handleSubscribe = async () => {
-    setLoading(true)
-    setStripeError('')
+    setLoading(true); setErr('')
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
-
-      const res = await fetch('/api/create-checkout', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ userId: user.id, email: user.email, userType: 'driver' }),
-      })
-
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Server error ${res.status}: ${text}`)
-      }
-
+      const {data:{user}} = await supabase.auth.getUser()
+      if (!user) { router.push('/'); return }
+      const res = await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user.id,email:user.email,userType:'driver'})})
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        throw new Error('No checkout URL returned from Stripe')
-      }
-    } catch (e: any) {
-      console.error('Checkout error:', e)
-      setStripeError(e.message || 'Something went wrong. Please try again.')
-      setLoading(false)
-    }
+      if (data.url) window.location.href = data.url
+      else throw new Error(data.error||'No URL returned')
+    } catch(e:any){ setErr(e.message||'Something went wrong'); setLoading(false) }
   }
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
-        @keyframes subIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes lp{0%,100%{opacity:1}50%{opacity:.3}}
-      `}</style>
-      <div style={{minHeight:'100vh',background:'#f0eff4',fontFamily:"'DM Sans',system-ui,sans-serif",padding:'40px 24px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-
-        {/* Header */}
-        <div style={{textAlign:'center',marginBottom:32,animation:'subIn .5s ease both'}}>
-          <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,59,48,.1)',border:'1px solid rgba(255,59,48,.2)',borderRadius:100,padding:'6px 16px',marginBottom:16}}>
-            <div style={{width:6,height:6,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.5s ease infinite'}}/>
-            <span style={{fontSize:11,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase'}}>Start Your Free Trial</span>
-          </div>
-          <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,letterSpacing:-1.5,color:'#1a1a2e',marginBottom:8,lineHeight:1.1}}>
-            You just saw what's waiting for you
-          </h1>
-          <p style={{fontSize:15,color:'rgba(26,26,46,.55)',maxWidth:420,margin:'0 auto',lineHeight:1.65}}>
-            Start your 7-day free trial today. Card required — you won't be charged until day 8. Cancel anytime.
-          </p>
+    <div style={{minHeight:'100vh',background:'#f0eff4',fontFamily:"'DM Sans',system-ui,sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px'}}>
+      <div style={{textAlign:'center',marginBottom:28}}>
+        <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,59,48,.1)',border:'1px solid rgba(255,59,48,.2)',borderRadius:100,padding:'6px 16px',marginBottom:16}}>
+          <div style={{width:6,height:6,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.5s ease infinite'}}/>
+          <span style={{fontSize:11,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase'}}>Start Your Free Trial</span>
         </div>
-
-        {/* Live plan badge */}
-        <div style={{display:'flex',gap:10,marginBottom:24,justifyContent:'center',animation:'subIn .5s ease .1s both'}}>
-          <div style={{padding:'8px 20px',borderRadius:100,fontSize:13,fontWeight:700,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',boxShadow:'0 4px 14px rgba(255,59,48,.35)',display:'flex',alignItems:'center',gap:8}}>
-            <span style={{width:6,height:6,borderRadius:'50%',background:'#fff',display:'inline-block',animation:'lp 1.5s ease infinite'}}/>
-            ⛽ Core Pass — Live Now
-          </div>
-          <div style={{padding:'8px 20px',borderRadius:100,fontSize:13,fontWeight:600,background:'rgba(255,255,255,.7)',color:'rgba(26,26,46,.35)',border:'1px solid rgba(0,0,0,.08)',filter:'blur(1.5px)',userSelect:'none'}}>
-            💼 Pro Pass
-          </div>
-          <div style={{padding:'8px 20px',borderRadius:100,fontSize:13,fontWeight:600,background:'rgba(255,255,255,.7)',color:'rgba(26,26,46,.35)',border:'1px solid rgba(0,0,0,.08)',filter:'blur(1.5px)',userSelect:'none'}}>
-            🏢 Business Pass
-          </div>
-        </div>
-
-        {/* Core Pass card */}
-        <div style={{
-          maxWidth:460, width:'100%',
-          background:'rgba(255,255,255,.9)',
-          border:'2px solid rgba(255,59,48,.25)',
-          borderRadius:28, padding:'32px 28px',
-          boxShadow:'0 8px 40px rgba(255,59,48,.12)',
-          animation:'subIn .5s ease .15s both',
-          position:'relative', overflow:'hidden',
-        }}>
-          <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:'linear-gradient(90deg,transparent,#ff3b30,transparent)'}}/>
-
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
-            <div>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:6}}>⭐ First Module — Live Now</div>
-              <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e'}}>{PLAN.name}</div>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:900,letterSpacing:-1.5,color:'#ff3b30',lineHeight:1}}>{PLAN.price}</div>
-              <div style={{fontSize:12,color:'rgba(26,26,46,.4)'}}>/mo after trial</div>
-            </div>
-          </div>
-
-          {/* Trial info box */}
-          <div style={{background:'rgba(48,209,88,.08)',border:'1px solid rgba(48,209,88,.2)',borderRadius:14,padding:'12px 16px',marginBottom:20,display:'flex',gap:10,alignItems:'center'}}>
-            <span style={{fontSize:20}}>🎁</span>
-            <div>
-              <div style={{fontSize:13,fontWeight:700,color:'#1a7a35'}}>7-day free trial — card not charged until day 8</div>
-              <div style={{fontSize:11,color:'rgba(26,26,46,.45)',marginTop:2}}>Cancel before day 8 and pay absolutely nothing</div>
-            </div>
-          </div>
-
-          {/* Live features */}
-          <div style={{marginBottom:8}}>
-            <div style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(48,209,88,.1)',border:'1px solid rgba(48,209,88,.25)',borderRadius:100,padding:'2px 8px',fontSize:9,fontWeight:700,color:'#1a7a35',letterSpacing:.5,textTransform:'uppercase',marginBottom:10}}>● Live Now</div>
-            {PLAN.live.map((f,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.7)',marginBottom:7}}>
-                <span style={{color:PLAN.color,fontWeight:700,flexShrink:0}}>✓</span>{f}
-              </div>
-            ))}
-          </div>
-          <div style={{marginBottom:20}}>
-            <div style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(255,159,10,.08)',border:'1px solid rgba(255,159,10,.2)',borderRadius:100,padding:'2px 8px',fontSize:9,fontWeight:700,color:'#8a5c00',letterSpacing:.5,textTransform:'uppercase',marginBottom:10}}>⏳ Coming Soon</div>
-            <div style={{filter:'blur(3px)',userSelect:'none'}}>
-              {PLAN.soon.map((f,i)=>(
-                <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.4)',marginBottom:7}}>
-                  <span style={{flexShrink:0}}>·</span>{f}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {stripeError && (
-            <div style={{background:'rgba(255,59,48,.08)',border:'1px solid rgba(255,59,48,.2)',borderRadius:12,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#cc2018',lineHeight:1.5}}>
-              ⚠️ {stripeError}
-            </div>
-          )}
-
-          <button onClick={handleSubscribe} disabled={loading} style={{
-            width:'100%', padding:16,
-            background: loading ? 'rgba(255,59,48,.3)' : 'linear-gradient(135deg,#ff3b30,#ff6b35)',
-            color:'#fff', border:'none', borderRadius:100,
-            fontSize:16, fontWeight:800, cursor: loading ? 'not-allowed' : 'pointer',
-            fontFamily:"'DM Sans',sans-serif",
-            boxShadow: loading ? 'none' : '0 4px 20px rgba(255,59,48,.4)',
-            marginBottom:12, letterSpacing:-.3,
-          }}>
-            {loading ? 'Connecting to Stripe...' : 'Start Free Trial — $4.99/mo →'}
-          </button>
-
-          <p style={{fontSize:11,color:'rgba(26,26,46,.35)',textAlign:'center',lineHeight:1.6,margin:0}}>
-            🔒 Secure checkout via Stripe · Cancel anytime · No hidden fees
-          </p>
-        </div>
-
-        <button onClick={()=>router.push('/dashboard')} style={{marginTop:20,background:'none',border:'none',color:'rgba(26,26,46,.35)',fontSize:12,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-          ← Back to dashboard
-        </button>
+        <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:28,fontWeight:900,letterSpacing:-1.5,color:'#1a1a2e',marginBottom:8}}>You just saw what's waiting for you</h1>
+        <p style={{fontSize:14,color:'rgba(26,26,46,.55)',maxWidth:380,margin:'0 auto',lineHeight:1.65}}>7-day free trial. Card required — not charged until day 8. Cancel anytime.</p>
       </div>
-    </>
+      <div style={{maxWidth:420,width:'100%',background:'rgba(255,255,255,.9)',border:'2px solid rgba(255,59,48,.25)',borderRadius:28,padding:'28px 24px',boxShadow:'0 8px 40px rgba(255,59,48,.12)',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:'linear-gradient(90deg,transparent,#ff3b30,transparent)'}}/>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
+          <div>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:6}}>⭐ Live Now</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e'}}>Core Pass</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:28,fontWeight:900,letterSpacing:-1.5,color:'#ff3b30',lineHeight:1}}>$4.99</div>
+            <div style={{fontSize:12,color:'rgba(26,26,46,.4)'}}>/mo after trial</div>
+          </div>
+        </div>
+        {['Real-time gas prices near you','Route gas finder','USA price map all 50 states','Price trend tracking','Tank & price alerts'].map((f,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'rgba(26,26,46,.7)',marginBottom:7}}>
+            <span style={{color:'#ff3b30',fontWeight:700,flexShrink:0}}>✓</span>{f}
+          </div>
+        ))}
+        {err && <div style={{background:'rgba(255,59,48,.08)',border:'1px solid rgba(255,59,48,.2)',borderRadius:12,padding:'10px 14px',marginTop:12,fontSize:12,color:'#cc2018'}}>⚠️ {err}</div>}
+        <button onClick={handleSubscribe} disabled={loading} style={{width:'100%',padding:14,marginTop:16,background:loading?'rgba(255,59,48,.3)':'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:100,fontSize:15,fontWeight:800,cursor:loading?'not-allowed':'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:loading?'none':'0 4px 20px rgba(255,59,48,.4)'}}>
+          {loading?'Connecting to Stripe...':'Start Free Trial — $4.99/mo →'}
+        </button>
+        <p style={{fontSize:11,color:'rgba(26,26,46,.35)',textAlign:'center',lineHeight:1.6,margin:'10px 0 0'}}>🔒 Stripe secured · Cancel anytime · No hidden fees</p>
+      </div>
+      <button onClick={()=>router.push('/dashboard')} style={{marginTop:16,background:'none',border:'none',color:'rgba(26,26,46,.35)',fontSize:12,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>← Back to dashboard</button>
+    </div>
   )
 }
