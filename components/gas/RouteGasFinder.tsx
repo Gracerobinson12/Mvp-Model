@@ -151,7 +151,6 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
   const [loadStep,setLoadStep]=useState('')
   const [searched,setSearched]=useState(false)
   const [mapKey,setMapKey]=useState('route-init')
-  const [tankSize,setTankSize]=useState(14)
   const [error,setError]=useState('')
   const inputRef=useRef<HTMLInputElement>(null)
   const suggestRef=useRef<HTMLDivElement>(null)
@@ -268,8 +267,6 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
 
   const cheapestPrice=cheapest?.[gk(grade)]??basePrice
   const avgRoutePrice=stations.length?stations.reduce((s,st)=>s+st[gk(grade)],0)/stations.length:basePrice
-  const savingPerFill=((avgRoutePrice-cheapestPrice)*tankSize).toFixed(2)
-  const fillCost=(tankSize*cheapestPrice).toFixed(2)
   const routeFuelCost=routeInfo?((routeInfo.totalMiles/28)*cheapestPrice).toFixed(2):'0.00'
   const sorted=[...stations].sort((a,b)=>a[gk(grade)]-b[gk(grade)])
   const sel=stations.find(s=>s.id===selId)
@@ -352,10 +349,9 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
             {routeInfo&&cheapest&&(
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,padding:'0 16px',marginBottom:14}}>
                 {[
-                  {label:'Cheapest Stop',val:`$${cheapestPrice.toFixed(2)}`,sub:cheapest.name,color:'#30d158'},
-                  {label:'Save vs Avg',val:`$${savingPerFill}`,sub:`per ${tankSize}gal`,color:'#ff3b30'},
+                  {label:'Cheapest Stop',val:`$${cheapestPrice.toFixed(2)}`,sub:cheapest.name,color:'#ff3b30'},
                   {label:'Least Detour',val:`${cheapest.detourMiles} mi`,sub:'extra to stop',color:'#0a84ff'},
-                  {label:'Route Fuel Est',val:`$${routeFuelCost}`,sub:'full route at best',color:S.text},
+                  {label:'Price Spread',val:`$${(avgRoutePrice-cheapestPrice).toFixed(2)}`,sub:'vs priciest on route',color:S.text},
                 ].map(s=>(
                   <div key={s.label} style={{background:S.inputBg,border:`1px solid ${S.bdr}`,borderRadius:12,padding:'10px 12px'}}>
                     <div style={{fontSize:8,fontWeight:600,letterSpacing:'1.5px',color:s.color as string,textTransform:'uppercase',marginBottom:3}}>{s.label}</div>
@@ -366,12 +362,7 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
               </div>
             )}
 
-            <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 16px',marginBottom:14}}>
-              <span style={{fontSize:10,fontWeight:600,letterSpacing:1,color:S.text3,textTransform:'uppercase',whiteSpace:'nowrap'}}>Tank Size</span>
-              <div style={{display:'flex',alignItems:'center',background:S.inputBg,border:`1px solid ${S.inputBdr}`,borderRadius:10,padding:'5px 10px',gap:5,width:90}}>
-                <input type="number" value={tankSize} min={1} max={35} onChange={e=>setTankSize(+e.target.value)} style={{background:'transparent',border:'none',outline:'none',color:'#ff3b30',fontSize:15,fontWeight:700,width:'100%',fontFamily:"'DM Sans',system-ui,sans-serif"}}/>
-                <span style={{fontSize:9,color:S.text3}}>gal</span>
-              </div>
+            <div style={{padding:'0 16px',marginBottom:14}}>
               <span style={{fontSize:11,color:S.text3}}>{routeInfo&&`${routeInfo.totalMiles} mi to ${routeInfo.destination}`}</span>
             </div>
 
@@ -416,8 +407,26 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
                   </div>
                 </div>
                 <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                  <button onClick={()=>{const o=userCoords,d=destCoords,wp=sel;if(o&&d&&wp)window.open(`https://www.google.com/maps/dir/?api=1&origin=${o.lat},${o.lng}&destination=${d.lat},${d.lng}&waypoints=${wp.lat},${wp.lng}&travelmode=driving`)}} style={{flex:1,minWidth:150,padding:'11px 16px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:12,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",boxShadow:'0 4px 14px rgba(255,59,48,.35)'}}>Add as Waypoint in Google Maps →</button>
-                  <button onClick={()=>window.open(`https://maps.google.com/?q=${sel.lat},${sel.lng}`)} style={{padding:'11px 16px',background:S.inputBg,color:S.text2,border:`1px solid ${S.inputBdr}`,borderRadius:12,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif"}}>View Station</button>
+                  <button onClick={()=>{
+                    const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
+                    const dest=destCoords
+                    if(isApple){
+                      if(dest) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${destInput}&via=${sel.lat},${sel.lng}&dirflag=d`)
+                      else window.open(`maps://maps.apple.com/?daddr=${sel.lat},${sel.lng}&dirflag=d`)
+                    } else {
+                      if(dest) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destInput)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
+                      else window.open(`https://www.google.com/maps/search/?api=1&query=${sel.lat},${sel.lng}`)
+                    }
+                  }} style={{flex:1,padding:'11px 16px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:12,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",boxShadow:'0 4px 14px rgba(255,59,48,.35)'}}>
+                    🗺️ Open in Maps →
+                  </button>
+                  <button onClick={()=>{
+                    const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
+                    if(isApple) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destInput)}&via=${sel.lat},${sel.lng}&dirflag=d`)
+                    else window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destInput)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
+                  }} style={{flex:1,padding:'11px 16px',background:'rgba(10,132,255,.1)',border:'0.5px solid rgba(10,132,255,.3)',borderRadius:12,fontSize:12,fontWeight:700,color:'#0a84ff',cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif"}}>
+                    ➕ Add as Waypoint
+                  </button>
                 </div>
               </div>
             )}

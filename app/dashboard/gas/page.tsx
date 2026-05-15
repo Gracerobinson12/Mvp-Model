@@ -62,6 +62,57 @@ function makePin(price:number,isBest:boolean,isSel:boolean):string {
   return `<div style="display:inline-flex;flex-direction:column;align-items:center;transform:${sc};transition:transform .25s cubic-bezier(.34,1.56,.64,1)"><div style="background:${bg};border:1.5px solid ${bdr};border-radius:10px;padding:5px 10px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(20px);box-shadow:0 4px 20px rgba(0,0,0,.2);cursor:pointer"><span style="font-size:10px">⛽</span><span style="font-size:13px;font-weight:700;color:${fg};font-family:-apple-system,system-ui,sans-serif">\$${price.toFixed(2)}</span></div><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid ${isSel?'#ff3b30':isBest?'#30d158':bdr}"></div></div>`
 }
 
+
+// ── Report Mini Map (real Leaflet) ─────────────────────────────────────────────
+function ReportMiniMap({ station }: { station: Station }) {
+  const divRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<any>(null)
+
+  useEffect(() => {
+    const init = (L: any) => {
+      if (!divRef.current || mapRef.current) return
+      // Use station coords if real, else use a default
+      const lat = station.lat || 32.6099
+      const lng = station.lng || -85.4808
+      const map = L.map(divRef.current, {
+        center: [lat, lng], zoom: 16,
+        zoomControl: false, attributionControl: false, dragging: false,
+        scrollWheelZoom: false, doubleClickZoom: false
+      })
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map)
+      // Station pin
+      L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: '',
+          iconSize: [80, 52],
+          iconAnchor: [40, 52],
+          html: `<div style="display:inline-flex;flex-direction:column;align-items:center"><div style="background:linear-gradient(135deg,#ff3b30,#ff6b35);border:1.5px solid #fff;border-radius:10px;padding:4px 10px;display:flex;align-items:center;gap:4px;box-shadow:0 4px 16px rgba(255,59,48,.4)"><span style="font-size:10px">⛽</span><span style="font-size:12px;font-weight:700;color:#fff;font-family:system-ui">${station.name}</span></div><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ff3b30"></div></div>`
+        })
+      }).addTo(map)
+      mapRef.current = map
+    }
+    if ((window as any).L) { init((window as any).L); return }
+    if (!document.querySelector('#leaflet-css')) {
+      const l = document.createElement('link'); l.id = 'leaflet-css'; l.rel = 'stylesheet'
+      l.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
+      document.head.appendChild(l)
+    }
+    if (!document.querySelector('#leaflet-js')) {
+      const s = document.createElement('script'); s.id = 'leaflet-js'
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
+      s.onload = () => init((window as any).L); document.head.appendChild(s)
+    } else {
+      const w = setInterval(() => { if ((window as any).L) { clearInterval(w); init((window as any).L) } }, 100)
+    }
+    return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null } }
+  }, [])
+
+  return <div ref={divRef} style={{ width: '100%', height: '100%', borderRadius: 14 }} />
+}
+
+
+// ── Report Mini Map (real Leaflet) ────────────────────────────────────────────
+
 // ── Report Price Modal ─────────────────────────────────────────────────────────
 function ReportPriceModal({ station, onClose, onSubmit }: { station: Station|null, onClose: ()=>void, onSubmit: ()=>void }) {
   const [price, setPrice] = useState('')
@@ -109,14 +160,9 @@ function ReportPriceModal({ station, onClose, onSubmit }: { station: Station|nul
         <button onClick={onClose} style={{position:'absolute',top:14,right:14,width:28,height:28,borderRadius:'50%',background:'rgba(0,0,0,.06)',border:'none',cursor:'pointer',fontSize:12,color:'rgba(26,26,46,.4)'}}>✕</button>
         <div style={{width:36,height:4,borderRadius:2,background:'rgba(0,0,0,.1)',margin:'0 auto 16px'}}/>
 
-        {/* Station mini map */}
-        <div style={{height:80,background:'linear-gradient(160deg,#d4e8f0,#c8dce8)',borderRadius:14,marginBottom:14,position:'relative',overflow:'hidden'}}>
-          <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-100%)',zIndex:2}}>
-            <div style={{background:'rgba(255,59,48,.9)',border:'2px solid #fff',borderRadius:10,padding:'3px 10px',fontSize:11,fontWeight:700,color:'#fff',whiteSpace:'nowrap'}}>{station.name}</div>
-            <div style={{width:0,height:0,borderLeft:'5px solid transparent',borderRight:'5px solid transparent',borderTop:'6px solid rgba(255,59,48,.9)',margin:'0 auto'}}/>
-          </div>
-          <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:10,height:10,borderRadius:'50%',background:'#ff3b30',border:'2px solid #fff',marginTop:14}}/>
-          <div style={{position:'absolute',bottom:5,left:8,fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:500}}>{station.address}</div>
+        {/* Real Leaflet mini map */}
+        <div style={{height:90,borderRadius:14,marginBottom:14,overflow:'hidden',border:'0.5px solid rgba(255,255,255,.9)'}}>
+          <ReportMiniMap station={station}/>
         </div>
 
         <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:4}}>Report a Price</div>
@@ -232,8 +278,9 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius }:{
     L.control.zoom({position:'bottomright'}).addTo(map)
     if (userCoords) L.marker([center.lat,center.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.2),0 4px 12px rgba(255,59,48,.4)"></div>`})}).addTo(map)
     stations.forEach(st=>{
-      if (!st.lat && !st.lng) return
+      if (!st.lat && !st.lng) return  // skip fallback stations with no coords
       const m = L.marker([st.lat,st.lng],{icon:L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin((st as any)[gk(grade)],st.id===best?.id,false)})}).addTo(map).on('click',()=>onSelect(st.id))
+      m.bindPopup(`<div style="font-family:system-ui;min-width:140px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:4px">📍 ${st.address}</div><div style="font-size:12px;font-weight:700;color:#ff3b30">\$${(st as any)[gk(grade)].toFixed(2)}</div></div>`)
       mksRef.current[st.id]=m
     })
     mapRef.current = map
@@ -433,7 +480,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
 
         {/* Map */}
         <div style={{height:190,...glass({overflow:'hidden',padding:0,marginBottom:10,position:'relative'})}}>
-          <GasMap key={mapKey} stations={sorted.slice(0,displayedCount)} grade={grade} selectedId={selId} onSelect={id=>setSelId(p=>p===id?null:id)} userCoords={userCoords} radius={radius}/>
+          <GasMap key={mapKey} stations={sorted} grade={grade} selectedId={selId} onSelect={id=>setSelId(p=>p===id?null:id)} userCoords={userCoords} radius={radius}/>
           {/* Best price overlay */}
           <div style={{position:'absolute',top:10,left:10,zIndex:999,background:'rgba(255,255,255,.9)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 12px',pointerEvents:'none'}}>
             <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:2}}>Best price</div>
@@ -544,8 +591,17 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
               <button onClick={()=>setMapsStation(sel)} style={{flex:1,padding:'11px 16px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:14,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 4px 12px rgba(255,59,48,.3)'}}>
                 🗺️ Open in Maps →
               </button>
+              {destination && (
+                <button onClick={()=>{
+                  const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
+                  if(isApple) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destination)}&via=${sel.lat},${sel.lng}&dirflag=d`)
+                  else window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destination)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
+                }} style={{flex:1,padding:'11px 16px',background:'rgba(10,132,255,.1)',border:'0.5px solid rgba(10,132,255,.3)',borderRadius:14,fontSize:12,fontWeight:700,color:'#0a84ff',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+                  ➕ Add as Waypoint
+                </button>
+              )}
               <button onClick={()=>setReportStation(sel)} style={{padding:'11px 14px',background:'rgba(255,255,255,.65)',border:'0.5px solid rgba(255,255,255,.9)',borderRadius:14,fontSize:12,fontWeight:600,color:'rgba(26,26,46,.6)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-                📍 Report price
+                📍 Report
               </button>
             </div>
           </div>
