@@ -446,15 +446,38 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
           </button>
         </div>
 
-        {/* Radius slider */}
-        <div style={{...glass({padding:'12px 16px',marginBottom:12})}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-            <div style={{fontSize:11,fontWeight:600,color:'rgba(26,26,46,.5)'}}>Search radius</div>
-            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:900,letterSpacing:-1,color:'#ff3b30'}}>{RADIUS_LABELS[radius-1]}</div>
+        {/* Radius ring selector */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:10,textAlign:'center'}}>Tap to expand search radius</div>
+          <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:14}}>
+            {[
+              {v:1,mi:'5',  count:'3 stations'},
+              {v:2,mi:'10', count:'6 stations'},
+              {v:3,mi:'15', count:'11 stations'},
+              {v:4,mi:'30', count:'18 stations'},
+            ].map(r=>{
+              const isOn = radius === r.v
+              return (
+                <button key={r.v} onClick={()=>setRadius(r.v)} style={{
+                  width:64,height:64,borderRadius:'50%',
+                  border:`3px solid ${isOn?'#ff3b30':'rgba(255,255,255,.9)'}`,
+                  background:isOn?'rgba(255,59,48,.1)':'rgba(255,255,255,.65)',
+                  backdropFilter:'blur(20px)',
+                  boxShadow:isOn?'0 0 0 6px rgba(255,59,48,.12)':'none',
+                  transform:isOn?'scale(1.08)':'scale(1)',
+                  transition:'all .25s cubic-bezier(.34,1.56,.64,1)',
+                  cursor:'pointer',
+                  display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+                  fontFamily:"'DM Sans',sans-serif",
+                }}>
+                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,letterSpacing:-1,color:isOn?'#ff3b30':'#1a1a2e',lineHeight:1}}>{r.mi}</div>
+                  <div style={{fontSize:9,fontWeight:600,color:isOn?'#cc2018':'rgba(26,26,46,.5)',marginTop:2}}>miles</div>
+                </button>
+              )
+            })}
           </div>
-          <input type="range" min={1} max={4} step={1} value={radius} onChange={e=>setRadius(+e.target.value)}/>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'rgba(26,26,46,.35)',marginTop:3}}>
-            <span>5 mi</span><span>10 mi</span><span>15 mi</span><span>30 mi</span>
+          <div style={{textAlign:'center',marginTop:8,fontSize:11,color:'rgba(26,26,46,.45)',fontWeight:500}}>
+            {RADIUS_COUNTS[radius-1]} stations · {RADIUS_LABELS[radius-1]}
           </div>
         </div>
 
@@ -497,36 +520,6 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
           </div>
         </div>
 
-        {/* Station list */}
-        <div style={{...glass({overflow:'hidden',marginBottom:12,padding:0})}}>
-          <div style={{padding:'10px 16px',borderBottom:'0.5px solid rgba(0,0,0,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)'}}>{displayedCount} Stations · {RADIUS_LABELS[radius-1]}</div>
-            <div style={{display:'flex',gap:4}}>
-              <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,59,48,.1)',color:'#cc2018',border:'0.5px solid rgba(255,59,48,.25)',fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Price</button>
-              <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,255,255,.5)',color:'rgba(26,26,46,.4)',border:'0.5px solid rgba(0,0,0,.08)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Distance</button>
-            </div>
-          </div>
-          {/* Destination input */}
-          <div style={{padding:'9px 16px',borderBottom:'0.5px solid rgba(0,0,0,.05)',display:'flex',gap:8,alignItems:'center'}}>
-            <span style={{fontSize:13}}>🏁</span>
-            <input value={destination} onChange={e=>setDest(e.target.value)} placeholder="Add destination — gas becomes a waypoint (optional)" style={{flex:1,background:'none',border:'none',outline:'none',fontSize:11,color:'rgba(26,26,46,.6)',fontFamily:"'DM Sans',sans-serif"}}/>
-          </div>
-          {sorted.slice(0,displayedCount).map((st,i)=>(
-            <div key={st.id} className={`st-row${selId===st.id?' selected':''}`} onClick={()=>setSelId(p=>p===st.id?null:st.id)}>
-              <div style={{fontSize:11,fontWeight:700,color:i===0?'#30d158':'rgba(26,26,46,.35)',minWidth:14,textAlign:'center'}}>{i===0?'★':i+1}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>{st.name}</div>
-                <div style={{fontSize:10,color:'rgba(26,26,46,.4)',marginTop:1}}>{st.address} · {st.distance} mi</div>
-              </div>
-              <button className="star-btn" onClick={e=>{e.stopPropagation();toggleFav(st.id)}}>{favorites.has(st.id)?'⭐':'☆'}</button>
-              <div style={{textAlign:'right',flexShrink:0}}>
-                <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:i===0?'#30d158':'#1a1a2e'}}>${(st as any)[gk(grade)].toFixed(2)}</div>
-                <div style={{fontSize:11,fontWeight:700,color:st.trending==='down'?'#30d158':st.trending==='up'?'#ff453a':'rgba(26,26,46,.35)'}}>{st.trending==='down'?'↓':st.trending==='up'?'↑':'→'}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Selected station */}
         {sel && (
           <div style={{background:'rgba(255,59,48,.07)',border:'0.5px solid rgba(255,59,48,.22)',borderRadius:20,padding:'16px 18px',marginBottom:12,position:'relative',overflow:'hidden',animation:'fadeUp .3s ease'}}>
@@ -557,6 +550,36 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
             </div>
           </div>
         )}
+
+        {/* Station list */}
+        <div style={{...glass({overflow:'hidden',marginBottom:12,padding:0})}}>
+          <div style={{padding:'10px 16px',borderBottom:'0.5px solid rgba(0,0,0,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)'}}>{displayedCount} Stations · {RADIUS_LABELS[radius-1]}</div>
+            <div style={{display:'flex',gap:4}}>
+              <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,59,48,.1)',color:'#cc2018',border:'0.5px solid rgba(255,59,48,.25)',fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Price</button>
+              <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,255,255,.5)',color:'rgba(26,26,46,.4)',border:'0.5px solid rgba(0,0,0,.08)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Distance</button>
+            </div>
+          </div>
+          {/* Destination input */}
+          <div style={{padding:'9px 16px',borderBottom:'0.5px solid rgba(0,0,0,.05)',display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:13}}>🏁</span>
+            <input value={destination} onChange={e=>setDest(e.target.value)} placeholder="Add destination — gas becomes a waypoint (optional)" style={{flex:1,background:'none',border:'none',outline:'none',fontSize:11,color:'rgba(26,26,46,.6)',fontFamily:"'DM Sans',sans-serif"}}/>
+          </div>
+          {sorted.slice(0,displayedCount).map((st,i)=>(
+            <div key={st.id} className={`st-row${selId===st.id?' selected':''}`} onClick={()=>setSelId(p=>p===st.id?null:st.id)}>
+              <div style={{fontSize:11,fontWeight:700,color:i===0?'#30d158':'rgba(26,26,46,.35)',minWidth:14,textAlign:'center'}}>{i===0?'★':i+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>{st.name}</div>
+                <div style={{fontSize:10,color:'rgba(26,26,46,.4)',marginTop:1}}>{st.address} · {st.distance} mi</div>
+              </div>
+              <button className="star-btn" onClick={e=>{e.stopPropagation();toggleFav(st.id)}}>{favorites.has(st.id)?'⭐':'☆'}</button>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:i===0?'#30d158':'#1a1a2e'}}>${(st as any)[gk(grade)].toFixed(2)}</div>
+                <div style={{fontSize:11,fontWeight:700,color:st.trending==='down'?'#30d158':st.trending==='up'?'#ff453a':'rgba(26,26,46,.35)'}}>{st.trending==='down'?'↓':st.trending==='up'?'↑':'→'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* Favorites price trends */}
         <div style={{...glass({padding:'18px',marginBottom:12})}}>
