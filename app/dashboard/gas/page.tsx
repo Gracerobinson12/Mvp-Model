@@ -230,14 +230,15 @@ function MapsModal({ station, destination, onClose }: { station: Station|null, d
   const name = encodeURIComponent(`${station.name}, ${station.address}`)
   const dest = destination.trim()
 
+  const stationQuery = encodeURIComponent(`${station.name}, ${station.address}`)
   const goApple = () => {
-    if (dest) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(dest)}&via=${station.lat},${station.lng}&dirflag=d`)
-    else window.open(`maps://maps.apple.com/?q=${name}&dirflag=d`)
+    if (dest) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(dest)}&via=${encodeURIComponent(station.name + ', ' + station.address)}&dirflag=d`)
+    else window.open(`maps://maps.apple.com/?q=${stationQuery}&dirflag=d`)
     onClose()
   }
   const goGoogle = () => {
-    if (dest) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(dest)}&waypoints=${name}&travelmode=driving`)
-    else window.open(`https://www.google.com/maps/search/?api=1&query=${name}`)
+    if (dest) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(dest)}&waypoints=${stationQuery}&travelmode=driving`)
+    else window.open(`https://www.google.com/maps/search/?api=1&query=${stationQuery}`)
     onClose()
   }
 
@@ -263,12 +264,19 @@ function MapsModal({ station, destination, onClose }: { station: Station|null, d
 }
 
 // ── Gas Map Component ──────────────────────────────────────────────────────────
+// Miles to meters conversion
+const RADIUS_MILES = [5, 10, 15, 30]
+
 function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius }:{
   stations: Station[], grade: string, selectedId: number|null,
   onSelect: (id:number)=>void, userCoords: {lat:number,lng:number}|null, radius: number
 }) {
-  const divRef = useRef<HTMLDivElement>(null), mapRef = useRef<any>(null), mksRef = useRef<Record<number,any>>({})
+  const divRef   = useRef<HTMLDivElement>(null)
+  const mapRef   = useRef<any>(null)
+  const mksRef   = useRef<Record<number,any>>({})
+  const circleRef = useRef<any>(null)
   const best = stations.length ? [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0] : null
+  const radiusMeters = RADIUS_MILES[radius-1] * 1609.34
 
   const initMap = useCallback((L:any) => {
     if (!divRef.current || mapRef.current) return
@@ -276,15 +284,38 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius }:{
     const map = L.map(divRef.current, {center:[center.lat,center.lng],zoom:13,zoomControl:false,attributionControl:false})
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map)
     L.control.zoom({position:'bottomright'}).addTo(map)
-    if (userCoords) L.marker([center.lat,center.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.2),0 4px 12px rgba(255,59,48,.4)"></div>`})}).addTo(map)
+    if (userCoords) {
+      // User location dot
+      L.marker([center.lat,center.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.2),0 4px 12px rgba(255,59,48,.4)"></div>`})}).addTo(map)
+      // Radius circle
+      const circle = L.circle([center.lat,center.lng], {
+        radius: radiusMeters,
+        color: '#ff3b30',
+        weight: 2,
+        opacity: 0.5,
+        dashArray: '6 4',
+        fillColor: '#ff3b30',
+        fillOpacity: 0.04,
+      }).addTo(map)
+      circleRef.current = circle
+      // Fit map to circle bounds
+      map.fitBounds(circle.getBounds(), {padding:[20,20]})
+    }
     stations.forEach(st=>{
-      if (!st.lat && !st.lng) return  // skip fallback stations with no coords
+      if (!st.lat && !st.lng) return
       const m = L.marker([st.lat,st.lng],{icon:L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin((st as any)[gk(grade)],st.id===best?.id,false)})}).addTo(map).on('click',()=>onSelect(st.id))
-      m.bindPopup(`<div style="font-family:system-ui;min-width:140px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:4px">📍 ${st.address}</div><div style="font-size:12px;font-weight:700;color:#ff3b30">\$${(st as any)[gk(grade)].toFixed(2)}</div></div>`)
+      m.bindPopup(`<div style="font-family:system-ui;min-width:140px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:4px">📍 ${st.address}</div><div style="font-size:12px;font-weight:700;color:#ff3b30">$${(st as any)[gk(grade)].toFixed(2)}</div></div>`)
       mksRef.current[st.id]=m
     })
     mapRef.current = map
   },[])
+  // Update circle radius when user changes it
+  useEffect(()=>{
+    if (!mapRef.current || !circleRef.current || !userCoords) return
+    const newRadius = RADIUS_MILES[radius-1] * 1609.34
+    circleRef.current.setRadius(newRadius)
+    mapRef.current.fitBounds(circleRef.current.getBounds(), {padding:[20,20],animate:true})
+  },[radius])
 
   useEffect(()=>{
     const boot=(L:any)=>initMap(L)
@@ -592,13 +623,19 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
                 🗺️ Open in Maps →
               </button>
               {destination && (
-                <button onClick={()=>{
-                  const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
-                  if(isApple) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destination)}&via=${sel.lat},${sel.lng}&dirflag=d`)
-                  else window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destination)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
-                }} style={{flex:1,padding:'11px 16px',background:'rgba(10,132,255,.1)',border:'0.5px solid rgba(10,132,255,.3)',borderRadius:14,fontSize:12,fontWeight:700,color:'#0a84ff',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-                  ➕ Add as Waypoint
-                </button>
+                <div style={{position:'relative',flex:1}}>
+                  <button
+                    onClick={()=>{
+                      const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
+                      if(isApple) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destination)}&via=${sel.lat},${sel.lng}&dirflag=d`)
+                      else window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destination)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
+                    }}
+                    title="Adds this gas station as a stop along your route to the destination"
+                    style={{width:'100%',padding:'11px 16px',background:'rgba(10,132,255,.1)',border:'0.5px solid rgba(10,132,255,.3)',borderRadius:14,fontSize:12,fontWeight:700,color:'#0a84ff',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",lineHeight:1.3,textAlign:'center'}}>
+                    ⛽ Add gas stop<br/>
+                    <span style={{fontSize:10,fontWeight:500,opacity:.7}}>along your route</span>
+                  </button>
+                </div>
               )}
               <button onClick={()=>setReportStation(sel)} style={{padding:'11px 14px',background:'rgba(255,255,255,.65)',border:'0.5px solid rgba(255,255,255,.9)',borderRadius:14,fontSize:12,fontWeight:600,color:'rgba(26,26,46,.6)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
                 📍 Report
