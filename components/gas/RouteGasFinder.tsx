@@ -350,7 +350,7 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,padding:'0 16px',marginBottom:14}}>
                 {[
                   {label:'Cheapest Stop',val:`$${cheapestPrice.toFixed(2)}`,sub:cheapest.name,color:'#ff3b30'},
-                  {label:'Least Detour',val:`${cheapest.detourMiles} mi`,sub:'extra to stop',color:'#0a84ff'},
+                  {label:'Off Route',val:`+${cheapest.detourMiles} mi`,sub:'extra miles to stop',color:'#0a84ff'},
                   {label:'Price Spread',val:`$${(avgRoutePrice-cheapestPrice).toFixed(2)}`,sub:'vs priciest on route',color:S.text},
                 ].map(s=>(
                   <div key={s.label} style={{background:S.inputBg,border:`1px solid ${S.bdr}`,borderRadius:12,padding:'10px 12px'}}>
@@ -409,13 +409,13 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
                 <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                   <button onClick={()=>{
                     const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
-                    const dest=destCoords
+                    const stName=encodeURIComponent(`${sel.name}, Auburn AL`)
                     if(isApple){
-                      if(dest) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${destInput}&via=${sel.lat},${sel.lng}&dirflag=d`)
-                      else window.open(`maps://maps.apple.com/?daddr=${sel.lat},${sel.lng}&dirflag=d`)
+                      if(destCoords) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destLabel)}&via=${sel.lat},${sel.lng}&dirflag=d`)
+                      else window.open(`maps://maps.apple.com/?q=${stName}&dirflag=d`)
                     } else {
-                      if(dest) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destInput)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
-                      else window.open(`https://www.google.com/maps/search/?api=1&query=${sel.lat},${sel.lng}`)
+                      if(destCoords) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destLabel)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
+                      else window.open(`https://www.google.com/maps/search/?api=1&query=${stName}`)
                     }
                   }} style={{flex:1,padding:'11px 16px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:12,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",boxShadow:'0 4px 14px rgba(255,59,48,.35)'}}>
                     🗺️ Open in Maps →
