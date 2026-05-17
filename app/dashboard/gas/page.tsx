@@ -23,12 +23,17 @@ type Coords = { lat: number; lng: number }
 const GRADES = ["Regular", "Mid", "Premium", "Diesel"]
 const gk = (g: string) => g.toLowerCase()
 
+// Auburn AL center coords for fallback
+const AUBURN_LAT = 32.6099, AUBURN_LNG = -85.4808
 const FALLBACK_STATIONS: Station[] = [
-  { id:1, name:"Shell",    address:"Nearest Shell, Auburn AL",    lat:0,lng:0,distance:0.3,regular:3.04,mid:3.34,premium:3.64,diesel:3.49,updated:"2m ago",  trending:"down"   },
-  { id:2, name:"Circle K", address:"Nearest Circle K, Auburn AL", lat:0,lng:0,distance:0.8,regular:3.12,mid:3.42,premium:3.72,diesel:3.57,updated:"5m ago",  trending:"up"     },
-  { id:3, name:"Exxon",   address:"Nearest Exxon, Auburn AL",    lat:0,lng:0,distance:1.1,regular:3.19,mid:3.49,premium:3.79,diesel:3.64,updated:"8m ago",  trending:"stable" },
-  { id:4, name:"Marathon", address:"Nearest Marathon, Auburn AL", lat:0,lng:0,distance:1.4,regular:3.24,mid:3.54,premium:3.84,diesel:3.69,updated:"12m ago", trending:"down"   },
-  { id:5, name:"BP",      address:"Nearest BP, Auburn AL",       lat:0,lng:0,distance:1.9,regular:3.28,mid:3.58,premium:3.88,diesel:3.73,updated:"15m ago", trending:"up"     },
+  { id:1, name:"Shell",     address:"184 N Gay St, Auburn AL",        lat:AUBURN_LAT+.003, lng:AUBURN_LNG+.004, distance:0.3, regular:3.04,mid:3.34,premium:3.64,diesel:3.49,updated:"2m ago",  trending:"down"   },
+  { id:2, name:"Circle K",  address:"2884 E University Dr, Auburn AL", lat:AUBURN_LAT-.005, lng:AUBURN_LNG+.002, distance:0.8, regular:3.12,mid:3.42,premium:3.72,diesel:3.57,updated:"5m ago",  trending:"up"     },
+  { id:3, name:"Exxon",     address:"120 E Samford Ave, Auburn AL",    lat:AUBURN_LAT+.002, lng:AUBURN_LNG-.006, distance:1.1, regular:3.19,mid:3.49,premium:3.79,diesel:3.64,updated:"8m ago",  trending:"stable" },
+  { id:4, name:"Marathon",  address:"315 S College St, Auburn AL",     lat:AUBURN_LAT-.003, lng:AUBURN_LNG-.004, distance:1.4, regular:3.24,mid:3.54,premium:3.84,diesel:3.69,updated:"12m ago", trending:"down"   },
+  { id:5, name:"BP",        address:"609 S Gay St, Auburn AL",         lat:AUBURN_LAT+.007, lng:AUBURN_LNG+.001, distance:1.9, regular:3.28,mid:3.58,premium:3.88,diesel:3.73,updated:"15m ago", trending:"up"     },
+  { id:6, name:"Chevron",   address:"1420 N Dean Rd, Auburn AL",       lat:AUBURN_LAT-.006, lng:AUBURN_LNG-.003, distance:2.1, regular:3.31,mid:3.61,premium:3.91,diesel:3.76,updated:"9m ago",  trending:"stable" },
+  { id:7, name:"QuikTrip",  address:"735 E Glenn Ave, Auburn AL",      lat:AUBURN_LAT+.004, lng:AUBURN_LNG-.008, distance:2.4, regular:3.35,mid:3.65,premium:3.95,diesel:3.80,updated:"3m ago",  trending:"down"   },
+  { id:8, name:"Wawa",      address:"240 S Donahue Dr, Auburn AL",     lat:AUBURN_LAT-.001, lng:AUBURN_LNG+.007, distance:2.8, regular:3.38,mid:3.68,premium:3.98,diesel:3.83,updated:"6m ago",  trending:"up"     },
 ]
 
 const FALLBACK_HISTORY = [
@@ -425,10 +430,52 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
           trending:['down','stable','up'][Math.floor(Math.random()*3)],
           updated:`${Math.floor(Math.random()*10)+1}m ago`
         }))
-        setStations(enriched); setLocStatus(`${enriched.length} stations found`)
+        setStations(enriched)
+        setLocStatus(`${enriched.length} stations found`)
         setMapKey(`${lat.toFixed(3)}-${lng.toFixed(3)}-${Date.now()}`)
-      } else { setLocStatus('Sample data shown'); setMapKey(`fallback-${Date.now()}`) }
-    } catch(e){ setLocStatus('Sample data shown'); setMapKey(`fallback-${Date.now()}`) }
+      } else {
+        // No real stations — spread fallbacks realistically around user location
+        // so they all show on the map
+        const fallbackNames = [
+          {name:'Shell',     offset:[0.003,0.004]},
+          {name:'Circle K',  offset:[-0.005,0.002]},
+          {name:'Exxon',     offset:[0.002,-0.006]},
+          {name:'Marathon',  offset:[-0.003,-0.004]},
+          {name:'BP',        offset:[0.007,0.001]},
+          {name:'Chevron',   offset:[-0.006,-0.003]},
+          {name:'QuikTrip',  offset:[0.004,-0.008]},
+          {name:'Wawa',      offset:[-0.001,0.007]},
+        ]
+        const enriched = fallbackNames.map((f,i)=>{
+          const slat = lat+f.offset[0]+(Math.random()*.002-.001)
+          const slng = lng+f.offset[1]+(Math.random()*.002-.001)
+          return {
+            id:i+1, name:f.name,
+            address:`Near ${f.name} · Auburn AL`,
+            lat:slat, lng:slng,
+            distance:distanceMiles(lat,lng,slat,slng),
+            ...simulatePrices(base),
+            trending:['down','stable','up'][Math.floor(Math.random()*3)],
+            updated:`${Math.floor(Math.random()*10)+1}m ago`
+          }
+        })
+        setStations(enriched)
+        setLocStatus(`${enriched.length} stations found · Sample data`)
+        setMapKey(`fallback-${lat.toFixed(3)}-${Date.now()}`)
+      }
+    } catch(e){
+      // Even on error - show stations spread around user
+      const base=3.15
+      const fallbackNames=['Shell','Circle K','Exxon','Marathon','BP','Chevron']
+      const enriched=fallbackNames.map((name,i)=>{
+        const slat=lat+(Math.random()*.012-.006)
+        const slng=lng+(Math.random()*.012-.006)
+        return {id:i+1,name,address:`Near ${name} · Auburn AL`,lat:slat,lng:slng,distance:distanceMiles(lat,lng,slat,slng),...simulatePrices(base),trending:['down','stable','up'][Math.floor(Math.random()*3)],updated:`${Math.floor(Math.random()*10)+1}m ago`}
+      })
+      setStations(enriched)
+      setLocStatus('Sample data shown')
+      setMapKey(`err-${Date.now()}`)
+    }
     setLoading(false)
     // Save location
     try {
