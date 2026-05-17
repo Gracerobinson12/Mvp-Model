@@ -284,21 +284,21 @@ function MapsModal({ station, destination, onClose }: { station: Station|null, d
 // Miles to meters
 const RADIUS_MILES = [5, 10, 15, 30]
 
-function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, expanded, onExpand, onCollapse, onReport }: {
+function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, onReport }: {
   stations: Station[], grade: string, selectedId: number|null,
   onSelect: (id:number)=>void, userCoords: {lat:number,lng:number}|null,
-  radius: number, expanded: boolean,
-  onExpand: ()=>void, onCollapse: ()=>void, onReport: ()=>void
+  radius: number, onReport: ()=>void
 }) {
   const divRef    = useRef<HTMLDivElement>(null)
   const mapRef    = useRef<any>(null)
   const mksRef    = useRef<Record<number,any>>({})
   const circleRef = useRef<any>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const center = userCoords ?? {lat:32.6099, lng:-85.4808}
   const best   = stations.length ? [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0] : null
 
-  const initMap = useCallback((L:any) => {
+  const bootMap = useCallback((L:any) => {
     if (!divRef.current || mapRef.current) return
     const map = L.map(divRef.current, {
       center: [center.lat, center.lng],
@@ -312,21 +312,20 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, exp
     // User dot
     L.marker([center.lat, center.lng], {
       icon: L.divIcon({className:'', iconSize:[20,20], iconAnchor:[10,10],
-        html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 6px rgba(255,59,48,.18),0 4px 12px rgba(255,59,48,.4)"></div>`
+        html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.18),0 4px 12px rgba(255,59,48,.4)"></div>`
       })
     }).addTo(map)
 
     // Radius circle
-    const radiusM = RADIUS_MILES[radius-1] * 1609.34
     const circle = L.circle([center.lat, center.lng], {
-      radius: radiusM,
-      color: '#ff3b30', weight: 2, opacity: 0.45,
-      dashArray: '7 5', fillColor: '#ff3b30', fillOpacity: 0.05,
+      radius: RADIUS_MILES[radius-1] * 1609.34,
+      color: '#ff3b30', weight: 2, opacity: 0.4,
+      dashArray: '7 5', fillColor: '#ff3b30', fillOpacity: 0.04,
       interactive: false,
     }).addTo(map)
     circleRef.current = circle
 
-    // Add ALL stations
+    // All stations
     stations.forEach(st => {
       if (!st.lat || !st.lng) return
       const price = (st as any)[gk(grade)]
@@ -336,28 +335,21 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, exp
           html: makePin(price, isBest, false)
         })
       }).addTo(map).on('click', () => onSelect(st.id))
-      m.bindPopup(`<div style="font-family:system-ui;min-width:150px">
-        <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:3px">${st.name}</div>
-        <div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:5px">📍 ${st.address}</div>
-        <div style="font-size:16px;font-weight:800;color:${isBest?'#30d158':'#ff3b30'}">$${price.toFixed(2)}</div>
-      </div>`)
+      m.bindPopup(`<div style="font-family:system-ui;min-width:150px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:3px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:5px">📍 ${st.address}</div><div style="font-size:16px;font-weight:800;color:${isBest?'#30d158':'#ff3b30'}">$${price.toFixed(2)}</div></div>`)
       mksRef.current[st.id] = m
     })
 
-    // Fit to show ALL stations + user location
-    const allLatLngs = stations.filter(s=>s.lat&&s.lng).map(s=>[s.lat,s.lng] as [number,number])
-    allLatLngs.push([center.lat, center.lng])
-    if (allLatLngs.length > 1) {
-      map.fitBounds(L.latLngBounds(allLatLngs), {padding:[40,40], maxZoom:14})
-    }
+    // Fit all stations
+    const lls = stations.filter(s=>s.lat&&s.lng).map(s=>[s.lat,s.lng] as [number,number])
+    lls.push([center.lat, center.lng])
+    if (lls.length > 1) map.fitBounds((L as any).latLngBounds(lls), {padding:[40,40], maxZoom:14})
 
     mapRef.current = map
   }, [])
 
-  // Boot Leaflet
   useEffect(() => {
-    const boot = (L:any) => initMap(L)
-    if ((window as any).L) { boot((window as any).L); return }
+    const go = (L:any) => bootMap(L)
+    if ((window as any).L) { go((window as any).L); return }
     if (!document.querySelector('#leaflet-css')) {
       const l = document.createElement('link'); l.id='leaflet-css'; l.rel='stylesheet'
       l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
@@ -366,18 +358,18 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, exp
     if (!document.querySelector('#leaflet-js')) {
       const s = document.createElement('script'); s.id='leaflet-js'
       s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
-      s.onload = () => boot((window as any).L); document.head.appendChild(s)
+      s.onload = () => go((window as any).L); document.head.appendChild(s)
     } else {
-      const w = setInterval(() => { if ((window as any).L) { clearInterval(w); boot((window as any).L) } }, 100)
+      const w = setInterval(() => { if ((window as any).L) { clearInterval(w); go((window as any).L) } }, 100)
     }
     return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current=null; mksRef.current={} } }
   }, [])
 
-  // Update pins when grade/selection changes
+  // Update pins on grade/selection change
   useEffect(() => {
     if (!(window as any).L || !mapRef.current || !stations.length) return
     const L = (window as any).L
-    const b = [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0]
+    const b = [...stations].sort((a:any,b2:any)=>a[gk(grade)]-b2[gk(grade)])[0]
     stations.forEach(st => {
       const m = mksRef.current[st.id]; if (!m) return
       m.setIcon(L.divIcon({className:'', iconSize:[80,52], iconAnchor:[40,52],
@@ -388,87 +380,59 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, exp
 
   // Update radius circle
   useEffect(() => {
-    if (!mapRef.current || !circleRef.current) return
-    const newR = RADIUS_MILES[radius-1] * 1609.34
-    circleRef.current.setRadius(newR)
+    if (!circleRef.current) return
+    circleRef.current.setRadius(RADIUS_MILES[radius-1] * 1609.34)
   }, [radius])
 
-  // Pan to selected station
+  // Pan to selected
   useEffect(() => {
     if (!mapRef.current || !selectedId) return
     const st = stations.find(s => s.id===selectedId)
     if (st?.lat && st?.lng) mapRef.current.panTo([st.lat, st.lng], {animate:true, duration:0.5})
   }, [selectedId])
 
-  // Invalidate map size when expanded/collapsed
+  // Invalidate on expand/collapse
   useEffect(() => {
-    if (!mapRef.current) return
-    setTimeout(() => { mapRef.current?.invalidateSize() }, 350)
-  }, [expanded])
-
-  const mapStyle: React.CSSProperties = expanded ? {
-    position: 'fixed', inset: 0, zIndex: 999,
-    width: '100vw', height: '100vh',
-  } : {
-    position: 'relative',
-    height: 190,
-    borderRadius: 18,
-    overflow: 'hidden',
-    border: '0.5px solid rgba(255,255,255,.9)',
-    marginBottom: 10,
-    cursor: 'pointer',
-  }
+    setTimeout(() => mapRef.current?.invalidateSize(), 350)
+  }, [isExpanded])
 
   return (
     <>
-      <style>{`
-        .leaflet-control-zoom{border:none!important}
-        .leaflet-control-zoom a{background:rgba(255,255,255,.9)!important;border:1px solid rgba(0,0,0,.1)!important;margin-bottom:3px!important;border-radius:8px!important;display:block!important}
-        .leaflet-popup-content-wrapper{border-radius:14px!important;box-shadow:0 8px 32px rgba(0,0,0,.2)!important}
-      `}</style>
+      <style>{`.leaflet-control-zoom{border:none!important}.leaflet-control-zoom a{background:rgba(255,255,255,.9)!important;border:1px solid rgba(0,0,0,.1)!important;margin-bottom:3px!important;border-radius:8px!important;display:block!important}.leaflet-popup-content-wrapper{border-radius:14px!important}`}</style>
 
-      <div style={mapStyle}>
-        {/* The actual map */}
-        <div ref={divRef} style={{width:'100%', height:'100%'}} onClick={!expanded?onExpand:undefined}/>
-
-        {/* Best price overlay */}
-        <div style={{position:'absolute',top:10,left:10,zIndex:1000,background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 12px',pointerEvents:'none'}}>
-          <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:2}}>Best price</div>
-          <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:900,letterSpacing:-1,color:'#1a1a2e',lineHeight:1}}>${best?.[gk(grade)]?.toFixed(2)??'--'}</div>
-          <div style={{fontSize:9,color:'rgba(26,26,46,.5)',marginTop:2}}>{best?.name}</div>
-        </div>
-
-        {/* Station count */}
-        <div style={{position:'absolute',top:10,right:expanded?'auto':10,left:expanded?'50%':'auto',transform:expanded?'translateX(-50%)':'none',zIndex:1000,background:'rgba(255,255,255,.85)',backdropFilter:'blur(12px)',border:'0.5px solid rgba(255,255,255,.9)',borderRadius:100,padding:'4px 12px',fontSize:10,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none',whiteSpace:'nowrap'}}>
-          {stations.length} stations
-        </div>
-
-        {/* Not expanded: tap hint */}
-        {!expanded && (
-          <div style={{position:'absolute',bottom:36,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.45)',backdropFilter:'blur(8px)',borderRadius:100,padding:'3px 10px',fontSize:9,fontWeight:600,color:'#fff',pointerEvents:'none',whiteSpace:'nowrap',zIndex:999}}>
-            ⤢ Tap to explore full map
+      {/* Collapsed view */}
+      {!isExpanded && (
+        <div style={{position:'relative',height:190,borderRadius:18,overflow:'hidden',border:'0.5px solid rgba(255,255,255,.9)',marginBottom:10,cursor:'pointer'}} onClick={()=>setIsExpanded(true)}>
+          <div ref={divRef} style={{width:'100%',height:'100%'}}/>
+          {/* Overlays */}
+          <div style={{position:'absolute',top:10,left:10,zIndex:999,background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 12px',pointerEvents:'none'}}>
+            <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:2}}>Best price</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:900,letterSpacing:-1,color:'#1a1a2e',lineHeight:1}}>${best?.[gk(grade)]?.toFixed(2)??'--'}</div>
+            <div style={{fontSize:9,color:'rgba(26,26,46,.5)',marginTop:2}}>{best?.name}</div>
           </div>
-        )}
+          <div style={{position:'absolute',top:10,right:10,zIndex:999,background:'rgba(255,255,255,.85)',backdropFilter:'blur(12px)',borderRadius:100,padding:'4px 10px',fontSize:10,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none'}}>{stations.length} stations</div>
+          <div style={{position:'absolute',bottom:36,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.45)',backdropFilter:'blur(8px)',borderRadius:100,padding:'3px 10px',fontSize:9,fontWeight:600,color:'#fff',pointerEvents:'none',whiteSpace:'nowrap',zIndex:998}}>⤢ Tap to explore full map</div>
+          <button onClick={e=>{e.stopPropagation();onReport()}} style={{position:'absolute',bottom:8,right:8,zIndex:999,background:'rgba(255,255,255,.85)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'4px 10px',fontSize:10,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>📍 Report</button>
+        </div>
+      )}
 
-        {/* Not expanded: report button */}
-        {!expanded && (
-          <button onClick={e=>{e.stopPropagation();onReport()}} style={{position:'absolute',bottom:8,right:8,zIndex:1000,background:'rgba(255,255,255,.85)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'4px 10px',fontSize:10,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-            📍 Report
-          </button>
-        )}
-
-        {/* Expanded: top bar */}
-        {expanded && (
-          <div style={{position:'absolute',top:0,left:0,right:0,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:1001,background:'linear-gradient(to bottom,rgba(255,255,255,.3),transparent)',pointerEvents:'none'}}>
-            <button onClick={onCollapse} style={{pointerEvents:'all',background:'rgba(255,255,255,.95)',backdropFilter:'blur(20px)',border:'0.5px solid rgba(255,255,255,.95)',borderRadius:14,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#1a1a2e',cursor:'pointer',display:'flex',alignItems:'center',gap:6,boxShadow:'0 4px 16px rgba(0,0,0,.12)',fontFamily:"'DM Sans',sans-serif"}}>
-              ✕ Close map
-            </button>
-            <button onClick={e=>{e.stopPropagation();onReport()}} style={{pointerEvents:'all',background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'8px 16px',fontSize:11,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-              📍 Report a price
-            </button>
+      {/* Expanded full screen */}
+      {isExpanded && (
+        <div style={{position:'fixed',inset:0,zIndex:9990,background:'#e8f0f5'}}>
+          <div ref={divRef} style={{width:'100%',height:'100%'}}/>
+          {/* Top bar */}
+          <div style={{position:'absolute',top:0,left:0,right:0,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:9991,pointerEvents:'none'}}>
+            <button onClick={()=>setIsExpanded(false)} style={{pointerEvents:'all',background:'rgba(255,255,255,.95)',backdropFilter:'blur(20px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:14,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#1a1a2e',cursor:'pointer',display:'flex',alignItems:'center',gap:6,boxShadow:'0 4px 16px rgba(0,0,0,.15)',fontFamily:"'DM Sans',sans-serif"}}>← Close map</button>
+            <div style={{background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 14px',pointerEvents:'none'}}>
+              <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:1}}>Best price</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,letterSpacing:-1,color:'#1a1a2e',lineHeight:1}}>${best?.[gk(grade)]?.toFixed(2)??'--'} · {best?.name}</div>
+            </div>
+            <button onClick={e=>{e.stopPropagation();onReport()}} style={{pointerEvents:'all',background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'8px 14px',fontSize:11,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>📍 Report price</button>
           </div>
-        )}
-      </div>
+          {/* Station count */}
+          <div style={{position:'absolute',top:72,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.85)',backdropFilter:'blur(12px)',borderRadius:100,padding:'4px 14px',fontSize:11,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none',whiteSpace:'nowrap'}}>{stations.length} stations · drag to explore</div>
+        </div>
+      )}
     </>
   )
 }
@@ -485,7 +449,6 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
   const [selId, setSelId]           = useState<number|null>(null)
   const [isDark, setIsDark]         = useState(false)
   const [radius, setRadius]         = useState(2) // 1=5mi 2=10mi 3=15mi 4=30mi
-  const [expanded, setExpanded]     = useState(false)
   const [favorites, setFavorites]   = useState<Set<number>>(new Set())
   const [destination, setDest]      = useState('')
   const [reportStation, setReportStation] = useState<Station|null>(null)
@@ -689,9 +652,6 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
             onSelect={id=>setSelId(p=>p===id?null:id)}
             userCoords={userCoords}
             radius={radius}
-            expanded={expanded}
-            onExpand={()=>setExpanded(true)}
-            onCollapse={()=>setExpanded(false)}
             onReport={()=>setReportStation(sel||sorted[0]||null)}
           />
           {/* Best price overlay */}
@@ -706,9 +666,8 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
           </button>
         </div>
 
-        {/* Radius rings - hide when expanded, show inline */}
-        {!expanded && (
-          <div style={{marginBottom:12}}>
+        {/* Radius rings */}
+        <div style={{marginBottom:12}}>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:10,textAlign:'center'}}>Tap to expand search radius</div>
             <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:14}}>
               {[{v:1,mi:'5'},{v:2,mi:'10'},{v:3,mi:'15'},{v:4,mi:'30'}].map(r=>{
@@ -738,34 +697,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
           </div>
         )}
 
-        {/* Expanded: floating radius rings at bottom */}
-        {expanded && (
-          <div style={{position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:1001,background:'rgba(255,255,255,.95)',backdropFilter:'blur(24px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:24,padding:'12px 20px',boxShadow:'0 8px 32px rgba(0,0,0,.15)',display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase'}}>Search radius</div>
-            <div style={{display:'flex',gap:12,alignItems:'center'}}>
-              {[{v:1,mi:'5'},{v:2,mi:'10'},{v:3,mi:'15'},{v:4,mi:'30'}].map(r=>{
-                const isOn = radius === r.v
-                return (
-                  <button key={r.v} onClick={()=>setRadius(r.v)} style={{
-                    width:56,height:56,borderRadius:'50%',
-                    border:`2.5px solid ${isOn?'#ff3b30':'rgba(0,0,0,.12)'}`,
-                    background:isOn?'rgba(255,59,48,.1)':'rgba(255,255,255,.8)',
-                    boxShadow:isOn?'0 0 0 5px rgba(255,59,48,.12)':'none',
-                    transform:isOn?'scale(1.1)':'scale(1)',
-                    transition:'all .25s cubic-bezier(.34,1.56,.64,1)',
-                    cursor:'pointer',display:'flex',flexDirection:'column',
-                    alignItems:'center',justifyContent:'center',
-                    fontFamily:"'DM Sans',sans-serif",
-                  }}>
-                    <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:900,letterSpacing:-.5,color:isOn?'#ff3b30':'#1a1a2e',lineHeight:1}}>{r.mi}</div>
-                    <div style={{fontSize:9,fontWeight:600,color:isOn?'#cc2018':'rgba(26,26,46,.5)',marginTop:2}}>mi</div>
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{fontSize:11,color:'rgba(26,26,46,.5)',fontWeight:500}}>{sorted.length} stations · {RADIUS_LABELS[radius-1]}</div>
-          </div>
-        )}
+
 
         {/* Cheapest KPI */}
         <div style={{background:'rgba(255,59,48,.07)',border:'0.5px solid rgba(255,59,48,.22)',borderRadius:18,padding:'14px 18px',marginBottom:10,position:'relative',overflow:'hidden'}}>
