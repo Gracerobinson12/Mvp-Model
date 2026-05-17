@@ -298,7 +298,7 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, onR
   const center = userCoords ?? {lat:32.6099, lng:-85.4808}
   const best   = stations.length ? [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0] : null
 
-  const bootMap = useCallback((L:any) => {
+  const bootMap = (L:any) => {
     if (!divRef.current || mapRef.current) return
     const map = L.map(divRef.current, {
       center: [center.lat, center.lng],
@@ -340,12 +340,12 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, onR
     })
 
     // Fit all stations
-    const lls = stations.filter(s=>s.lat&&s.lng).map(s=>[s.lat,s.lng] as [number,number])
+    const lls = stations.filter(s=>s.lat&&s.lng).map(s=>([s.lat,s.lng] as [number,number]))
     lls.push([center.lat, center.lng])
-    if (lls.length > 1) map.fitBounds((L as any).latLngBounds(lls), {padding:[40,40], maxZoom:14})
+    if (lls.length > 1) { try { map.fitBounds(L.latLngBounds(lls), {padding:[40,40], maxZoom:14}) } catch(e){} }
 
     mapRef.current = map
-  }, [])
+  }
 
   useEffect(() => {
     const go = (L:any) => bootMap(L)
@@ -369,7 +369,7 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, onR
   useEffect(() => {
     if (!(window as any).L || !mapRef.current || !stations.length) return
     const L = (window as any).L
-    const b = [...stations].sort((a:any,b2:any)=>a[gk(grade)]-b2[gk(grade)])[0]
+    const b = [...stations].sort((a:any,bx:any)=>a[gk(grade)]-bx[gk(grade)])[0]
     stations.forEach(st => {
       const m = mksRef.current[st.id]; if (!m) return
       m.setIcon(L.divIcon({className:'', iconSize:[80,52], iconAnchor:[40,52],
@@ -694,8 +694,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
             <div style={{textAlign:'center',marginTop:8,fontSize:11,color:'rgba(26,26,46,.45)',fontWeight:500}}>
               {sorted.length} stations · {RADIUS_LABELS[radius-1]}
             </div>
-          </div>
-        )}
+        </div>
 
 
 
