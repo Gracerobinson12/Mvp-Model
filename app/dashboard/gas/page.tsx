@@ -56,11 +56,27 @@ function simulatePrices(base:number){
   const o=[-0.09,-0.05,-0.02,0,0.04,0.08,0.13][Math.floor(Math.random()*7)]
   return {regular:+(base+o).toFixed(2),mid:+(base+o+.30).toFixed(2),premium:+(base+o+.60).toFixed(2),diesel:+(base+o+.45).toFixed(2)}
 }
-function makePin(price:number,best:boolean,sel:boolean){
-  const bg=sel?'linear-gradient(135deg,#ff3b30,#ff6b35)':best?'linear-gradient(135deg,#30d158,#34c759)':'rgba(255,255,255,.93)'
-  const fg=sel||best?'#fff':'rgba(0,0,0,.85)'
-  const bd=sel?'#ff3b30':best?'#30d158':'rgba(0,0,0,.18)'
-  return `<div style="display:inline-flex;flex-direction:column;align-items:center;transform:${sel?'scale(1.2)':'scale(1)'};transition:transform .2s"><div style="background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:5px 10px;display:flex;align-items:center;gap:4px;box-shadow:0 4px 16px rgba(0,0,0,.25);cursor:pointer"><span style="font-size:10px">⛽</span><span style="font-size:13px;font-weight:700;color:${fg};font-family:system-ui">$${price.toFixed(2)}</span></div><div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid ${sel?'#ff3b30':best?'#30d158':bd}"></div></div>`
+// pct = 0 (cheapest) to 1 (priciest) across all visible stations
+function makePin(price:number,best:boolean,sel:boolean,pct:number=0.5){
+  // Color scale: green → yellow-green → yellow → orange → red
+  let bg:string,bd:string,fg:string,label:string
+  if(sel){
+    bg='linear-gradient(135deg,#ff3b30,#ff6b35)';bd='#ff3b30';fg='#fff';label=''
+  } else if(best){
+    bg='linear-gradient(135deg,#30d158,#34c759)';bd='#30d158';fg='#fff';label='★ '
+  } else if(pct<0.33){
+    bg='rgba(48,209,88,.15)';bd='rgba(48,209,88,.6)';fg='#1a5c30';label=''
+  } else if(pct<0.55){
+    bg='rgba(172,230,80,.2)';bd='rgba(152,210,60,.7)';fg='#3a5c10';label=''
+  } else if(pct<0.72){
+    bg='rgba(255,214,10,.18)';bd='rgba(255,190,0,.7)';fg='#6b4e00';label=''
+  } else if(pct<0.88){
+    bg='rgba(255,149,0,.18)';bd='rgba(255,149,0,.7)';fg='#7a3a00';label=''
+  } else {
+    bg='rgba(255,69,58,.15)';bd='rgba(255,59,48,.6)';fg='#8b1a10';label=''
+  }
+  const scale=sel?'scale(1.25)':best?'scale(1.1)':'scale(1)'
+  return `<div style="display:inline-flex;flex-direction:column;align-items:center;transform:${scale};transition:transform .2s;filter:drop-shadow(0 3px 8px rgba(0,0,0,.25))"><div style="background:${bg};border:2px solid ${bd};border-radius:10px;padding:5px 10px;display:flex;align-items:center;gap:3px;cursor:pointer"><span style="font-size:10px">⛽</span><span style="font-size:13px;font-weight:700;color:${fg};font-family:system-ui">${label}$${price.toFixed(2)}</span></div><div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ${bd}"></div></div>`
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────────
@@ -207,12 +223,17 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
       }).addTo(map)
       circleRef.current=circle
     }
+    const prices=stations.filter(s=>s.lat&&s.lng).map(s=>(s as any)[gk(grade)])
+    const minP=Math.min(...prices,999),maxP=Math.max(...prices,0),priceRange=maxP-minP||0.01
     stations.forEach(st=>{
       if(!st.lat||!st.lng) return
       const price=(st as any)[gk(grade)],isBest=st.id===best?.id
-      const m=L.marker([st.lat,st.lng],{icon:L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin(price,isBest,false)})})
+      const pct=(price-minP)/priceRange
+      const tierLabel=pct<0.2?'Best deal':pct<0.45?'Good price':pct<0.65?'Average':pct<0.85?'Above avg':'Priciest'
+      const tierColor=pct<0.2?'#30d158':pct<0.45?'#a8e063':pct<0.65?'#ffd60a':pct<0.85?'#ff9500':'#ff453a'
+      const m=L.marker([st.lat,st.lng],{icon:L.divIcon({className:'',iconSize:[90,56],iconAnchor:[45,56],html:makePin(price,isBest,false,pct)})})
         .addTo(map).on('click',()=>onSelect(st.id))
-      m.bindPopup(`<div style="font-family:system-ui;min-width:130px"><b style="color:#1a1a2e;font-size:13px">${st.name}</b><br><span style="font-size:10px;color:rgba(26,26,46,.5)">${st.address}</span><br><b style="font-size:15px;color:${isBest?'#30d158':'#ff3b30'}">$${price.toFixed(2)}</b></div>`)
+      m.bindPopup(`<div style="font-family:system-ui;min-width:150px;padding:2px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:2px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:6px">${st.address}</div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:18px;font-weight:800;color:${isBest?'#30d158':'#1a1a2e'}">$${price.toFixed(2)}</span><span style="font-size:9px;font-weight:700;color:${tierColor};background:${tierColor}18;border:1px solid ${tierColor}40;border-radius:100px;padding:2px 8px">${tierLabel}</span></div></div>`)
       mksRef.current[st.id]=m
     })
     const lls=stations.filter(s=>s.lat&&s.lng).map(s=>[s.lat,s.lng] as [number,number])
@@ -230,11 +251,56 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
 
   useEffect(()=>{
     if(!(window as any).L||!mapRef.current) return
-    const L=(window as any).L,b=[...stations].sort((a:any,bx:any)=>a[gk(grade)]-bx[gk(grade)])[0]
-    stations.forEach(st=>{const m=mksRef.current[st.id];if(!m)return;m.setIcon(L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin((st as any)[gk(grade)],st.id===b?.id,st.id===selectedId)}))})
+    const L=(window as any).L
+    const radiusMi=RADIUS_MILES[radius-1]
+    const visible=stations.filter(s=>s.lat&&s.lng&&s.distance<=radiusMi)
+    const prices=visible.map(s=>(s as any)[gk(grade)])
+    const minP=Math.min(...prices,999),maxP=Math.max(...prices,0),priceRange=maxP-minP||0.01
+    const b=visible.length?[...visible].sort((a:any,bx:any)=>a[gk(grade)]-bx[gk(grade)])[0]:null
+    stations.forEach(st=>{
+      const m=mksRef.current[st.id];if(!m)return
+      const price=(st as any)[gk(grade)],pct=(price-minP)/priceRange
+      const isVis=st.distance<=radiusMi
+      m.setIcon(L.divIcon({className:'',iconSize:[90,56],iconAnchor:[45,56],html:makePin(price,st.id===b?.id,st.id===selectedId,pct)}))
+      m.setOpacity(isVis?1:0.25)
+    })
   },[grade,selectedId])
 
-  useEffect(()=>{if(circleRef.current)circleRef.current.setRadius(RADIUS_MILES[radius-1]*1609.34)},[radius])
+  useEffect(()=>{
+    if(circleRef.current) circleRef.current.setRadius(RADIUS_MILES[radius-1]*1609.34)
+    if(!mapRef.current||(window as any).L===undefined) return
+    const L=(window as any).L
+    const radiusMi=RADIUS_MILES[radius-1]
+    // Filter visible stations by radius
+    const visible=stations.filter(s=>s.lat&&s.lng&&s.distance<=radiusMi)
+    const hidden=stations.filter(s=>s.lat&&s.lng&&s.distance>radiusMi)
+    // Recalculate price range for visible stations only
+    const visPrices=visible.map(s=>(s as any)[gk(grade)])
+    const minP=Math.min(...visPrices,999),maxP=Math.max(...visPrices,0),priceRange=maxP-minP||0.01
+    const bestVis=visible.length?[...visible].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0]:null
+    // Update all marker icons
+    visible.forEach(st=>{
+      const m=mksRef.current[st.id];if(!m)return
+      const price=(st as any)[gk(grade)],pct=(price-minP)/priceRange
+      m.setIcon(L.divIcon({className:'',iconSize:[90,56],iconAnchor:[45,56],
+        html:makePin(price,st.id===bestVis?.id,st.id===selectedId,pct)
+      }))
+      m.setOpacity(1)
+    })
+    // Dim stations outside radius
+    hidden.forEach(st=>{
+      const m=mksRef.current[st.id];if(!m)return
+      m.setOpacity(0.25)
+    })
+    // Fit map to visible stations
+    if(visible.length>0&&userCoords){
+      try{
+        const lls=visible.map(s=>[s.lat,s.lng] as [number,number])
+        lls.push([userCoords.lat,userCoords.lng])
+        mapRef.current.fitBounds(L.latLngBounds(lls),{padding:[50,50],maxZoom:15,animate:true})
+      }catch(e){}
+    }
+  },[radius])
   useEffect(()=>{if(!mapRef.current||!selectedId)return;const st=stations.find(s=>s.id===selectedId);if(st?.lat&&st?.lng)mapRef.current.panTo([st.lat,st.lng],{animate:true,duration:.4})},[selectedId])
   useEffect(()=>{setTimeout(()=>mapRef.current?.invalidateSize(),350)},[exp])
 
@@ -276,7 +342,17 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
             </div>
             <button onClick={onReport} style={{background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'8px 14px',fontSize:11,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>📍 Report</button>
           </div>
-          <div style={{position:'absolute',top:70,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.85)',backdropFilter:'blur(12px)',borderRadius:100,padding:'4px 14px',fontSize:11,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none',whiteSpace:'nowrap'}}>{stations.length} stations · drag to explore</div>
+          <div style={{position:'absolute',top:70,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.85)',backdropFilter:'blur(12px)',borderRadius:100,padding:'4px 14px',fontSize:11,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none',whiteSpace:'nowrap'}}>{stations.filter(s=>s.distance<=RADIUS_MILES[radius-1]).length} stations visible · drag to explore</div>
+          {/* Price legend */}
+          <div style={{position:'absolute',top:110,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:100,padding:'5px 14px',display:'flex',alignItems:'center',gap:8,pointerEvents:'none',whiteSpace:'nowrap',boxShadow:'0 2px 10px rgba(0,0,0,.1)'}}>
+            <span style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.4)'}}>PRICE</span>
+            {[{c:'#30d158',l:'Cheapest'},{c:'#a8e063',l:'Good'},{c:'#ffd60a',l:'Avg'},{c:'#ff9500',l:'High'},{c:'#ff453a',l:'Priciest'}].map(t=>(
+              <div key={t.l} style={{display:'flex',alignItems:'center',gap:3}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:t.c}}/>
+                <span style={{fontSize:9,fontWeight:600,color:'rgba(26,26,46,.55)'}}>{t.l}</span>
+              </div>
+            ))}
+          </div>
           <div style={{position:'absolute',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.97)',backdropFilter:'blur(24px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:20,padding:'10px 16px',boxShadow:'0 8px 32px rgba(0,0,0,.15)',textAlign:'center'}}>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:8}}>Search radius</div>
             <div style={{display:'flex',gap:10}}>
