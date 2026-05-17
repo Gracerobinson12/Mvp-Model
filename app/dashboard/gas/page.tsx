@@ -287,19 +287,23 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius }:{
     if (userCoords) {
       // User location dot
       L.marker([center.lat,center.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.2),0 4px 12px rgba(255,59,48,.4)"></div>`})}).addTo(map)
-      // Radius circle
+      // Radius circle — accurate Leaflet circle in meters
+      // 1 mile = 1609.34 meters, Leaflet uses meters for L.circle
+      const circleMiles = RADIUS_MILES[radius-1]
+      const circleMeters = circleMiles * 1609.34
       const circle = L.circle([center.lat,center.lng], {
-        radius: radiusMeters,
+        radius: circleMeters,
         color: '#ff3b30',
         weight: 2,
-        opacity: 0.5,
-        dashArray: '6 4',
+        opacity: 0.45,
+        dashArray: '7 5',
         fillColor: '#ff3b30',
-        fillOpacity: 0.04,
+        fillOpacity: 0.05,
+        interactive: false,
       }).addTo(map)
       circleRef.current = circle
-      // Fit map to circle bounds
-      map.fitBounds(circle.getBounds(), {padding:[20,20]})
+      // Fit map so circle fills view with some padding for pins
+      map.fitBounds(circle.getBounds(), {padding:[30,30]})
     }
     stations.forEach(st=>{
       if (!st.lat && !st.lng) return
@@ -314,7 +318,11 @@ function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius }:{
     if (!mapRef.current || !circleRef.current || !userCoords) return
     const newRadius = RADIUS_MILES[radius-1] * 1609.34
     circleRef.current.setRadius(newRadius)
-    mapRef.current.fitBounds(circleRef.current.getBounds(), {padding:[20,20],animate:true})
+    // Small padding so circle fits nicely with pins visible
+    mapRef.current.fitBounds(
+      circleRef.current.getBounds(),
+      {padding:[30,30], animate:true, duration:0.5}
+    )
   },[radius])
 
   useEffect(()=>{

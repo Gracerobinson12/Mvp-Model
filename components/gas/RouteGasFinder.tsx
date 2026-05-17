@@ -248,13 +248,38 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
       setLoadStep('Finding gas stations...')
       const pts=interpolateAlongRoute(polyline,6)
       const names=['Shell','BP','Circle K','Chevron','QuikTrip','Marathon','Murphy USA','Wawa','Sunoco','Exxon']
-      const built:RouteStation[]=pts.map((pt,i)=>({
-        id:i+1, name:names[Math.floor(Math.random()*names.length)],
-        address:`Near mile ${((i+1)/(pts.length+1)*miles).toFixed(1)} of your route`,
-        lat:pt.lat+(Math.random()-.5)*.008, lng:pt.lng+(Math.random()-.5)*.008,
+      // Fetch real stations near route points
+      const stationPromises = pts.map(async (pt) => {
+        try {
+          const res = await fetch(`/api/stations?lat=${pt.lat}&lng=${pt.lng}`)
+          const data = await res.json()
+          return data.stations || []
+        } catch { return [] }
+      })
+      const allStationArrays = await Promise.all(stationPromises)
+      // Flatten and deduplicate by name+address
+      const seen = new Set<string>()
+      const allRealStations: any[] = []
+      allStationArrays.flat().forEach((st:any) => {
+        const key = `${st.name}-${st.lat?.toFixed(3)}-${st.lng?.toFixed(3)}`
+        if (!seen.has(key)) { seen.add(key); allRealStations.push(st) }
+      })
+      // If we got real stations use them, else fall back to simulated
+      const sourceStations = allRealStations.length >= 3 ? allRealStations : pts.map((pt,i) => ({
+        name: names[Math.floor(Math.random()*names.length)],
+        address: names[(i*3)%names.length] + ' along your route',
+        lat: pt.lat+(Math.random()-.5)*.008,
+        lng: pt.lng+(Math.random()-.5)*.008,
+      }))
+      const built:RouteStation[]=sourceStations.slice(0,Math.min(sourceStations.length,10)).map((st:any,i:number)=>({
+        id:i+1,
+        name: st.name || names[Math.floor(Math.random()*names.length)],
+        address: st.address || `Along your route`,
+        lat: st.lat || pts[Math.min(i, pts.length-1)].lat,
+        lng: st.lng || pts[Math.min(i, pts.length-1)].lng,
         ...simulatePrices(basePrice),
-        distOnRoute:parseFloat(((i+1)/(pts.length+1)*miles).toFixed(1)),
-        detourMiles:parseFloat((Math.random()*.6+.1).toFixed(1)),
+        distOnRoute:parseFloat(((i+1)/(sourceStations.slice(0,10).length+1)*miles).toFixed(1)),
+        detourMiles:parseFloat((Math.random()*.5+.1).toFixed(1)),
         updated:`${Math.floor(Math.random()*12)+1}m ago`,
         trending:['down','down','stable','up'][Math.floor(Math.random()*4)],
       }))
@@ -269,6 +294,15 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
   const avgRoutePrice=stations.length?stations.reduce((s,st)=>s+st[gk(grade)],0)/stations.length:basePrice
   const routeFuelCost=routeInfo?((routeInfo.totalMiles/28)*cheapestPrice).toFixed(2):'0.00'
   const sorted=[...stations].sort((a,b)=>a[gk(grade)]-b[gk(grade)])
+  const prices=sorted.map(s=>s[gk(grade)])
+  const priceMin=prices[0]??basePrice, priceMax=prices[prices.length-1]??basePrice
+  const priceRange=priceMax-priceMin||0.01
+  const getPriceTier=(price:number)=>{
+    const pct=(price-priceMin)/priceRange
+    if(pct<0.33) return {label:'Best deal',color:'#30d158',bg:'rgba(48,209,88,.1)'}
+    if(pct<0.66) return {label:'Mid range',color:'#ff9f0a',bg:'rgba(255,159,10,.1)'}
+    return {label:'Priciest',color:'#ff453a',bg:'rgba(255,69,58,.1)'}
+  }
   const sel=stations.find(s=>s.id===selId)
   const S={ bg:isDark?'rgba(255,255,255,.05)':'rgba(255,255,255,.8)', bdr:isDark?'rgba(255,255,255,.09)':'rgba(0,0,0,.08)', text:isDark?'#ebebf5':'#1a1a2e', text2:isDark?'rgba(235,235,245,.55)':'rgba(26,26,46,.55)', text3:isDark?'rgba(235,235,245,.28)':'rgba(26,26,46,.3)', inputBg:isDark?'rgba(0,0,0,.3)':'rgba(0,0,0,.04)', inputBdr:isDark?'rgba(255,255,255,.1)':'rgba(0,0,0,.1)' }
 
@@ -377,7 +411,7 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
                         <span style={{fontSize:14,fontWeight:700,color:S.text}}>{st.name}</span>
-                        {isBest&&<span style={{fontSize:9,fontWeight:700,background:'rgba(48,209,88,.12)',color:'#30d158',border:'1px solid rgba(48,209,88,.25)',borderRadius:5,padding:'1px 6px',letterSpacing:.5}}>CHEAPEST</span>}
+                        {(()=>{const t=getPriceTier(st[gk(grade)]);return <span style={{fontSize:9,fontWeight:700,background:t.bg,color:t.color,border:`1px solid ${t.color}30`,borderRadius:5,padding:'1px 6px',letterSpacing:.3}}>{t.label}</span>})()}
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
                         <div style={{flex:1,height:3,background:'rgba(0,0,0,.08)',borderRadius:2,overflow:'hidden'}}><div style={{height:'100%',width:`${pct}%`,background:'linear-gradient(90deg,#ff3b30,#ff6b35)',borderRadius:2}}/></div>
@@ -409,12 +443,12 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
                 <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                   <button onClick={()=>{
                     const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
-                    const stName=encodeURIComponent(`${sel.name}, Auburn AL`)
+                    const stName=encodeURIComponent(`${sel.name}, ${sel.address}`)
                     if(isApple){
-                      if(destCoords) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destLabel)}&via=${sel.lat},${sel.lng}&dirflag=d`)
+                      if(destCoords) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destLabel)}&via=${encodeURIComponent(sel.name+', '+sel.address)}&dirflag=d`)
                       else window.open(`maps://maps.apple.com/?q=${stName}&dirflag=d`)
                     } else {
-                      if(destCoords) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destLabel)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
+                      if(destCoords) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destLabel)}&waypoints=${stName}&travelmode=driving`)
                       else window.open(`https://www.google.com/maps/search/?api=1&query=${stName}`)
                     }
                   }} style={{flex:1,padding:'11px 16px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:12,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",boxShadow:'0 4px 14px rgba(255,59,48,.35)'}}>
@@ -422,8 +456,9 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
                   </button>
                   <button onClick={()=>{
                     const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
-                    if(isApple) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destInput)}&via=${sel.lat},${sel.lng}&dirflag=d`)
-                    else window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destInput)}&waypoints=${sel.lat},${sel.lng}&travelmode=driving`)
+                    const wpName=encodeURIComponent(`${sel.name}, ${sel.address}`)
+                    if(isApple) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destLabel)}&via=${encodeURIComponent(sel.name+', '+sel.address)}&dirflag=d`)
+                    else window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destLabel)}&waypoints=${wpName}&travelmode=driving`)
                   }} style={{flex:1,padding:'11px 16px',background:'rgba(10,132,255,.1)',border:'0.5px solid rgba(10,132,255,.3)',borderRadius:12,fontSize:12,fontWeight:700,color:'#0a84ff',cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif"}}>
                     ➕ Add as Waypoint
                   </button>
