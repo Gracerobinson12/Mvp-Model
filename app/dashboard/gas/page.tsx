@@ -415,9 +415,9 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
       {name:'Murphy USA',dist:5.5, bear:60},  {name:'Sunoco',    dist:7.2, bear:170},
       {name:'RaceTrac',  dist:9.1, bear:280}, {name:'Pilot',     dist:11.3,bear:350},
       // ~15-30 mi (30mi radius adds these)
-      {name:'Flying J',  dist:16.2,bear:45},  {name:'Love's',   dist:19.8,bear:130},
+      {name:'Flying J',  dist:16.2,bear:45},  {name:'Loves',   dist:19.8,bear:130},
       {name:'Mobil',     dist:23.4,bear:220}, {name:'Speedway',  dist:27.1,bear:310},
-      {name:'Casey's',  dist:28.8,bear:80},  {name:'Kwik Trip', dist:29.5,bear:190},
+      {name:'Caseys',  dist:28.8,bear:80},  {name:'Kwik Trip', dist:29.5,bear:190},
     ]
     return stationDefs.map((s,i)=>{
       // Convert bearing + distance to lat/lng offset
