@@ -242,43 +242,42 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
   const blur='blur(16px)'
 
   return (
-    <div ref={containerRef} style={{marginBottom:12}}>
-      {/* Small map */}
-      {!exp&&(
-        <div style={{position:'relative',height:190,borderRadius:18,overflow:'hidden',border:'0.5px solid rgba(255,255,255,.9)'}}>
-          <div ref={mapDivRef} style={{width:'100%',height:'100%'}}/>
-          {/* Best price */}
-          <div style={{position:'absolute',top:10,left:10,zIndex:400,background:glass,backdropFilter:blur,border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'7px 11px',pointerEvents:'none'}}>
+    <div ref={containerRef} style={{marginBottom: exp?0:12}}>
+      {/* ONE map div - always mounted, position changes */}
+      <div style={{
+        position: exp?'fixed':'relative',
+        inset: exp?'0':undefined,
+        zIndex: exp?9990:undefined,
+        height: exp?'100vh':190,
+        borderRadius: exp?0:18,
+        overflow:'hidden',
+        border: exp?'none':'0.5px solid rgba(255,255,255,.9)',
+      }}>
+        <div ref={mapDivRef} style={{width:'100%',height:'100%'}}/>
+
+        {/* COLLAPSED overlays */}
+        {!exp&&<>
+          <div style={{position:'absolute',top:10,left:10,zIndex:401,background:glass,backdropFilter:blur,border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'7px 11px',pointerEvents:'none'}}>
             <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase'}}>Best price</div>
             <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,color:'#1a1a2e',lineHeight:1.1}}>${best?.[gk(grade)]?.toFixed(2)??'--'}</div>
             <div style={{fontSize:9,color:'rgba(26,26,46,.5)',marginTop:1}}>{best?.name}</div>
           </div>
-          {/* Expand button */}
-          <button
-            onClick={()=>setExp(true)}
-            style={{position:'absolute',bottom:8,left:'50%',transform:'translateX(-50%)',zIndex:400,background:'rgba(26,26,46,.72)',backdropFilter:blur,border:'none',borderRadius:100,padding:'6px 14px',fontSize:10,fontWeight:700,color:'#fff',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",whiteSpace:'nowrap'}}
-          >⤢ Explore full map</button>
-          {/* Report */}
-          <button onClick={e=>{e.stopPropagation();onReport()}} style={{position:'absolute',top:10,right:10,zIndex:400,background:glass,backdropFilter:blur,border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'4px 10px',fontSize:10,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>📍 Report</button>
-        </div>
-      )}
-      {/* Full screen map */}
-      {exp&&(
-        <div style={{position:'fixed',inset:0,zIndex:9900}}>
-          <div ref={mapDivRef} style={{width:'100%',height:'100%'}}/>
-          {/* Top bar */}
-          <div style={{position:'absolute',top:0,left:0,right:0,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:9901}}>
-            <button onClick={()=>setExp(false)} style={{background:glass,backdropFilter:blur,border:'0.5px solid rgba(255,255,255,.98)',borderRadius:14,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#1a1a2e',cursor:'pointer',display:'flex',alignItems:'center',gap:6,boxShadow:'0 4px 16px rgba(0,0,0,.15)',fontFamily:"'DM Sans',sans-serif"}}>← Close map</button>
-            <div style={{background:glass,backdropFilter:blur,border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 14px',pointerEvents:'none'}}>
+          <button onClick={()=>setExp(true)} style={{position:'absolute',bottom:8,left:'50%',transform:'translateX(-50%)',zIndex:401,background:'rgba(26,26,46,.72)',backdropFilter:blur,border:'none',borderRadius:100,padding:'6px 14px',fontSize:10,fontWeight:700,color:'#fff',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",whiteSpace:'nowrap'}}>⤢ Explore full map</button>
+          <button onClick={e=>{e.stopPropagation();onReport()}} style={{position:'absolute',top:10,right:10,zIndex:401,background:glass,backdropFilter:blur,border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'4px 10px',fontSize:10,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>📍 Report</button>
+        </>}
+
+        {/* EXPANDED overlays */}
+        {exp&&<>
+          <div style={{position:'absolute',top:0,left:0,right:0,padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:9991}}>
+            <button onClick={()=>setExp(false)} style={{background:'rgba(255,255,255,.96)',backdropFilter:'blur(20px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:14,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#1a1a2e',cursor:'pointer',display:'flex',alignItems:'center',gap:6,boxShadow:'0 4px 16px rgba(0,0,0,.15)',fontFamily:"'DM Sans',sans-serif"}}>← Close map</button>
+            <div style={{background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 14px',pointerEvents:'none'}}>
               <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase'}}>Best price</div>
-              <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,color:'#1a1a2e',lineHeight:1}}>${best?.[gk(grade)]?.toFixed(2)??'--'} · {best?.name}</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:900,color:'#1a1a2e',lineHeight:1}}>${best?.[gk(grade)]?.toFixed(2)??'--'} · {best?.name}</div>
             </div>
-            <button onClick={onReport} style={{background:glass,backdropFilter:blur,border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'8px 14px',fontSize:11,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>📍 Report</button>
+            <button onClick={onReport} style={{background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'8px 14px',fontSize:11,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>📍 Report</button>
           </div>
-          {/* Station count */}
-          <div style={{position:'absolute',top:72,left:'50%',transform:'translateX(-50%)',zIndex:9901,background:glass,backdropFilter:blur,borderRadius:100,padding:'4px 14px',fontSize:11,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none',whiteSpace:'nowrap'}}>{stations.length} stations · drag to explore</div>
-          {/* Radius rings bottom */}
-          <div style={{position:'absolute',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:9901,background:'rgba(255,255,255,.95)',backdropFilter:'blur(24px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:20,padding:'10px 16px',boxShadow:'0 8px 32px rgba(0,0,0,.15)',textAlign:'center'}}>
+          <div style={{position:'absolute',top:70,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.85)',backdropFilter:'blur(12px)',borderRadius:100,padding:'4px 14px',fontSize:11,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none',whiteSpace:'nowrap'}}>{stations.length} stations · drag to explore</div>
+          <div style={{position:'absolute',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.97)',backdropFilter:'blur(24px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:20,padding:'10px 16px',boxShadow:'0 8px 32px rgba(0,0,0,.15)',textAlign:'center'}}>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:8}}>Search radius</div>
             <div style={{display:'flex',gap:10}}>
               {[{v:1,mi:'5'},{v:2,mi:'10'},{v:3,mi:'15'},{v:4,mi:'30'}].map(r=>{
@@ -291,8 +290,8 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
             </div>
             <div style={{fontSize:10,color:'rgba(26,26,46,.45)',marginTop:8}}>{stations.length} stations</div>
           </div>
-        </div>
-      )}
+        </>}
+      </div>
     </div>
   )
 }
