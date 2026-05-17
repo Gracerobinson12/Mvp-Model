@@ -26,14 +26,26 @@ const gk = (g: string) => g.toLowerCase()
 // Auburn AL center coords for fallback
 const AUBURN_LAT = 32.6099, AUBURN_LNG = -85.4808
 const FALLBACK_STATIONS: Station[] = [
-  { id:1, name:"Shell",     address:"184 N Gay St, Auburn AL",        lat:AUBURN_LAT+.003, lng:AUBURN_LNG+.004, distance:0.3, regular:3.04,mid:3.34,premium:3.64,diesel:3.49,updated:"2m ago",  trending:"down"   },
-  { id:2, name:"Circle K",  address:"2884 E University Dr, Auburn AL", lat:AUBURN_LAT-.005, lng:AUBURN_LNG+.002, distance:0.8, regular:3.12,mid:3.42,premium:3.72,diesel:3.57,updated:"5m ago",  trending:"up"     },
-  { id:3, name:"Exxon",     address:"120 E Samford Ave, Auburn AL",    lat:AUBURN_LAT+.002, lng:AUBURN_LNG-.006, distance:1.1, regular:3.19,mid:3.49,premium:3.79,diesel:3.64,updated:"8m ago",  trending:"stable" },
-  { id:4, name:"Marathon",  address:"315 S College St, Auburn AL",     lat:AUBURN_LAT-.003, lng:AUBURN_LNG-.004, distance:1.4, regular:3.24,mid:3.54,premium:3.84,diesel:3.69,updated:"12m ago", trending:"down"   },
-  { id:5, name:"BP",        address:"609 S Gay St, Auburn AL",         lat:AUBURN_LAT+.007, lng:AUBURN_LNG+.001, distance:1.9, regular:3.28,mid:3.58,premium:3.88,diesel:3.73,updated:"15m ago", trending:"up"     },
-  { id:6, name:"Chevron",   address:"1420 N Dean Rd, Auburn AL",       lat:AUBURN_LAT-.006, lng:AUBURN_LNG-.003, distance:2.1, regular:3.31,mid:3.61,premium:3.91,diesel:3.76,updated:"9m ago",  trending:"stable" },
-  { id:7, name:"QuikTrip",  address:"735 E Glenn Ave, Auburn AL",      lat:AUBURN_LAT+.004, lng:AUBURN_LNG-.008, distance:2.4, regular:3.35,mid:3.65,premium:3.95,diesel:3.80,updated:"3m ago",  trending:"down"   },
-  { id:8, name:"Wawa",      address:"240 S Donahue Dr, Auburn AL",     lat:AUBURN_LAT-.001, lng:AUBURN_LNG+.007, distance:2.8, regular:3.38,mid:3.68,premium:3.98,diesel:3.83,updated:"6m ago",  trending:"up"     },
+  { id:1,  name:"Shell",       address:"184 N Gay St, Auburn AL",           lat:32.6125, lng:-85.4768, distance:0.3,  regular:3.04,mid:3.34,premium:3.64,diesel:3.49,updated:"2m ago",   trending:"down"   },
+  { id:2,  name:"Circle K",   address:"2884 E University Dr, Auburn AL",    lat:32.6078, lng:-85.4721, distance:0.8,  regular:3.12,mid:3.42,premium:3.72,diesel:3.57,updated:"5m ago",   trending:"up"     },
+  { id:3,  name:"Exxon",      address:"120 E Samford Ave, Auburn AL",       lat:32.6055, lng:-85.4835, distance:1.1,  regular:3.19,mid:3.49,premium:3.79,diesel:3.64,updated:"8m ago",   trending:"stable" },
+  { id:4,  name:"Marathon",   address:"315 S College St, Auburn AL",        lat:32.6142, lng:-85.4852, distance:1.4,  regular:3.24,mid:3.54,premium:3.84,diesel:3.69,updated:"12m ago",  trending:"down"   },
+  { id:5,  name:"BP",         address:"609 S Gay St, Auburn AL",            lat:32.6031, lng:-85.4780, distance:1.9,  regular:3.28,mid:3.58,premium:3.88,diesel:3.73,updated:"15m ago",  trending:"up"     },
+  { id:6,  name:"Chevron",    address:"1420 N Dean Rd, Auburn AL",          lat:32.6198, lng:-85.4810, distance:2.1,  regular:3.31,mid:3.61,premium:3.91,diesel:3.76,updated:"9m ago",   trending:"stable" },
+  { id:7,  name:"QuikTrip",   address:"735 E Glenn Ave, Auburn AL",         lat:32.6088, lng:-85.4899, distance:2.4,  regular:3.35,mid:3.65,premium:3.95,diesel:3.80,updated:"3m ago",   trending:"down"   },
+  { id:8,  name:"Wawa",       address:"240 S Donahue Dr, Auburn AL",        lat:32.6155, lng:-85.4745, distance:2.8,  regular:3.38,mid:3.68,premium:3.98,diesel:3.83,updated:"6m ago",   trending:"up"     },
+  { id:9,  name:"Murphy USA", address:"2501 E University Dr, Auburn AL",    lat:32.6065, lng:-85.4695, distance:3.1,  regular:3.41,mid:3.71,premium:4.01,diesel:3.86,updated:"11m ago",  trending:"down"   },
+  { id:10, name:"Sunoco",     address:"501 Opelika Rd, Auburn AL",          lat:32.6020, lng:-85.4760, distance:3.4,  regular:3.44,mid:3.74,premium:4.04,diesel:3.89,updated:"7m ago",   trending:"stable" },
+  { id:11, name:"RaceTrac",   address:"1550 S College St, Auburn AL",       lat:32.5988, lng:-85.4825, distance:3.8,  regular:3.47,mid:3.77,premium:4.07,diesel:3.92,updated:"4m ago",   trending:"up"     },
+  { id:12, name:"Mobil",      address:"801 E Glenn Ave, Auburn AL",         lat:32.6095, lng:-85.4925, distance:4.1,  regular:3.49,mid:3.79,premium:4.09,diesel:3.94,updated:"13m ago",  trending:"down"   },
+  { id:13, name:"Pilot",      address:"1900 S College St, Auburn AL",       lat:32.5965, lng:-85.4842, distance:4.5,  regular:3.52,mid:3.82,premium:4.12,diesel:3.97,updated:"18m ago",  trending:"stable" },
+  { id:14, name:"Flying J",   address:"3100 Capps Rd, Opelika AL",          lat:32.5850, lng:-85.4650, distance:5.2,  regular:3.55,mid:3.85,premium:4.15,diesel:4.00,updated:"22m ago",  trending:"up"     },
+  { id:15, name:"Love's",     address:"4200 Veterans Pkwy, Auburn AL",      lat:32.5920, lng:-85.4920, distance:6.1,  regular:3.58,mid:3.88,premium:4.18,diesel:4.03,updated:"30m ago",  trending:"down"   },
+  { id:16, name:"Shell",      address:"1100 Opelika Rd, Auburn AL",         lat:32.6010, lng:-85.4698, distance:6.8,  regular:3.61,mid:3.91,premium:4.21,diesel:4.06,updated:"16m ago",  trending:"stable" },
+  { id:17, name:"Circle K",   address:"4501 Pepperell Pkwy, Opelika AL",    lat:32.5780, lng:-85.4580, distance:7.4,  regular:3.64,mid:3.94,premium:4.24,diesel:4.09,updated:"25m ago",  trending:"up"     },
+  { id:18, name:"Exxon",      address:"2200 Gateway Dr, Opelika AL",        lat:32.5850, lng:-85.4750, distance:8.2,  regular:3.68,mid:3.98,premium:4.28,diesel:4.13,updated:"35m ago",  trending:"down"   },
+  { id:19, name:"Chevron",    address:"801 Columbus Pkwy, Opelika AL",      lat:32.5910, lng:-85.4480, distance:9.1,  regular:3.71,mid:4.01,premium:4.31,diesel:4.16,updated:"20m ago",  trending:"stable" },
+  { id:20, name:"Marathon",   address:"3300 Pepperell Pkwy, Opelika AL",    lat:32.5760, lng:-85.4520, distance:10.5, regular:3.75,mid:4.05,premium:4.35,diesel:4.20,updated:"40m ago",  trending:"up"     },
 ]
 
 const FALLBACK_HISTORY = [
@@ -269,92 +281,194 @@ function MapsModal({ station, destination, onClose }: { station: Station|null, d
 }
 
 // ── Gas Map Component ──────────────────────────────────────────────────────────
-// Miles to meters conversion
+// Miles to meters
 const RADIUS_MILES = [5, 10, 15, 30]
 
-function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius }:{
+function GasMap({ stations, grade, selectedId, onSelect, userCoords, radius, expanded, onExpand, onCollapse, onReport }: {
   stations: Station[], grade: string, selectedId: number|null,
-  onSelect: (id:number)=>void, userCoords: {lat:number,lng:number}|null, radius: number
+  onSelect: (id:number)=>void, userCoords: {lat:number,lng:number}|null,
+  radius: number, expanded: boolean,
+  onExpand: ()=>void, onCollapse: ()=>void, onReport: ()=>void
 }) {
-  const divRef   = useRef<HTMLDivElement>(null)
-  const mapRef   = useRef<any>(null)
-  const mksRef   = useRef<Record<number,any>>({})
+  const divRef    = useRef<HTMLDivElement>(null)
+  const mapRef    = useRef<any>(null)
+  const mksRef    = useRef<Record<number,any>>({})
   const circleRef = useRef<any>(null)
-  const best = stations.length ? [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0] : null
-  const radiusMeters = RADIUS_MILES[radius-1] * 1609.34
+
+  const center = userCoords ?? {lat:32.6099, lng:-85.4808}
+  const best   = stations.length ? [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0] : null
 
   const initMap = useCallback((L:any) => {
     if (!divRef.current || mapRef.current) return
-    const center = userCoords ?? {lat:32.6099,lng:-85.4808}
-    const map = L.map(divRef.current, {center:[center.lat,center.lng],zoom:13,zoomControl:false,attributionControl:false})
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map)
-    L.control.zoom({position:'bottomright'}).addTo(map)
-    if (userCoords) {
-      // User location dot
-      L.marker([center.lat,center.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.2),0 4px 12px rgba(255,59,48,.4)"></div>`})}).addTo(map)
-      // Radius circle — accurate Leaflet circle in meters
-      // 1 mile = 1609.34 meters, Leaflet uses meters for L.circle
-      const circleMiles = RADIUS_MILES[radius-1]
-      const circleMeters = circleMiles * 1609.34
-      const circle = L.circle([center.lat,center.lng], {
-        radius: circleMeters,
-        color: '#ff3b30',
-        weight: 2,
-        opacity: 0.45,
-        dashArray: '7 5',
-        fillColor: '#ff3b30',
-        fillOpacity: 0.05,
-        interactive: false,
-      }).addTo(map)
-      circleRef.current = circle
-      // Fit map so circle fills view with some padding for pins
-      map.fitBounds(circle.getBounds(), {padding:[30,30]})
-    }
-    stations.forEach(st=>{
-      if (!st.lat && !st.lng) return
-      const m = L.marker([st.lat,st.lng],{icon:L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin((st as any)[gk(grade)],st.id===best?.id,false)})}).addTo(map).on('click',()=>onSelect(st.id))
-      m.bindPopup(`<div style="font-family:system-ui;min-width:140px"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${st.name}</div><div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:4px">📍 ${st.address}</div><div style="font-size:12px;font-weight:700;color:#ff3b30">$${(st as any)[gk(grade)].toFixed(2)}</div></div>`)
-      mksRef.current[st.id]=m
+    const map = L.map(divRef.current, {
+      center: [center.lat, center.lng],
+      zoom: 13,
+      zoomControl: false,
+      attributionControl: false,
     })
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(map)
+    L.control.zoom({position:'bottomright'}).addTo(map)
+
+    // User dot
+    L.marker([center.lat, center.lng], {
+      icon: L.divIcon({className:'', iconSize:[20,20], iconAnchor:[10,10],
+        html:`<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 6px rgba(255,59,48,.18),0 4px 12px rgba(255,59,48,.4)"></div>`
+      })
+    }).addTo(map)
+
+    // Radius circle
+    const radiusM = RADIUS_MILES[radius-1] * 1609.34
+    const circle = L.circle([center.lat, center.lng], {
+      radius: radiusM,
+      color: '#ff3b30', weight: 2, opacity: 0.45,
+      dashArray: '7 5', fillColor: '#ff3b30', fillOpacity: 0.05,
+      interactive: false,
+    }).addTo(map)
+    circleRef.current = circle
+
+    // Add ALL stations
+    stations.forEach(st => {
+      if (!st.lat || !st.lng) return
+      const price = (st as any)[gk(grade)]
+      const isBest = st.id === best?.id
+      const m = L.marker([st.lat, st.lng], {
+        icon: L.divIcon({className:'', iconSize:[80,52], iconAnchor:[40,52],
+          html: makePin(price, isBest, false)
+        })
+      }).addTo(map).on('click', () => onSelect(st.id))
+      m.bindPopup(`<div style="font-family:system-ui;min-width:150px">
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:3px">${st.name}</div>
+        <div style="font-size:10px;color:rgba(26,26,46,.5);margin-bottom:5px">📍 ${st.address}</div>
+        <div style="font-size:16px;font-weight:800;color:${isBest?'#30d158':'#ff3b30'}">$${price.toFixed(2)}</div>
+      </div>`)
+      mksRef.current[st.id] = m
+    })
+
+    // Fit to show ALL stations + user location
+    const allLatLngs = stations.filter(s=>s.lat&&s.lng).map(s=>[s.lat,s.lng] as [number,number])
+    allLatLngs.push([center.lat, center.lng])
+    if (allLatLngs.length > 1) {
+      map.fitBounds(L.latLngBounds(allLatLngs), {padding:[40,40], maxZoom:14})
+    }
+
     mapRef.current = map
-  },[])
-  // Update circle radius when user changes it
-  useEffect(()=>{
-    if (!mapRef.current || !circleRef.current || !userCoords) return
-    const newRadius = RADIUS_MILES[radius-1] * 1609.34
-    circleRef.current.setRadius(newRadius)
-    // Small padding so circle fits nicely with pins visible
-    mapRef.current.fitBounds(
-      circleRef.current.getBounds(),
-      {padding:[30,30], animate:true, duration:0.5}
-    )
-  },[radius])
+  }, [])
 
-  useEffect(()=>{
-    const boot=(L:any)=>initMap(L)
-    if ((window as any).L){boot((window as any).L);return}
-    if (!document.querySelector('#leaflet-css')){const l=document.createElement('link');l.id='leaflet-css';l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(l)}
-    if (!document.querySelector('#leaflet-js')){const s=document.createElement('script');s.id='leaflet-js';s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=()=>boot((window as any).L);document.head.appendChild(s)}
-    else{const w=setInterval(()=>{if((window as any).L){clearInterval(w);boot((window as any).L)}},100)}
-    return ()=>{if(mapRef.current){mapRef.current.remove();mapRef.current=null;mksRef.current={}}}
-  },[])
+  // Boot Leaflet
+  useEffect(() => {
+    const boot = (L:any) => initMap(L)
+    if ((window as any).L) { boot((window as any).L); return }
+    if (!document.querySelector('#leaflet-css')) {
+      const l = document.createElement('link'); l.id='leaflet-css'; l.rel='stylesheet'
+      l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
+      document.head.appendChild(l)
+    }
+    if (!document.querySelector('#leaflet-js')) {
+      const s = document.createElement('script'); s.id='leaflet-js'
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
+      s.onload = () => boot((window as any).L); document.head.appendChild(s)
+    } else {
+      const w = setInterval(() => { if ((window as any).L) { clearInterval(w); boot((window as any).L) } }, 100)
+    }
+    return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current=null; mksRef.current={} } }
+  }, [])
 
-  useEffect(()=>{
-    if (!(window as any).L||!mapRef.current||!stations.length) return
-    const L=(window as any).L,b=[...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0]
-    stations.forEach(st=>{const m=mksRef.current[st.id];if(!m)return;m.setIcon(L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin((st as any)[gk(grade)],st.id===b?.id,st.id===selectedId)}))})
-  },[grade,selectedId,radius])
+  // Update pins when grade/selection changes
+  useEffect(() => {
+    if (!(window as any).L || !mapRef.current || !stations.length) return
+    const L = (window as any).L
+    const b = [...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0]
+    stations.forEach(st => {
+      const m = mksRef.current[st.id]; if (!m) return
+      m.setIcon(L.divIcon({className:'', iconSize:[80,52], iconAnchor:[40,52],
+        html: makePin((st as any)[gk(grade)], st.id===b?.id, st.id===selectedId)
+      }))
+    })
+  }, [grade, selectedId])
 
-  useEffect(()=>{
-    if (!mapRef.current||!selectedId) return
-    const st=stations.find(s=>s.id===selectedId)
-    if (st?.lat&&st?.lng) mapRef.current.panTo([st.lat,st.lng],{animate:true,duration:.5})
-  },[selectedId])
+  // Update radius circle
+  useEffect(() => {
+    if (!mapRef.current || !circleRef.current) return
+    const newR = RADIUS_MILES[radius-1] * 1609.34
+    circleRef.current.setRadius(newR)
+  }, [radius])
+
+  // Pan to selected station
+  useEffect(() => {
+    if (!mapRef.current || !selectedId) return
+    const st = stations.find(s => s.id===selectedId)
+    if (st?.lat && st?.lng) mapRef.current.panTo([st.lat, st.lng], {animate:true, duration:0.5})
+  }, [selectedId])
+
+  // Invalidate map size when expanded/collapsed
+  useEffect(() => {
+    if (!mapRef.current) return
+    setTimeout(() => { mapRef.current?.invalidateSize() }, 350)
+  }, [expanded])
+
+  const mapStyle: React.CSSProperties = expanded ? {
+    position: 'fixed', inset: 0, zIndex: 999,
+    width: '100vw', height: '100vh',
+  } : {
+    position: 'relative',
+    height: 190,
+    borderRadius: 18,
+    overflow: 'hidden',
+    border: '0.5px solid rgba(255,255,255,.9)',
+    marginBottom: 10,
+    cursor: 'pointer',
+  }
 
   return (
     <>
-      <style>{`.leaflet-control-zoom{border:none!important}.leaflet-control-zoom a{background:rgba(255,255,255,.9)!important;border:1px solid rgba(0,0,0,.1)!important;margin-bottom:3px!important;border-radius:8px!important;display:block!important}`}</style>
-      <div ref={divRef} style={{width:'100%',height:'100%',borderRadius:18}}/>
+      <style>{`
+        .leaflet-control-zoom{border:none!important}
+        .leaflet-control-zoom a{background:rgba(255,255,255,.9)!important;border:1px solid rgba(0,0,0,.1)!important;margin-bottom:3px!important;border-radius:8px!important;display:block!important}
+        .leaflet-popup-content-wrapper{border-radius:14px!important;box-shadow:0 8px 32px rgba(0,0,0,.2)!important}
+      `}</style>
+
+      <div style={mapStyle}>
+        {/* The actual map */}
+        <div ref={divRef} style={{width:'100%', height:'100%'}} onClick={!expanded?onExpand:undefined}/>
+
+        {/* Best price overlay */}
+        <div style={{position:'absolute',top:10,left:10,zIndex:1000,background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 12px',pointerEvents:'none'}}>
+          <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:2}}>Best price</div>
+          <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:900,letterSpacing:-1,color:'#1a1a2e',lineHeight:1}}>${best?.[gk(grade)]?.toFixed(2)??'--'}</div>
+          <div style={{fontSize:9,color:'rgba(26,26,46,.5)',marginTop:2}}>{best?.name}</div>
+        </div>
+
+        {/* Station count */}
+        <div style={{position:'absolute',top:10,right:expanded?'auto':10,left:expanded?'50%':'auto',transform:expanded?'translateX(-50%)':'none',zIndex:1000,background:'rgba(255,255,255,.85)',backdropFilter:'blur(12px)',border:'0.5px solid rgba(255,255,255,.9)',borderRadius:100,padding:'4px 12px',fontSize:10,fontWeight:700,color:'rgba(26,26,46,.6)',pointerEvents:'none',whiteSpace:'nowrap'}}>
+          {stations.length} stations
+        </div>
+
+        {/* Not expanded: tap hint */}
+        {!expanded && (
+          <div style={{position:'absolute',bottom:36,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.45)',backdropFilter:'blur(8px)',borderRadius:100,padding:'3px 10px',fontSize:9,fontWeight:600,color:'#fff',pointerEvents:'none',whiteSpace:'nowrap',zIndex:999}}>
+            ⤢ Tap to explore full map
+          </div>
+        )}
+
+        {/* Not expanded: report button */}
+        {!expanded && (
+          <button onClick={e=>{e.stopPropagation();onReport()}} style={{position:'absolute',bottom:8,right:8,zIndex:1000,background:'rgba(255,255,255,.85)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'4px 10px',fontSize:10,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+            📍 Report
+          </button>
+        )}
+
+        {/* Expanded: top bar */}
+        {expanded && (
+          <div style={{position:'absolute',top:0,left:0,right:0,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:1001,background:'linear-gradient(to bottom,rgba(255,255,255,.3),transparent)',pointerEvents:'none'}}>
+            <button onClick={onCollapse} style={{pointerEvents:'all',background:'rgba(255,255,255,.95)',backdropFilter:'blur(20px)',border:'0.5px solid rgba(255,255,255,.95)',borderRadius:14,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#1a1a2e',cursor:'pointer',display:'flex',alignItems:'center',gap:6,boxShadow:'0 4px 16px rgba(0,0,0,.12)',fontFamily:"'DM Sans',sans-serif"}}>
+              ✕ Close map
+            </button>
+            <button onClick={e=>{e.stopPropagation();onReport()}} style={{pointerEvents:'all',background:'rgba(255,255,255,.92)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.25)',borderRadius:100,padding:'8px 16px',fontSize:11,fontWeight:700,color:'#cc2018',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
+              📍 Report a price
+            </button>
+          </div>
+        )}
+      </div>
     </>
   )
 }
@@ -371,6 +485,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
   const [selId, setSelId]           = useState<number|null>(null)
   const [isDark, setIsDark]         = useState(false)
   const [radius, setRadius]         = useState(2) // 1=5mi 2=10mi 3=15mi 4=30mi
+  const [expanded, setExpanded]     = useState(false)
   const [favorites, setFavorites]   = useState<Set<number>>(new Set())
   const [destination, setDest]      = useState('')
   const [reportStation, setReportStation] = useState<Station|null>(null)
@@ -566,7 +681,19 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
 
         {/* Map */}
         <div style={{height:190,...glass({overflow:'hidden',padding:0,marginBottom:10,position:'relative'})}}>
-          <GasMap key={mapKey} stations={sorted} grade={grade} selectedId={selId} onSelect={id=>setSelId(p=>p===id?null:id)} userCoords={userCoords} radius={radius}/>
+          <GasMap
+            key={mapKey}
+            stations={sorted}
+            grade={grade}
+            selectedId={selId}
+            onSelect={id=>setSelId(p=>p===id?null:id)}
+            userCoords={userCoords}
+            radius={radius}
+            expanded={expanded}
+            onExpand={()=>setExpanded(true)}
+            onCollapse={()=>setExpanded(false)}
+            onReport={()=>setReportStation(sel||sorted[0]||null)}
+          />
           {/* Best price overlay */}
           <div style={{position:'absolute',top:10,left:10,zIndex:999,background:'rgba(255,255,255,.9)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,59,48,.2)',borderRadius:12,padding:'8px 12px',pointerEvents:'none'}}>
             <div style={{fontSize:8,fontWeight:700,letterSpacing:2,color:'#ff3b30',textTransform:'uppercase',marginBottom:2}}>Best price</div>
@@ -579,40 +706,66 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
           </button>
         </div>
 
-        {/* Radius ring selector */}
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:10,textAlign:'center'}}>Tap to expand search radius</div>
-          <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:14}}>
-            {[
-              {v:1,mi:'5',  count:'3 stations'},
-              {v:2,mi:'10', count:'6 stations'},
-              {v:3,mi:'15', count:'11 stations'},
-              {v:4,mi:'30', count:'18 stations'},
-            ].map(r=>{
-              const isOn = radius === r.v
-              return (
-                <button key={r.v} onClick={()=>setRadius(r.v)} style={{
-                  width:64,height:64,borderRadius:'50%',
-                  border:`3px solid ${isOn?'#ff3b30':'rgba(255,255,255,.9)'}`,
-                  background:isOn?'rgba(255,59,48,.1)':'rgba(255,255,255,.65)',
-                  backdropFilter:'blur(20px)',
-                  boxShadow:isOn?'0 0 0 6px rgba(255,59,48,.12)':'none',
-                  transform:isOn?'scale(1.08)':'scale(1)',
-                  transition:'all .25s cubic-bezier(.34,1.56,.64,1)',
-                  cursor:'pointer',
-                  display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
-                  fontFamily:"'DM Sans',sans-serif",
-                }}>
-                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,letterSpacing:-1,color:isOn?'#ff3b30':'#1a1a2e',lineHeight:1}}>{r.mi}</div>
-                  <div style={{fontSize:9,fontWeight:600,color:isOn?'#cc2018':'rgba(26,26,46,.5)',marginTop:2}}>miles</div>
-                </button>
-              )
-            })}
+        {/* Radius rings - hide when expanded, show inline */}
+        {!expanded && (
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:10,textAlign:'center'}}>Tap to expand search radius</div>
+            <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:14}}>
+              {[{v:1,mi:'5'},{v:2,mi:'10'},{v:3,mi:'15'},{v:4,mi:'30'}].map(r=>{
+                const isOn = radius === r.v
+                return (
+                  <button key={r.v} onClick={()=>setRadius(r.v)} style={{
+                    width:64,height:64,borderRadius:'50%',
+                    border:`3px solid ${isOn?'#ff3b30':'rgba(255,255,255,.9)'}`,
+                    background:isOn?'rgba(255,59,48,.1)':'rgba(255,255,255,.65)',
+                    backdropFilter:'blur(20px)',
+                    boxShadow:isOn?'0 0 0 6px rgba(255,59,48,.12)':'none',
+                    transform:isOn?'scale(1.08)':'scale(1)',
+                    transition:'all .25s cubic-bezier(.34,1.56,.64,1)',
+                    cursor:'pointer',
+                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+                    fontFamily:"'DM Sans',sans-serif",
+                  }}>
+                    <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:900,letterSpacing:-1,color:isOn?'#ff3b30':'#1a1a2e',lineHeight:1}}>{r.mi}</div>
+                    <div style={{fontSize:9,fontWeight:600,color:isOn?'#cc2018':'rgba(26,26,46,.5)',marginTop:2}}>miles</div>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{textAlign:'center',marginTop:8,fontSize:11,color:'rgba(26,26,46,.45)',fontWeight:500}}>
+              {sorted.length} stations · {RADIUS_LABELS[radius-1]}
+            </div>
           </div>
-          <div style={{textAlign:'center',marginTop:8,fontSize:11,color:'rgba(26,26,46,.45)',fontWeight:500}}>
-            {RADIUS_COUNTS[radius-1]} stations · {RADIUS_LABELS[radius-1]}
+        )}
+
+        {/* Expanded: floating radius rings at bottom */}
+        {expanded && (
+          <div style={{position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:1001,background:'rgba(255,255,255,.95)',backdropFilter:'blur(24px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:24,padding:'12px 20px',boxShadow:'0 8px 32px rgba(0,0,0,.15)',display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase'}}>Search radius</div>
+            <div style={{display:'flex',gap:12,alignItems:'center'}}>
+              {[{v:1,mi:'5'},{v:2,mi:'10'},{v:3,mi:'15'},{v:4,mi:'30'}].map(r=>{
+                const isOn = radius === r.v
+                return (
+                  <button key={r.v} onClick={()=>setRadius(r.v)} style={{
+                    width:56,height:56,borderRadius:'50%',
+                    border:`2.5px solid ${isOn?'#ff3b30':'rgba(0,0,0,.12)'}`,
+                    background:isOn?'rgba(255,59,48,.1)':'rgba(255,255,255,.8)',
+                    boxShadow:isOn?'0 0 0 5px rgba(255,59,48,.12)':'none',
+                    transform:isOn?'scale(1.1)':'scale(1)',
+                    transition:'all .25s cubic-bezier(.34,1.56,.64,1)',
+                    cursor:'pointer',display:'flex',flexDirection:'column',
+                    alignItems:'center',justifyContent:'center',
+                    fontFamily:"'DM Sans',sans-serif",
+                  }}>
+                    <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:900,letterSpacing:-.5,color:isOn?'#ff3b30':'#1a1a2e',lineHeight:1}}>{r.mi}</div>
+                    <div style={{fontSize:9,fontWeight:600,color:isOn?'#cc2018':'rgba(26,26,46,.5)',marginTop:2}}>mi</div>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{fontSize:11,color:'rgba(26,26,46,.5)',fontWeight:500}}>{sorted.length} stations · {RADIUS_LABELS[radius-1]}</div>
           </div>
-        </div>
+        )}
 
         {/* Cheapest KPI */}
         <div style={{background:'rgba(255,59,48,.07)',border:'0.5px solid rgba(255,59,48,.22)',borderRadius:18,padding:'14px 18px',marginBottom:10,position:'relative',overflow:'hidden'}}>
@@ -702,7 +855,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
         {/* Station list */}
         <div style={{...glass({overflow:'hidden',marginBottom:12,padding:0})}}>
           <div style={{padding:'10px 16px',borderBottom:'0.5px solid rgba(0,0,0,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)'}}>{displayedCount} Stations · {RADIUS_LABELS[radius-1]}</div>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)'}}>{sorted.length} Stations Found</div>
             <div style={{display:'flex',gap:4}}>
               <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,59,48,.1)',color:'#cc2018',border:'0.5px solid rgba(255,59,48,.25)',fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Price</button>
               <button style={{fontSize:9,padding:'3px 8px',borderRadius:100,background:'rgba(255,255,255,.5)',color:'rgba(26,26,46,.4)',border:'0.5px solid rgba(0,0,0,.08)',cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Distance</button>
@@ -713,7 +866,7 @@ function GasPageContent({ daysLeft }: { daysLeft: number|null }) {
             <span style={{fontSize:13}}>🏁</span>
             <input value={destination} onChange={e=>setDest(e.target.value)} placeholder="Add destination — gas becomes a waypoint (optional)" style={{flex:1,background:'none',border:'none',outline:'none',fontSize:11,color:'rgba(26,26,46,.6)',fontFamily:"'DM Sans',sans-serif"}}/>
           </div>
-          {sorted.slice(0,displayedCount).map((st,i)=>(
+          {sorted.map((st,i)=>(
             <div key={st.id} className={`st-row${selId===st.id?' selected':''}`} onClick={()=>setSelId(p=>p===st.id?null:st.id)}>
               <div style={{fontSize:11,fontWeight:700,color:i===0?'#30d158':'rgba(26,26,46,.35)',minWidth:14,textAlign:'center'}}>{i===0?'★':i+1}</div>
               <div style={{flex:1,minWidth:0}}>
