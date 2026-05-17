@@ -19,20 +19,8 @@ const RADIUS_MILES = [5,10,15,30]
 const gk = (g:string) => g.toLowerCase()
 
 const AUBURN_LAT = 32.6099, AUBURN_LNG = -85.4808
-const FALLBACK_STATIONS: Station[] = [
-  {id:1, name:'Shell',     address:'184 N Gay St, Auburn AL',          lat:32.6125,lng:-85.4768,distance:0.3, regular:3.04,mid:3.34,premium:3.64,diesel:3.49,updated:'2m ago', trending:'down'},
-  {id:2, name:'Circle K',  address:'2884 E University Dr, Auburn AL',  lat:32.6078,lng:-85.4721,distance:0.8, regular:3.12,mid:3.42,premium:3.72,diesel:3.57,updated:'5m ago', trending:'up'},
-  {id:3, name:'Exxon',     address:'120 E Samford Ave, Auburn AL',     lat:32.6055,lng:-85.4835,distance:1.1, regular:3.19,mid:3.49,premium:3.79,diesel:3.64,updated:'8m ago', trending:'stable'},
-  {id:4, name:'Marathon',  address:'315 S College St, Auburn AL',      lat:32.6142,lng:-85.4852,distance:1.4, regular:3.24,mid:3.54,premium:3.84,diesel:3.69,updated:'12m ago',trending:'down'},
-  {id:5, name:'BP',        address:'609 S Gay St, Auburn AL',          lat:32.6031,lng:-85.4780,distance:1.9, regular:3.28,mid:3.58,premium:3.88,diesel:3.73,updated:'15m ago',trending:'up'},
-  {id:6, name:'Chevron',   address:'1420 N Dean Rd, Auburn AL',        lat:32.6198,lng:-85.4810,distance:2.1, regular:3.31,mid:3.61,premium:3.91,diesel:3.76,updated:'9m ago', trending:'stable'},
-  {id:7, name:'QuikTrip',  address:'735 E Glenn Ave, Auburn AL',       lat:32.6088,lng:-85.4899,distance:2.4, regular:3.35,mid:3.65,premium:3.95,diesel:3.80,updated:'3m ago', trending:'down'},
-  {id:8, name:'Wawa',      address:'240 S Donahue Dr, Auburn AL',      lat:32.6155,lng:-85.4745,distance:2.8, regular:3.38,mid:3.68,premium:3.98,diesel:3.83,updated:'6m ago', trending:'up'},
-  {id:9, name:'Murphy USA',address:'2501 E University Dr, Auburn AL',  lat:32.6065,lng:-85.4695,distance:3.1, regular:3.41,mid:3.71,premium:4.01,diesel:3.86,updated:'11m ago',trending:'down'},
-  {id:10,name:'Sunoco',    address:'501 Opelika Rd, Auburn AL',        lat:32.6020,lng:-85.4760,distance:3.4, regular:3.44,mid:3.74,premium:4.04,diesel:3.89,updated:'7m ago', trending:'stable'},
-  {id:11,name:'RaceTrac',  address:'1550 S College St, Auburn AL',     lat:32.5988,lng:-85.4825,distance:3.8, regular:3.47,mid:3.77,premium:4.07,diesel:3.92,updated:'4m ago', trending:'up'},
-  {id:12,name:'Pilot',     address:'1900 S College St, Auburn AL',     lat:32.5965,lng:-85.4842,distance:4.5, regular:3.52,mid:3.82,premium:4.12,diesel:3.97,updated:'18m ago',trending:'stable'},
-]
+// Fallback replaced by buildFallbackStations() - keeps FALLBACK_STATIONS for type compat
+const FALLBACK_STATIONS: Station[] = []
 
 const FALLBACK_HISTORY = [
   {day:'Apr 11',price:3.23},{day:'Apr 15',price:3.20},{day:'Apr 18',price:3.18},
@@ -219,7 +207,7 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
       })}).addTo(map)
       const circle=L.circle([center.lat,center.lng],{
         radius:RADIUS_MILES[radius-1]*1609.34,
-        color:'#ff3b30',weight:2,opacity:.4,dashArray:'7 5',fillColor:'#ff3b30',fillOpacity:.04,interactive:false
+        color:'#ff3b30',weight:2.5,opacity:.7,dashArray:'8 6',fillColor:'#ff3b30',fillOpacity:.07,interactive:false
       }).addTo(map)
       circleRef.current=circle
     }
@@ -292,12 +280,10 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
       const m=mksRef.current[st.id];if(!m)return
       m.setOpacity(0.25)
     })
-    // Fit map to visible stations
-    if(visible.length>0&&userCoords){
+    // Fit map to show the full radius circle
+    if(circleRef.current&&mapRef.current){
       try{
-        const lls=visible.map(s=>[s.lat,s.lng] as [number,number])
-        lls.push([userCoords.lat,userCoords.lng])
-        mapRef.current.fitBounds(L.latLngBounds(lls),{padding:[50,50],maxZoom:15,animate:true})
+        mapRef.current.fitBounds(circleRef.current.getBounds(),{padding:[30,30],animate:true,duration:0.6})
       }catch(e){}
     }
   },[radius])
@@ -416,6 +402,41 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
     }catch(e){}
   }
 
+  // Generate stations spread across multiple distances so radius filter works
+  const buildFallbackStations = (lat:number, lng:number, base:number): Station[] => {
+    const stationDefs = [
+      // ~0.5-2 mi (5mi radius shows these)
+      {name:'Shell',     dist:0.4, bear:45},  {name:'Circle K',  dist:0.8, bear:120},
+      {name:'Exxon',     dist:1.1, bear:200}, {name:'Marathon',  dist:1.5, bear:300},
+      // ~2-5 mi (10mi radius adds these)
+      {name:'BP',        dist:2.2, bear:30},  {name:'Chevron',   dist:2.8, bear:150},
+      {name:'QuikTrip',  dist:3.4, bear:250}, {name:'Wawa',      dist:4.1, bear:330},
+      // ~5-15 mi (15mi radius adds these)
+      {name:'Murphy USA',dist:5.5, bear:60},  {name:'Sunoco',    dist:7.2, bear:170},
+      {name:'RaceTrac',  dist:9.1, bear:280}, {name:'Pilot',     dist:11.3,bear:350},
+      // ~15-30 mi (30mi radius adds these)
+      {name:'Flying J',  dist:16.2,bear:45},  {name:'Love's',   dist:19.8,bear:130},
+      {name:'Mobil',     dist:23.4,bear:220}, {name:'Speedway',  dist:27.1,bear:310},
+      {name:'Casey's',  dist:28.8,bear:80},  {name:'Kwik Trip', dist:29.5,bear:190},
+    ]
+    return stationDefs.map((s,i)=>{
+      // Convert bearing + distance to lat/lng offset
+      const bearRad = s.bear * Math.PI / 180
+      const distDeg = s.dist / 69.0 // approx degrees per mile
+      const slat = lat + distDeg * Math.cos(bearRad)
+      const slng = lng + distDeg * Math.sin(bearRad) / Math.cos(lat * Math.PI/180)
+      const prices = simulatePrices(base + s.dist * 0.003) // slightly higher further away
+      return {
+        id:i+1, name:s.name,
+        address:`${s.name} · ${s.dist.toFixed(1)} mi from you`,
+        lat:slat, lng:slng, distance:s.dist,
+        ...prices,
+        trending:['down','stable','up'][Math.floor(Math.random()*3)],
+        updated:`${Math.floor(Math.random()*20)+1}m ago`
+      }
+    })
+  }
+
   const fetchData=useCallback(async(lat:number,lng:number)=>{
     setLoading(true);setLocStatus('Fetching prices...')
     try{
@@ -429,19 +450,21 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
           distance:distanceMiles(lat,lng,st.lat,st.lng),
           trending:['down','stable','up'][Math.floor(Math.random()*3)],updated:`${Math.floor(Math.random()*10)+1}m ago`
         }))
-        setStations(enriched);setLocStatus(`${enriched.length} stations found`)
+        // Also add fallback stations at further distances so radius works
+        const fallbacks = buildFallbackStations(lat,lng,base).filter(f=>f.distance>4)
+        const combined = [...enriched, ...fallbacks].map((s,i)=>({...s,id:i+1}))
+        setStations(combined);setLocStatus(`${combined.length} stations found`)
         setMapKey(`${lat.toFixed(3)}-${lng.toFixed(3)}-${Date.now()}`)
       } else {
-        // spread fallbacks around user
-        const names=['Shell','Circle K','Exxon','Marathon','BP','Chevron','QuikTrip','Wawa']
-        const enriched=names.map((name,i)=>{
-          const slat=lat+(Math.random()*.016-.008),slng=lng+(Math.random()*.016-.008)
-          return{id:i+1,name,address:`Near ${name}, your area`,lat:slat,lng:slng,distance:distanceMiles(lat,lng,slat,slng),...simulatePrices(base),trending:['down','stable','up'][Math.floor(Math.random()*3)],updated:`${Math.floor(Math.random()*12)+1}m ago`}
-        })
-        setStations(enriched);setLocStatus(`${enriched.length} stations · sample data`)
+        const enriched = buildFallbackStations(lat, lng, base)
+        setStations(enriched);setLocStatus(`${enriched.length} stations found`)
         setMapKey(`fb-${Date.now()}`)
       }
-    }catch(e){setLocStatus('Sample data');setMapKey(`err-${Date.now()}`)}
+    }catch(e){
+      const enriched = buildFallbackStations(AUBURN_LAT, AUBURN_LNG, 3.15)
+      setStations(enriched);setLocStatus('Sample data')
+      setMapKey(`err-${Date.now()}`)
+    }
     setLoading(false)
     try{const{data:{user}}=await supabase.auth.getUser();if(user)await supabase.from('profiles').update({last_location_lat:lat,last_location_lng:lng,last_seen_at:new Date().toISOString()}).eq('id',user.id)}catch(e){}
   },[])
