@@ -70,9 +70,9 @@ function makePin(price: number, isBest: boolean, isSel: boolean): string {
   </div>`
 }
 
-function RouteMap({ stations, grade, selectedId, onSelect, origin, destination, routePolyline }: {
+function RouteMap({ stations, grade, selectedId, onSelect, origin, destination, routePolyline, expanded }: {
   stations: RouteStation[]; grade: string; selectedId: number|null; onSelect: (id:number)=>void
-  origin: LatLng|null; destination: LatLng|null; routePolyline: LatLng[]
+  origin: LatLng|null; destination: LatLng|null; routePolyline: LatLng[]; expanded?: boolean
 }) {
   const divRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
@@ -92,9 +92,20 @@ function RouteMap({ stations, grade, selectedId, onSelect, origin, destination, 
     }
     if (origin) L.marker([origin.lat,origin.lng],{icon:L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],html:`<div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.18)"></div>`})}).addTo(map).bindPopup('<div style="font-family:system-ui;font-size:12px;font-weight:700;color:#ff3b30">📍 Start</div>')
     if (destination) L.marker([destination.lat,destination.lng],{icon:L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],html:`<div style="width:20px;height:20px;border-radius:50%;background:#1a1a2e;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.3)"></div>`})}).addTo(map).bindPopup('<div style="font-family:system-ui;font-size:12px;font-weight:700;color:#1a1a2e">🏁 Destination</div>')
+    // Price range for color coding
+    const prices = stations.map(s=>s[gk(grade)])
+    const minP = Math.min(...prices, 999), maxP = Math.max(...prices, 0), priceRange = maxP-minP||0.01
     stations.forEach(st => {
       const price = st[gk(grade)]
-      const m = L.marker([st.lat,st.lng],{icon:L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin(price,st.id===cheapest?.id,false)})}).addTo(map).on('click',()=>onSelect(st.id))
+      const isBest = st.id === cheapest?.id
+      const pct = (price - minP) / priceRange
+      const size = isBest ? [96,60] as any : [80,52] as any
+      const anchor = isBest ? [48,60] as any : [40,52] as any
+      const m = L.marker([st.lat,st.lng],{
+        icon:L.divIcon({className:'',iconSize:size,iconAnchor:anchor,html:makePin(price,isBest,false,pct)}),
+        zIndexOffset: isBest ? 1000 : 0
+      }).addTo(map).on('click',()=>onSelect(st.id))
+      m.bindPopup(`<div style="font-family:system-ui;min-width:140px"><b style="font-size:13px;color:#1a1a2e">${st.name}</b><br><span style="font-size:10px;color:rgba(26,26,46,.5)">${st.address}</span><br><span style="font-size:16px;font-weight:800;color:${isBest?'#30d158':'#ff3b30'}">$${price.toFixed(2)}</span></div>`)
       mksRef.current[st.id] = m
     })
     mapRef.current = map
@@ -119,11 +130,14 @@ function RouteMap({ stations, grade, selectedId, onSelect, origin, destination, 
     if (!(window as any).L||!mapRef.current||!stations.length) return
     const L=(window as any).L
     const best=[...stations].sort((a,b)=>a[gk(grade)]-b[gk(grade)])[0]
+    const prcs = stations.map(s=>s[gk(grade)])
+    const mnP = Math.min(...prcs,999), mxP = Math.max(...prcs,0), pRng = mxP-mnP||0.01
     stations.forEach(st=>{
       const m=mksRef.current[st.id]; if(!m)return
       const isBest=st.id===best?.id
+      const pct=(st[gk(grade)]-mnP)/pRng
       const size = isBest?[96,60]:[80,52], anchor = isBest?[48,60]:[40,52]
-      m.setIcon(L.divIcon({className:'',iconSize:size as any,iconAnchor:anchor as any,html:makePin(st[gk(grade)],isBest,st.id===selectedId)}))
+      m.setIcon(L.divIcon({className:'',iconSize:size as any,iconAnchor:anchor as any,html:makePin(st[gk(grade)],isBest,st.id===selectedId,pct)}))
       if(isBest) m.setZIndexOffset(1000)
     })
   }, [grade,selectedId,stations])
@@ -134,10 +148,26 @@ function RouteMap({ stations, grade, selectedId, onSelect, origin, destination, 
     if (st) { mapRef.current.panTo([st.lat,st.lng],{animate:true,duration:0.5}); setTimeout(()=>mksRef.current[selectedId]?.openPopup(),600) }
   }, [selectedId])
 
+  // Critical: invalidate size when expanded so Leaflet fills the new container
+  useEffect(() => {
+    if (!mapRef.current) return
+    setTimeout(() => {
+      mapRef.current?.invalidateSize()
+      // Re-fit to route after resize
+      if (routePolyline.length > 1 && (window as any).L) {
+        try {
+          const L = (window as any).L
+          const line = L.polyline(routePolyline.map((p:any)=>[p.lat,p.lng]))
+          mapRef.current.fitBounds(line.getBounds(), {padding:[expanded?60:48, expanded?60:48], animate:true})
+        } catch(e) {}
+      }
+    }, 350)
+  }, [expanded])
+
   return (
     <>
       <style>{`.leaflet-popup-content-wrapper{background:rgba(255,255,255,.97)!important;border:1px solid rgba(255,59,48,.18)!important;border-radius:14px!important;box-shadow:0 8px 32px rgba(0,0,0,.14)!important}.leaflet-popup-content{margin:13px 15px!important}.leaflet-popup-tip{background:rgba(255,255,255,.97)!important}.leaflet-control-zoom{border:none!important}.leaflet-control-zoom a{background:rgba(255,255,255,.9)!important;color:rgba(26,26,46,.55)!important;border:1px solid rgba(0,0,0,.1)!important;border-radius:9px!important;margin-bottom:3px!important;display:block!important}`}</style>
-      <div ref={divRef} style={{ width:'100%', height:'100%', borderRadius:18 }} />
+      <div ref={divRef} style={{ width:'100%', height:'100%', minHeight: expanded?'100vh':'260px' }} />
     </>
   )
 }
@@ -454,7 +484,7 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
               border: mapExpanded?'none':`1px solid ${S.bdr}`,
               boxShadow: mapExpanded?'none':'0 4px 20px rgba(0,0,0,.12)',
             }}>
-              <RouteMap key={mapKey} mapKey={mapKey} stations={stations} grade={grade} selectedId={selId} onSelect={id=>setSelId(p=>p===id?null:id)} origin={userCoords} destination={destCoords} routePolyline={routePolyline}/>
+              <RouteMap key={mapKey} mapKey={mapKey} stations={stations} grade={grade} selectedId={selId} onSelect={id=>setSelId(p=>p===id?null:id)} origin={userCoords} destination={destCoords} routePolyline={routePolyline} expanded={mapExpanded}/>
               {/* Expand/close button */}
               <button onClick={()=>setMapExpanded(p=>!p)} style={{position:'absolute',top:10,left:10,zIndex:401,background:'rgba(255,255,255,.95)',backdropFilter:'blur(16px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:12,padding:'7px 12px',fontSize:12,fontWeight:700,color:'#1a1a2e',cursor:'pointer',display:'flex',alignItems:'center',gap:6,boxShadow:'0 4px 12px rgba(0,0,0,.12)',fontFamily:"'DM Sans',system-ui,sans-serif"}}>
                 {mapExpanded?'← Close map':'⤢ Expand map'}
