@@ -185,6 +185,7 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
   const [selId,setSelId]=useState<number|null>(null)
   const [showAllRoute,setShowAllRoute]=useState(false)
   const [showMapsModal,setShowMapsModal]=useState(false)
+  const [showWaypointModal,setShowWaypointModal]=useState(false)
   const [mapExpanded,setMapExpanded]=useState(false)
   const [loading,setLoading]=useState(false)
   const [loadStep,setLoadStep]=useState('')
@@ -406,6 +407,50 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
         </div>
       )}
 
+      {/* Waypoint modal — Current Location → Gas → Destination */}
+      {showWaypointModal&&sel&&(
+        <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,.45)',backdropFilter:'blur(10px)',padding:'0 14px 24px'}} onClick={e=>{if(e.target===e.currentTarget)setShowWaypointModal(false)}}>
+          <div style={{background:'rgba(255,255,255,.97)',borderRadius:'24px 24px 18px 18px',padding:20,width:'100%',maxWidth:440,fontFamily:"'DM Sans',system-ui,sans-serif"}}>
+            <div style={{width:36,height:4,borderRadius:2,background:'rgba(0,0,0,.1)',margin:'0 auto 14px'}}/>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:8}}>⛽ Add gas stop along your route</div>
+            {/* Route preview */}
+            <div style={{background:'rgba(255,59,48,.05)',border:'0.5px solid rgba(255,59,48,.15)',borderRadius:14,padding:'12px 14px',marginBottom:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:'#ff3b30',flexShrink:0}}/>
+                <div style={{fontSize:12,color:'rgba(26,26,46,.5)'}}>Current Location</div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                <div style={{fontSize:14}}>⛽</div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:'#1a1a2e'}}>{sel.name}</div>
+                  <div style={{fontSize:10,color:'rgba(26,26,46,.5)'}}>{sel.address} · +{sel.detourMiles} mi detour</div>
+                </div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:'#1a1a2e',flexShrink:0}}/>
+                <div style={{fontSize:12,color:'rgba(26,26,46,.5)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{destLabel}</div>
+              </div>
+            </div>
+            <button onClick={()=>{
+              window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destLabel)}&via=${encodeURIComponent(sel.name+', '+sel.address)}&dirflag=d`)
+              setShowWaypointModal(false)
+            }} style={{width:'100%',padding:'13px 16px',background:'rgba(0,0,0,.04)',border:'0.5px solid rgba(0,0,0,.08)',borderRadius:16,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",display:'flex',alignItems:'center',gap:12,marginBottom:8,color:'#1a1a2e',textAlign:'left' as any}}>
+              <span style={{fontSize:24}}>🗺️</span>
+              <div><div>Apple Maps</div><div style={{fontSize:11,fontWeight:400,color:'rgba(26,26,46,.45)',marginTop:1}}>iPhone · iPad · Mac</div></div>
+            </button>
+            <button onClick={()=>{
+              const stQ=encodeURIComponent(`${sel.name}, ${sel.address}`)
+              window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(destLabel)}&waypoints=${stQ}&travelmode=driving`)
+              setShowWaypointModal(false)
+            }} style={{width:'100%',padding:'13px 16px',background:'rgba(66,133,244,.07)',border:'0.5px solid rgba(66,133,244,.2)',borderRadius:16,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",display:'flex',alignItems:'center',gap:12,marginBottom:12,color:'#1a1a2e',textAlign:'left' as any}}>
+              <span style={{fontSize:24}}>📍</span>
+              <div><div>Google Maps</div><div style={{fontSize:11,fontWeight:400,color:'rgba(26,26,46,.45)',marginTop:1}}>All devices · Android</div></div>
+            </button>
+            <button onClick={()=>setShowWaypointModal(false)} style={{width:'100%',padding:11,borderRadius:100,border:'0.5px solid rgba(0,0,0,.08)',background:'transparent',fontSize:13,color:'rgba(26,26,46,.4)',cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       <div style={{background:S.bg,border:`1px solid ${S.bdr}`,borderRadius:20,overflow:'visible',marginBottom:14,position:'relative'}}>
         <div style={{padding:'18px 20px 16px'}}>
           <div style={{fontSize:10,fontWeight:600,letterSpacing:'2px',color:'#ff3b30',textTransform:'uppercase',marginBottom:4}}>🛣️ Route Mode</div>
@@ -566,15 +611,10 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
                     style={{flex:1,padding:'11px 16px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:12,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",boxShadow:'0 4px 14px rgba(255,59,48,.35)'}}>
                     🗺️ Open in Maps →
                   </button>
-                  {/* Add gas stop — routes You → Gas → Destination */}
+                  {/* Add gas stop — opens Apple/Google choice */}
                   {destCoords&&(
-                    <button onClick={()=>{
-                      const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
-                      const stQ=encodeURIComponent(`${sel.name}, ${sel.address}`)
-                      const destQ=encodeURIComponent(destLabel)
-                      if(isApple) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${destQ}&via=${encodeURIComponent(sel.name+', '+sel.address)}&dirflag=d`)
-                      else window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${destQ}&waypoints=${stQ}&travelmode=driving`)
-                    }} style={{flex:1,padding:'11px 14px',background:'rgba(10,132,255,.1)',border:'0.5px solid rgba(10,132,255,.3)',borderRadius:12,fontSize:12,fontWeight:700,color:'#0a84ff',cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",textAlign:'center' as any,lineHeight:1.3}}>
+                    <button onClick={()=>setShowWaypointModal(true)}
+                      style={{flex:1,padding:'11px 14px',background:'rgba(10,132,255,.1)',border:'0.5px solid rgba(10,132,255,.3)',borderRadius:12,fontSize:12,fontWeight:700,color:'#0a84ff',cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",textAlign:'center' as any,lineHeight:1.3}}>
                       ⛽ Add gas stop<br/><span style={{fontSize:10,opacity:.7}}>along your route</span>
                     </button>
                   )}
