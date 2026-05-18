@@ -1,37 +1,64 @@
-import { NextResponse } from 'next/server'
+// app/api/stations/route.ts
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
   const lat = searchParams.get('lat')
   const lng = searchParams.get('lng')
+  const radiusMiles = parseFloat(searchParams.get('radius') || '30')
 
   if (!lat || !lng) {
-    return NextResponse.json({ error: 'lat and lng required' }, { status: 400 })
+    return NextResponse.json({ stations: [] })
   }
 
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
+  if (!apiKey) {
+    return NextResponse.json({ stations: [] })
+  }
+
+  // Convert miles to meters, cap at 50km (Google Places max)
+  const radiusMeters = Math.min(radiusMiles * 1609.34, 50000)
+
   try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=3000&type=gas_station&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
-    )
+    // Fetch up to 60 stations by making 3 paginated requests
+    const allStations: any[] = []
+    let pageToken: string | null = null
 
-    if (!res.ok) throw new Error('Places fetch failed')
+    for (let page = 0; page < 3; page++) {
+      const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json')
+      url.searchParams.set('location', `${lat},${lng}`)
+      url.searchParams.set('radius', String(radiusMeters))
+      url.searchParams.set('type', 'gas_station')
+      url.searchParams.set('key', apiKey)
+      if (pageToken) url.searchParams.set('pagetoken', pageToken)
 
-    const data = await res.json()
+      const res = await fetch(url.toString())
+      const data = await res.json()
 
-    const stations = data.results?.slice(0, 6).map((place: any, i: number) => ({
-      id:       i + 1,
-      name:     place.name,
-      address:  place.vicinity,
-      lat:      place.geometry.location.lat,
-      lng:      place.geometry.location.lng,
-      placeId:  place.place_id,
-      updated:  `${Math.floor(Math.random() * 15) + 1}m ago`,
-      trending: ['down', 'stable', 'up'][Math.floor(Math.random() * 3)],
+      if (data.results) {
+        allStations.push(...data.results)
+      }
+
+      pageToken = data.next_page_token || null
+      if (!pageToken) break
+
+      // Google requires a short delay before using next_page_token
+      await new Promise(r => setTimeout(r, 200))
+    }
+
+    const stations = allStations.map((place: any) => ({
+      name:    place.name,
+      address: place.vicinity || place.formatted_address || '',
+      lat:     place.geometry?.location?.lat,
+      lng:     place.geometry?.location?.lng,
+      placeId: place.place_id,
+      rating:  place.rating,
+      open:    place.opening_hours?.open_now,
     }))
 
     return NextResponse.json({ stations })
-
-  } catch (err) {
-    return NextResponse.json({ stations: [], error: 'Places API unavailable' })
+  } catch (e) {
+    console.error('Stations API error:', e)
+    return NextResponse.json({ stations: [] })
   }
 }
