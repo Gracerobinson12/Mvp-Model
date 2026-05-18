@@ -225,7 +225,14 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
       mksRef.current[st.id]=m
     })
     const lls=stations.filter(s=>s.lat&&s.lng).map(s=>[s.lat,s.lng] as [number,number])
-    if(lls.length>1) try{map.fitBounds(L.latLngBounds([...lls,[center.lat,center.lng]]),{padding:[40,40],maxZoom:14})}catch(e){}
+    // Start fitted to 10mi radius so user sees useful area immediately
+    try{
+      const initCircle=L.circle([center.lat,center.lng],{radius:RADIUS_MILES[1]*1609.34,interactive:false,opacity:0,fillOpacity:0}).addTo(map)
+      map.fitBounds(initCircle.getBounds(),{padding:[30,30]})
+      initCircle.remove()
+    }catch(e){
+      if(lls.length>1) try{map.fitBounds(L.latLngBounds([...lls,[center.lat,center.lng]]),{padding:[40,40],maxZoom:14})}catch(e2){}
+    }
     mapRef.current=map
   }
 
@@ -371,6 +378,7 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
   const [radius,setRadius]       = useState(2)
   const [favorites,setFavorites] = useState<Set<number>>(new Set())
   const [destination,setDest]    = useState('')
+  const [showAllSt,setShowAllSt] = useState(false)
   const [reportSt,setReportSt]   = useState<Station|null>(null)
   const [showThanks,setThanks]   = useState(false)
   const [mapsSt,setMapsSt]       = useState<Station|null>(null)
@@ -443,15 +451,20 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
       const eiaRes=await fetch('/api/gas-prices');const eiaData=await eiaRes.json()
       const base=eiaData.prices?.[0]?.price??3.15
       if(eiaData.prices?.length) setHistory([...eiaData.prices].reverse().map((p:any)=>({day:p.period.slice(5),price:p.price})))
-      const stRes=await fetch(`/api/stations?lat=${lat}&lng=${lng}`);const stData=await stRes.json()
-      if(stData.stations?.length){
-        const enriched=stData.stations.map((st:any,i:number)=>({
+      // Fetch stations at multiple offsets to get more coverage
+      const offsets = [{dlat:0,dlng:0},{dlat:.05,dlng:.05},{dlat:-.05,dlng:.05},{dlat:.05,dlng:-.05},{dlat:-.05,dlng:-.05}]
+      const allFetches = await Promise.allSettled(offsets.map(o=>fetch(`/api/stations?lat=${lat+o.dlat}&lng=${lng+o.dlng}`).then(r=>r.json())))
+      const allReal: any[] = []
+      const seen = new Set<string>()
+      allFetches.forEach(r=>{ if(r.status==='fulfilled'&&r.value.stations){ r.value.stations.forEach((st:any)=>{ const key=`${st.name}-${st.lat?.toFixed(3)}-${st.lng?.toFixed(3)}`; if(!seen.has(key)){seen.add(key);allReal.push(st)} }) } })
+      if(allReal.length){
+        const enriched=allReal.map((st:any,i:number)=>({
           ...st,id:i+1,...simulatePrices(base),
           distance:distanceMiles(lat,lng,st.lat,st.lng),
           trending:['down','stable','up'][Math.floor(Math.random()*3)],updated:`${Math.floor(Math.random()*10)+1}m ago`
         }))
-        // Also add fallback stations at further distances so radius works
-        const fallbacks = buildFallbackStations(lat,lng,base).filter(f=>f.distance>4)
+        // Add fallbacks at further distances (10-30mi) that API won't return
+        const fallbacks = buildFallbackStations(lat,lng,base).filter(f=>f.distance>Math.max(...enriched.map(e=>e.distance))+2)
         const combined = [...enriched, ...fallbacks].map((s,i)=>({...s,id:i+1}))
         setStations(combined);setLocStatus(`${combined.length} stations found`)
         setMapKey(`${lat.toFixed(3)}-${lng.toFixed(3)}-${Date.now()}`)
@@ -469,12 +482,15 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
     try{const{data:{user}}=await supabase.auth.getUser();if(user)await supabase.from('profiles').update({last_location_lat:lat,last_location_lng:lng,last_seen_at:new Date().toISOString()}).eq('id',user.id)}catch(e){}
   },[])
 
+  const radiusMiles = RADIUS_MILES[radius-1]
+  const inRadius = stations.filter(s=>s.distance<=radiusMiles)
   const sorted=[...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])
-  const best=sorted[0]
+  const sortedInRadius=[...inRadius].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])
+  const best=sortedInRadius[0]??sorted[0]
   const sel=stations.find(s=>s.id===selId)
   const bestPrice=best?.[gk(grade)]??3.04
-  const avgPrice=stations.reduce((s,st)=>s+(st as any)[gk(grade)],0)/Math.max(stations.length,1)
-  const spread=stations.length?Math.max(...stations.map((s:any)=>s[gk(grade)]))-Math.min(...stations.map((s:any)=>s[gk(grade)])):0
+  const avgPrice=inRadius.reduce((s,st)=>s+(st as any)[gk(grade)],0)/Math.max(inRadius.length,1)
+  const spread=inRadius.length?Math.max(...inRadius.map((s:any)=>s[gk(grade)]))-Math.min(...inRadius.map((s:any)=>s[gk(grade)])):0
   const stateGas=STATE_GAS[userState]
   const favSts=sorted.filter(s=>favorites.has(s.id))
 
@@ -555,7 +571,7 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
               </button>
             })}
           </div>
-          <div style={{fontSize:11,color:'rgba(26,26,46,.45)',fontWeight:500}}>{sorted.length} stations · {RADIUS_LABELS[radius-1]}</div>
+          <div style={{fontSize:11,color:'rgba(26,26,46,.45)',fontWeight:500}}>{inRadius.length} stations · {RADIUS_LABELS[radius-1]}</div>
         </div>
 
         {/* Cheapest KPI */}
@@ -580,7 +596,7 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
           <div style={{...glass({padding:'14px 16px',flex:1})}}>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:'rgba(26,26,46,.4)',marginBottom:5}}>Area average</div>
             <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:900,letterSpacing:-1.5,color:'#1a1a2e',lineHeight:1}}>${avgPrice.toFixed(2)}</div>
-            <div style={{fontSize:11,color:'rgba(26,26,46,.45)',marginTop:4}}>{sorted.length} stations</div>
+            <div style={{fontSize:11,color:'rgba(26,26,46,.45)',marginTop:4}}>{inRadius.length} within {radiusMiles} miles</div>
           </div>
           <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
             <div style={{width:34,height:34,borderRadius:'50%',background:'rgba(255,255,255,.65)',backdropFilter:'blur(20px)',border:'0.5px solid rgba(255,255,255,.92)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:'rgba(26,26,46,.4)',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>vs</div>
@@ -629,7 +645,7 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
             <span style={{fontSize:13}}>🏁</span>
             <input value={destination} onChange={e=>setDest(e.target.value)} placeholder="Add destination — gas stop becomes a waypoint (optional)" style={{flex:1,background:'none',border:'none',outline:'none',fontSize:11,color:'rgba(26,26,46,.6)',fontFamily:"'DM Sans',sans-serif"}}/>
           </div>
-          {sorted.map((st,i)=>(
+          {(showAllSt?sorted:sorted.slice(0,3)).map((st,i)=>(
             <div key={st.id} className={`st-row${selId===st.id?' sel':''}`} onClick={()=>setSelId(p=>p===st.id?null:st.id)}>
               <div style={{fontSize:11,fontWeight:700,color:i===0?'#30d158':'rgba(26,26,46,.35)',minWidth:14,textAlign:'center'}}>{i===0?'★':i+1}</div>
               <div style={{flex:1,minWidth:0}}>
@@ -643,6 +659,12 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
               </div>
             </div>
           ))}
+          {/* Show more / less button */}
+          {sorted.length > 3 && (
+            <button onClick={()=>setShowAllSt(p=>!p)} style={{width:'100%',padding:'11px',background:'none',border:'none',borderTop:'0.5px solid rgba(0,0,0,.05)',fontSize:12,fontWeight:700,color:'#ff3b30',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+              {showAllSt ? '↑ Show less' : `Show all ${sorted.length} stations →`}
+            </button>
+          )}
         </div>
 
         {/* Favorites trends */}
