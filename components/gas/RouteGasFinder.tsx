@@ -119,7 +119,13 @@ function RouteMap({ stations, grade, selectedId, onSelect, origin, destination, 
     if (!(window as any).L||!mapRef.current||!stations.length) return
     const L=(window as any).L
     const best=[...stations].sort((a,b)=>a[gk(grade)]-b[gk(grade)])[0]
-    stations.forEach(st=>{ const m=mksRef.current[st.id]; if(!m)return; m.setIcon(L.divIcon({className:'',iconSize:[80,52],iconAnchor:[40,52],html:makePin(st[gk(grade)],st.id===best?.id,st.id===selectedId)})) })
+    stations.forEach(st=>{
+      const m=mksRef.current[st.id]; if(!m)return
+      const isBest=st.id===best?.id
+      const size = isBest?[96,60]:[80,52], anchor = isBest?[48,60]:[40,52]
+      m.setIcon(L.divIcon({className:'',iconSize:size as any,iconAnchor:anchor as any,html:makePin(st[gk(grade)],isBest,st.id===selectedId)}))
+      if(isBest) m.setZIndexOffset(1000)
+    })
   }, [grade,selectedId,stations])
 
   useEffect(() => {
@@ -246,43 +252,74 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
       setRoutePolyline(polyline)
       setRouteInfo({totalMiles:miles,totalMins:minutes,origin:'Your Location',destination:destLabel||query})
       setLoadStep('Finding gas stations...')
-      const pts=interpolateAlongRoute(polyline,6)
-      const names=['Shell','BP','Circle K','Chevron','QuikTrip','Marathon','Murphy USA','Wawa','Sunoco','Exxon']
-      // Fetch real stations near route points
+      // Interpolate 12 points along route for thorough coverage
+      const pts=interpolateAlongRoute(polyline,12)
+      const names=['Shell','BP','Circle K','Chevron','QuikTrip','Marathon','Murphy USA','Wawa','Sunoco','Exxon','RaceWay','Kroger Fuel']
+
+      // Fetch real stations at each interpolated point
       const stationPromises = pts.map(async (pt) => {
         try {
           const res = await fetch(`/api/stations?lat=${pt.lat}&lng=${pt.lng}`)
           const data = await res.json()
-          return data.stations || []
+          return (data.stations || []).map((s:any) => ({...s, nearPt: pt}))
         } catch { return [] }
       })
       const allStationArrays = await Promise.all(stationPromises)
-      // Flatten and deduplicate by name+address
+
+      // Deduplicate by lat/lng
       const seen = new Set<string>()
       const allRealStations: any[] = []
       allStationArrays.flat().forEach((st:any) => {
-        const key = `${st.name}-${st.lat?.toFixed(3)}-${st.lng?.toFixed(3)}`
+        const key = `${st.lat?.toFixed(3)}-${st.lng?.toFixed(3)}`
         if (!seen.has(key)) { seen.add(key); allRealStations.push(st) }
       })
-      // If we got real stations use them, else fall back to simulated
+
+      // Helper: find closest point index on route to a station
+      const closestPtIdx = (slat:number, slng:number) => {
+        let best=0, bestD=Infinity
+        polyline.forEach((p,i)=>{
+          const d=Math.abs(p.lat-slat)+Math.abs(p.lng-slng)
+          if(d<bestD){bestD=d;best=i}
+        })
+        return best
+      }
+
       const sourceStations = allRealStations.length >= 3 ? allRealStations : pts.map((pt,i) => ({
         name: names[Math.floor(Math.random()*names.length)],
-        address: names[(i*3)%names.length] + ' along your route',
+        address: 'Along your route',
         lat: pt.lat+(Math.random()-.5)*.008,
         lng: pt.lng+(Math.random()-.5)*.008,
+        nearPt: pt,
       }))
-      const built:RouteStation[]=sourceStations.slice(0,Math.min(sourceStations.length,10)).map((st:any,i:number)=>({
-        id:i+1,
-        name: st.name || names[Math.floor(Math.random()*names.length)],
-        address: st.address || `Along your route`,
-        lat: st.lat || pts[Math.min(i, pts.length-1)].lat,
-        lng: st.lng || pts[Math.min(i, pts.length-1)].lng,
-        ...simulatePrices(basePrice),
-        distOnRoute:parseFloat(((i+1)/(sourceStations.slice(0,10).length+1)*miles).toFixed(1)),
-        detourMiles:parseFloat((Math.random()*.5+.1).toFixed(1)),
-        updated:`${Math.floor(Math.random()*12)+1}m ago`,
-        trending:['down','down','stable','up'][Math.floor(Math.random()*4)],
-      }))
+
+      // Build stations, compute real distOnRoute from polyline position
+      const builtUnsorted:RouteStation[] = sourceStations.map((st:any,i:number)=>{
+        const ptIdx = closestPtIdx(st.lat||0, st.lng||0)
+        // Approximate miles along route from polyline index
+        const routePct = polyline.length > 1 ? ptIdx / (polyline.length-1) : (i+1)/(sourceStations.length+1)
+        const distAlongRoute = parseFloat((routePct * miles).toFixed(1))
+        return {
+          id:i+1,
+          name: st.name || names[i%names.length],
+          address: st.address || 'Along your route',
+          lat: st.lat || (st.nearPt?.lat ?? 0),
+          lng: st.lng || (st.nearPt?.lng ?? 0),
+          ...simulatePrices(basePrice),
+          distOnRoute: distAlongRoute,
+          detourMiles: parseFloat((Math.random()*.5+.1).toFixed(1)),
+          updated: `${Math.floor(Math.random()*12)+1}m ago`,
+          trending: ['down','down','stable','up'][Math.floor(Math.random()*4)],
+        }
+      })
+
+      // Sort by position along route, remove duplicates too close together
+      const sorted = builtUnsorted.sort((a,b)=>a.distOnRoute-b.distOnRoute)
+      const built:RouteStation[] = []
+      sorted.forEach(st=>{
+        const lastDist = built.length ? built[built.length-1].distOnRoute : -99
+        if (st.distOnRoute - lastDist >= 1.0) built.push({...st, id:built.length+1})
+      })
+
       setStations(built); setMapKey(`route-${Date.now()}`); setSearched(true); setSelId(null)
     } catch(e:any) { setError(e?.message||String(e)||'Could not find route. Try a different destination.') }
     setLoadStep(''); setLoading(false)
