@@ -153,6 +153,7 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
   const [routeInfo,setRouteInfo]=useState<RouteInfo|null>(null)
   const [grade,setGrade]=useState('Regular')
   const [selId,setSelId]=useState<number|null>(null)
+  const [showAllRoute,setShowAllRoute]=useState(false)
   const [loading,setLoading]=useState(false)
   const [loadStep,setLoadStep]=useState('')
   const [searched,setSearched]=useState(false)
@@ -439,7 +440,7 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
 
             <div style={{padding:'0 16px 6px'}}>
               <div style={{fontSize:10,fontWeight:600,letterSpacing:'1.5px',color:S.text3,textTransform:'uppercase',marginBottom:10}}>{stations.length} Stations Along Route · Cheapest First</div>
-              {sorted.map((st,i)=>{
+              {(showAllRoute?sorted:sorted.slice(0,5)).map((st,i)=>{
                 const price=st[gk(grade)],isBest=st.id===cheapest?.id,isSel=st.id===selId
                 const pct=routeInfo?Math.min(Math.round((st.distOnRoute/routeInfo.totalMiles)*100),96):0
                 return (
@@ -463,6 +464,15 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
                   </div>
                 )
               })}
+              {/* Show more / less */}
+              {stations.length > 5 && (
+                <button
+                  onClick={()=>setShowAllRoute(p=>!p)}
+                  style={{width:'100%',padding:'12px 16px',marginTop:4,background:'none',border:`1.5px solid ${S.bdr}`,borderRadius:12,fontSize:13,fontWeight:700,color:'#ff3b30',cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",display:'flex',alignItems:'center',justifyContent:'center',gap:6}}
+                >
+                  {showAllRoute ? '↑ Show less' : `Show all ${stations.length} stations →`}
+                </button>
+              )}
             </div>
 
             {sel&&(
