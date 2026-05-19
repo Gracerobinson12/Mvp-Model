@@ -432,7 +432,10 @@ export default function RouteGasFinder({ userCoords, basePrice=3.15, isDark=true
               </div>
             </div>
             <button onClick={()=>{
-              window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(destLabel)}&via=${encodeURIComponent(sel.name+', '+sel.address)}&dirflag=d`)
+              // Apple Maps: multiple daddr params = multiple stops in order
+              const gasStop = encodeURIComponent(`${sel.name}, ${sel.address}`)
+              const dest = encodeURIComponent(destLabel)
+              window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${gasStop}&daddr=${dest}&dirflag=d`)
               setShowWaypointModal(false)
             }} style={{width:'100%',padding:'13px 16px',background:'rgba(0,0,0,.04)',border:'0.5px solid rgba(0,0,0,.08)',borderRadius:16,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif",display:'flex',alignItems:'center',gap:12,marginBottom:8,color:'#1a1a2e',textAlign:'left' as any}}>
               <span style={{fontSize:24}}>🗺️</span>
