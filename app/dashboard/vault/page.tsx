@@ -113,9 +113,9 @@ function NewIdeaModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     },
     {
       label: 'Prior art differentiation',
-      hint:  'What already exists that's similar, and how is your idea different? Name specific competing products or approaches. This is what proves yours is new.',
+      hint:  'What already exists that is similar, and how is your idea different? Name specific competing products or approaches. This is what proves yours is new.',
       value: differentiation, set: setDifferentiation,
-      placeholder: 'e.g. MileIQ tracks mileage only but doesn't connect to tax categories. TurboTax Self-Employed is tax software but requires manual entry. This solution combines automatic tracking with real-time IRS mapping...',
+      placeholder: 'e.g. MileIQ tracks mileage only but does not connect to tax categories. TurboTax Self-Employed is tax software but requires manual entry. This solution combines automatic tracking with real-time IRS mapping...',
       rows: 4,
     },
   ]
