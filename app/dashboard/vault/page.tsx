@@ -101,9 +101,7 @@ function NewIdeaModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       label: 'Key technical claims',
       hint:  'List 3–5 specific things your idea does that are new or different. Number them. These are what a patent examiner looks at — be specific, not vague.',
       value: claims, set: setClaims,
-      placeholder: '1. Automatic GPS trip detection that distinguishes business from personal driving
-2. AI receipt scanning that categorizes expenses to IRS Schedule C line items
-3. Real-time deduction total updated after every trip...',
+      placeholder: '1. Automatic GPS trip detection (business vs personal)\n2. AI receipt scanning mapped to IRS Schedule C\n3. Real-time deduction total after every trip...',
       rows: 5,
     },
     {
