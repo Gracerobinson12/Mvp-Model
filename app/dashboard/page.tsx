@@ -57,6 +57,8 @@ export default function DashboardPage() {
   const [profile,       setProfile]      = useState(null)
   const [loading,       setLoading]      = useState(true)
   const [menuOpen,      setMenuOpen]     = useState(false)
+  const [liveGasPrices, setLiveGasPrices] = useState(STATE_GAS_FALLBACK)
+  const [gasPriceUpdated, setGasPriceUpdated] = useState('')
   const [isDark,        setIsDark]       = useState(false)
   const [selectedState, setSelectedState] = useState('')
   const menuRef = useRef(null)
@@ -105,6 +107,30 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Fetch live EIA gas price for selected state
+  useEffect(()=>{
+    fetch('/api/gas-prices')
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.prices?.length){
+          const latestPrice = parseFloat(data.prices[0]?.price)
+          const prevPrice   = data.prices[1] ? parseFloat(data.prices[1].price) : null
+          const targetState = selectedState || profile?.state
+          if(latestPrice && targetState){
+            const diff   = prevPrice ? latestPrice - prevPrice : 0
+            const change = (diff >= 0 ? '+' : '') + diff.toFixed(2)
+            const trend  = diff > 0 ? '↑' : diff < 0 ? '↓' : '→'
+            setLiveGasPrices(prev=>({
+              ...prev,
+              [targetState]: { avg: latestPrice, trend, change }
+            }))
+            setGasPriceUpdated(data.prices[0]?.period || '')
+          }
+        }
+      })
+      .catch(()=>{})
+  },[selectedState, profile?.state])
+
   const signOut = async () => { await supabase.auth.signOut(); router.push('/') }
 
   const handleNavClick = (item) => {
@@ -128,31 +154,6 @@ export default function DashboardPage() {
   const planStatus  = profile?.plan_status
   const isActive    = planStatus === 'active' || planStatus === 'trialing' || !!profile?.stripe_customer_id
   const state          = profile?.state
-  const [liveGasPrices, setLiveGasPrices] = useState<Record<string,{avg:number,trend:string,change:string}>>(STATE_GAS_FALLBACK)
-  const [gasPriceUpdated, setGasPriceUpdated] = useState<string>('')
-
-  // Fetch live EIA gas prices on mount
-  useEffect(()=>{
-    fetch('/api/gas-prices')
-      .then(r=>r.json())
-      .then(data=>{
-        if(data.prices?.length){
-          const latestPrice = data.prices[0]?.price
-          const prevPrice   = data.prices[1]?.price
-          if(latestPrice && state){
-            const change = prevPrice ? (latestPrice - prevPrice).toFixed(2) : '0.00'
-            const trend  = prevPrice ? (latestPrice > prevPrice ? '↑' : latestPrice < prevPrice ? '↓' : '→') : '→'
-            setLiveGasPrices(prev=>({
-              ...prev,
-              [state]: { avg: latestPrice, trend, change: (parseFloat(change) >= 0 ? '+' : '') + change }
-            }))
-            setGasPriceUpdated(data.prices[0]?.period || '')
-          }
-        }
-      })
-      .catch(()=>{})
-  },[state])
-
   const stateGas         = state ? (liveGasPrices[state] ?? STATE_GAS_FALLBACK[state]) : null
   const selectedStateGas = selectedState ? (liveGasPrices[selectedState] ?? STATE_GAS_FALLBACK[selectedState]) : null
   const myModules   = MODULES[userPlan] || MODULES.personal
