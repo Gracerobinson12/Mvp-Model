@@ -62,7 +62,7 @@ const MODULE_META = {
 const NAV_ITEMS = [
   { icon:'🏠', label:'Dashboard',      sub:'Your home base',       href:'/dashboard',         section:'main' },
   { icon:'⛽', label:'Gas tracker',    sub:'Live prices near you', href:'/dashboard/gas',     section:'main' },
-  { icon:'💡', label:'Idea Vault',     sub:'Coming soon',          href:null,                 section:'soon' },
+  { icon:'💡', label:'Idea Vault',     sub:'Protect your ideas',   href:'/dashboard/vault',   section:'main' },
   { icon:'🤝', label:'Barter & Trade', sub:'Coming soon',          href:null,                 section:'soon' },
   { icon:'🧾', label:'Deduction Teller',sub:'Coming soon',         href:null,                 section:'soon' },
   { icon:'💳', label:'My plan',        sub:'Billing & upgrades',   href:'/dashboard/billing', section:'account' },
