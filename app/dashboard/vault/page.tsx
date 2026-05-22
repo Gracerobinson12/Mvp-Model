@@ -58,47 +58,106 @@ function SealStrengthBar({ strength, compact = false }: { strength: SealStrength
 }
 
 // ── New Idea Modal ─────────────────────────────────────────────────────────────
+// ── Field component ───────────────────────────────────────────────────────────
+function FormField({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 11, color: 'rgba(26,26,46,.45)', marginBottom: 8, lineHeight: 1.5 }}>{hint}</div>
+      {children}
+    </div>
+  )
+}
+
+const TA_STYLE = { width: '100%', padding: '10px 14px', borderRadius: 12, border: '0.5px solid rgba(26,26,46,.15)', background: 'rgba(26,26,46,.03)', fontSize: 13, fontFamily: "'DM Sans',system-ui,sans-serif", outline: 'none', resize: 'vertical' as const, color: '#1a1a2e', lineHeight: 1.6 }
+
 function NewIdeaModal({ onClose, onCreated }: { onClose: () => void; onCreated: (idea: Idea) => void }) {
-  const [title, setTitle]       = useState('')
-  const [desc, setDesc]         = useState('')
-  const [tags, setTags]         = useState<string[]>([])
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState('')
-  const [step, setStep]         = useState<'write' | 'expanding' | 'done'>('write')
-  const [expanded, setExpanded] = useState('')
+  const [title,         setTitle]         = useState('')
+  const [problem,       setProblem]       = useState('')
+  const [solution,      setSolution]      = useState('')
+  const [claims,        setClaims]        = useState('')
+  const [users,         setUsers]         = useState('')
+  const [differentiation, setDifferentiation] = useState('')
+  const [tags,          setTags]          = useState<string[]>([])
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState('')
 
-  const expand = async () => {
-    if (!title.trim() || !desc.trim()) { setError('Add a title and description first.'); return }
-    setLoading(true); setError(''); setStep('expanding')
-    try {
-      // Call Claude to expand the idea
-      const res = await fetch('/api/vault/expand', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description: desc }),
-      })
-      const data = await res.json()
-      setExpanded(data.expanded || desc)
-      setStep('done')
-    } catch (e) {
-      setExpanded(desc)
-      setStep('done')
-    }
-    setLoading(false)
-  }
+  const FIELDS = [
+    {
+      label: 'Problem statement',
+      hint:  'What problem does this solve? Who has this problem and how bad is it? The more specific the better — "gig workers lose $3,200/year in missed deductions" beats "taxes are hard."',
+      value: problem, set: setProblem,
+      placeholder: 'e.g. Rideshare and delivery drivers lose thousands in tax deductions every year because tracking mileage and expenses manually is too tedious...',
+      rows: 4,
+    },
+    {
+      label: 'Proposed solution',
+      hint:  'How does your idea solve it? What does it actually do? Describe the core mechanism — what happens when someone uses it.',
+      value: solution, set: setSolution,
+      placeholder: 'e.g. A mobile app that automatically detects when a trip starts using GPS, logs the mileage, photographs receipts, and maps every expense to its IRS deduction category in real time...',
+      rows: 4,
+    },
+    {
+      label: 'Key technical claims',
+      hint:  'List 3–5 specific things your idea does that are new or different. Number them. These are what a patent examiner looks at — be specific, not vague.',
+      value: claims, set: setClaims,
+      placeholder: '1. Automatic GPS trip detection that distinguishes business from personal driving
+2. AI receipt scanning that categorizes expenses to IRS Schedule C line items
+3. Real-time deduction total updated after every trip...',
+      rows: 5,
+    },
+    {
+      label: 'Intended users',
+      hint:  'Who exactly would use this? Be specific — job title, situation, platform they use, income range. The more specific, the stronger the prior art.',
+      value: users, set: setUsers,
+      placeholder: 'e.g. 1099 gig workers earning income through Uber, Lyft, DoorDash, Instacart, and similar platforms. Primarily ages 22–45, driving 20+ hours per week...',
+      rows: 3,
+    },
+    {
+      label: 'Prior art differentiation',
+      hint:  'What already exists that's similar, and how is your idea different? Name specific competing products or approaches. This is what proves yours is new.',
+      value: differentiation, set: setDifferentiation,
+      placeholder: 'e.g. MileIQ tracks mileage only but doesn't connect to tax categories. TurboTax Self-Employed is tax software but requires manual entry. This solution combines automatic tracking with real-time IRS mapping...',
+      rows: 4,
+    },
+  ]
 
-  const save = async (asDraft: boolean) => {
+  const isComplete = title.trim() && problem.trim() && solution.trim() && claims.trim() && users.trim() && differentiation.trim()
+
+  const buildDoc = () =>
+    `PRIOR ART DISCLOSURE DOCUMENT
+
+Title: ${title}
+
+PROBLEM STATEMENT:
+${problem}
+
+PROPOSED SOLUTION:
+${solution}
+
+KEY TECHNICAL CLAIMS:
+${claims}
+
+INTENDED USERS:
+${users}
+
+PRIOR ART DIFFERENTIATION:
+${differentiation}`
+
+  const save = async () => {
+    if (!isComplete) { setError('Please fill in all sections before saving.'); return }
     setLoading(true); setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not signed in')
+      const expanded_doc = buildDoc()
       const { data, error: dbErr } = await supabase.from('vault_ideas').insert({
         user_id: user.id,
         title: title.trim(),
-        description: desc.trim(),
-        expanded_doc: expanded || null,
+        description: problem.trim(),
+        expanded_doc,
         tags,
-        status: asDraft ? 'draft' : 'draft',
+        status: 'draft',
         strength: { hash: false, rfc: false, bitcoin: false },
       }).select().single()
       if (dbErr) throw dbErr
@@ -112,78 +171,60 @@ function NewIdeaModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(12px)', padding: '0 14px 24px' }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: 'rgba(255,255,255,.97)', borderRadius: '28px 28px 20px 20px', padding: '20px 22px 24px', width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', fontFamily: "'DM Sans',system-ui,sans-serif", position: 'relative' }}>
+      <div style={{ background: 'rgba(255,255,255,.97)', borderRadius: '28px 28px 20px 20px', padding: '20px 22px 28px', width: '100%', maxWidth: 560, maxHeight: '92vh', overflowY: 'auto', fontFamily: "'DM Sans',system-ui,sans-serif", position: 'relative' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,.06)', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(26,26,46,.4)' }}>✕</button>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,.1)', margin: '0 auto 16px' }} />
 
-        {step === 'write' && <>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#ff3b30', textTransform: 'uppercase', marginBottom: 4 }}>New idea</div>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 900, letterSpacing: -.5, color: '#1a1a2e', marginBottom: 16 }}>Describe your idea</div>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#ff3b30', textTransform: 'uppercase', marginBottom: 4 }}>New idea</div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 900, letterSpacing: -.5, color: '#1a1a2e', marginBottom: 4 }}>Document your idea</div>
+        <div style={{ fontSize: 12, color: 'rgba(26,26,46,.45)', marginBottom: 20, lineHeight: 1.6 }}>Fill in each section. The more detail you provide, the stronger your legal record.</div>
 
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(26,26,46,.5)', marginBottom: 6 }}>Title</div>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Gig worker automatic tax tracker" style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '0.5px solid rgba(26,26,46,.15)', background: 'rgba(26,26,46,.03)', fontSize: 14, fontFamily: "'DM Sans',system-ui,sans-serif", outline: 'none', color: '#1a1a2e' }} />
+        {/* Title */}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', marginBottom: 3 }}>Idea title</div>
+          <div style={{ fontSize: 11, color: 'rgba(26,26,46,.45)', marginBottom: 8 }}>A short clear name for your idea — 5–10 words max.</div>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Automatic tax tracker for gig economy workers" style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '0.5px solid rgba(26,26,46,.15)', background: 'rgba(26,26,46,.03)', fontSize: 14, fontFamily: "'DM Sans',system-ui,sans-serif", outline: 'none', color: '#1a1a2e' }} />
+        </div>
+
+        {/* Structured fields */}
+        {FIELDS.map((f, i) => (
+          <FormField key={i} label={f.label} hint={f.hint}>
+            <textarea value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder} rows={f.rows} style={TA_STYLE} />
+          </FormField>
+        ))}
+
+        {/* Tags */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', marginBottom: 3 }}>Industry tags</div>
+          <div style={{ fontSize: 11, color: 'rgba(26,26,46,.45)', marginBottom: 8 }}>Optional — helps you organize your vault.</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {INDUSTRIES.map(t => (
+              <button key={t} onClick={() => setTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t])} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',system-ui,sans-serif", border: '0.5px solid', transition: 'all .15s', background: tags.includes(t) ? 'rgba(255,59,48,.1)' : 'rgba(26,26,46,.04)', borderColor: tags.includes(t) ? 'rgba(255,59,48,.35)' : 'rgba(26,26,46,.12)', color: tags.includes(t) ? '#cc2018' : 'rgba(26,26,46,.55)' }}>{t}</button>
+            ))}
           </div>
+        </div>
 
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(26,26,46,.5)', marginBottom: 6 }}>Describe it — what it does, who it helps, how it works</div>
-            <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Write as much or as little as you know right now. Claude will expand it into a full prior art document." rows={5} style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '0.5px solid rgba(26,26,46,.15)', background: 'rgba(26,26,46,.03)', fontSize: 13, fontFamily: "'DM Sans',system-ui,sans-serif", outline: 'none', resize: 'vertical', color: '#1a1a2e', lineHeight: 1.6 }} />
+        {/* Progress indicator */}
+        <div style={{ background: 'rgba(26,26,46,.04)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(26,26,46,.45)', marginBottom: 6 }}>
+            <span>Sections completed</span>
+            <span style={{ color: isComplete ? '#30d158' : '#ff9f0a', fontWeight: 700 }}>
+              {[title,problem,solution,claims,users,differentiation].filter(v=>v.trim()).length} / 6
+            </span>
           </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(26,26,46,.5)', marginBottom: 8 }}>Tags (optional)</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {INDUSTRIES.map(t => (
-                <button key={t} onClick={() => setTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t])} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',system-ui,sans-serif", border: '0.5px solid', transition: 'all .15s', background: tags.includes(t) ? 'rgba(255,59,48,.1)' : 'rgba(26,26,46,.04)', borderColor: tags.includes(t) ? 'rgba(255,59,48,.35)' : 'rgba(26,26,46,.12)', color: tags.includes(t) ? '#cc2018' : 'rgba(26,26,46,.55)' }}>{t}</button>
-              ))}
-            </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[title,problem,solution,claims,users,differentiation].map((v,i) => (
+              <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: v.trim() ? '#30d158' : 'rgba(26,26,46,.1)', transition: 'background .3s' }} />
+            ))}
           </div>
+        </div>
 
-          {error && <div style={{ background: 'rgba(255,59,48,.08)', border: '1px solid rgba(255,59,48,.2)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#cc2018', marginBottom: 12 }}>{error}</div>}
+        {error && <div style={{ background: 'rgba(255,59,48,.08)', border: '1px solid rgba(255,59,48,.2)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#cc2018', marginBottom: 12 }}>{error}</div>}
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={expand} style={{ flex: 1, padding: 13, borderRadius: 100, border: 'none', background: 'linear-gradient(135deg,#ff3b30,#ff6b35)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',system-ui,sans-serif", boxShadow: '0 4px 14px rgba(255,59,48,.35)' }}>
-              ✨ Expand with AI →
-            </button>
-            <button onClick={() => save(true)} style={{ padding: '13px 18px', borderRadius: 100, border: '0.5px solid rgba(26,26,46,.15)', background: 'transparent', color: 'rgba(26,26,46,.5)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',system-ui,sans-serif" }}>
-              Save draft
-            </button>
-          </div>
-          <p style={{ fontSize: 11, color: 'rgba(26,26,46,.35)', textAlign: 'center', marginTop: 10 }}>AI expands your notes into a full prior art document, then you seal it</p>
-        </>}
-
-        {step === 'expanding' && (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>✨</div>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 900, color: '#1a1a2e', marginBottom: 8 }}>Claude is expanding your idea</div>
-            <div style={{ fontSize: 13, color: 'rgba(26,26,46,.5)', lineHeight: 1.6 }}>Generating a full prior art document — problem statement, solution, technical claims, use cases...</div>
-            <div style={{ marginTop: 20, height: 3, background: 'rgba(0,0,0,.06)', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
-              <div style={{ position: 'absolute', height: '100%', width: '40%', background: 'linear-gradient(90deg,transparent,#ff3b30,transparent)', animation: 'loadSlide 1.2s ease-in-out infinite' }} />
-            </div>
-          </div>
-        )}
-
-        {step === 'done' && <>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#30d158', textTransform: 'uppercase', marginBottom: 4 }}>AI expanded ✓</div>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 900, letterSpacing: -.5, color: '#1a1a2e', marginBottom: 12 }}>Review your prior art document</div>
-
-          <div style={{ background: 'rgba(26,26,46,.03)', border: '0.5px solid rgba(26,26,46,.12)', borderRadius: 14, padding: '12px 14px', marginBottom: 14, maxHeight: 240, overflowY: 'auto' }}>
-            <div style={{ fontSize: 12, color: 'rgba(26,26,46,.6)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{expanded}</div>
-          </div>
-
-          <div style={{ background: 'rgba(48,209,88,.06)', border: '0.5px solid rgba(48,209,88,.2)', borderRadius: 12, padding: '10px 14px', fontSize: 12, color: 'rgba(26,26,46,.6)', marginBottom: 14, lineHeight: 1.6 }}>
-            💡 Save this as a draft and seal it from the vault to protect it with SHA-256 + RFC 3161 + Bitcoin.
-          </div>
-
-          {error && <div style={{ background: 'rgba(255,59,48,.08)', border: '1px solid rgba(255,59,48,.2)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#cc2018', marginBottom: 12 }}>{error}</div>}
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => save(false)} disabled={loading} style={{ flex: 1, padding: 13, borderRadius: 100, border: 'none', background: loading ? 'rgba(255,59,48,.3)' : 'linear-gradient(135deg,#ff3b30,#ff6b35)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans',system-ui,sans-serif" }}>
-              {loading ? 'Saving...' : 'Save to vault →'}
-            </button>
-            <button onClick={() => setStep('write')} style={{ padding: '13px 16px', borderRadius: 100, border: '0.5px solid rgba(26,26,46,.15)', background: 'transparent', color: 'rgba(26,26,46,.5)', fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans',system-ui,sans-serif" }}>Edit</button>
-          </div>
-        </>}
+        <button onClick={save} disabled={loading} style={{ width: '100%', padding: 14, borderRadius: 100, border: 'none', background: isComplete ? 'linear-gradient(135deg,#ff3b30,#ff6b35)' : 'rgba(26,26,46,.08)', color: isComplete ? '#fff' : 'rgba(26,26,46,.35)', fontSize: 14, fontWeight: 700, cursor: isComplete ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',system-ui,sans-serif", boxShadow: isComplete ? '0 4px 14px rgba(255,59,48,.35)' : 'none', transition: 'all .2s' }}>
+          {loading ? 'Saving...' : isComplete ? 'Save to vault →' : 'Complete all sections to save'}
+        </button>
+        <p style={{ fontSize: 11, color: 'rgba(26,26,46,.35)', textAlign: 'center', marginTop: 10, lineHeight: 1.6 }}>Saved as a draft — seal it from your vault to add legal timestamp protection</p>
       </div>
     </div>
   )
