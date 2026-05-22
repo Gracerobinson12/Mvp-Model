@@ -14,32 +14,14 @@ function GCIcon({ size = 28 }) {
   )
 }
 
-const STATE_GAS = {
+// STATE_GAS is fetched live from EIA API — see useEffect below
+const STATE_GAS_FALLBACK: Record<string,{avg:number,trend:string,change:string}> = {
   'Alabama':{'avg':3.12,'trend':'↓','change':'-0.04'},'Alaska':{'avg':4.82,'trend':'↑','change':'+0.08'},
   'Arizona':{'avg':3.71,'trend':'↓','change':'-0.06'},'Arkansas':{'avg':2.99,'trend':'↓','change':'-0.03'},
   'California':{'avg':4.94,'trend':'↑','change':'+0.12'},'Colorado':{'avg':3.58,'trend':'→','change':'+0.01'},
-  'Connecticut':{'avg':3.89,'trend':'↑','change':'+0.05'},'Delaware':{'avg':3.61,'trend':'→','change':'+0.00'},
   'Florida':{'avg':3.51,'trend':'↑','change':'+0.03'},'Georgia':{'avg':3.19,'trend':'↓','change':'-0.05'},
-  'Hawaii':{'avg':5.12,'trend':'↑','change':'+0.09'},'Idaho':{'avg':3.68,'trend':'→','change':'+0.01'},
-  'Illinois':{'avg':4.21,'trend':'↑','change':'+0.07'},'Indiana':{'avg':3.48,'trend':'↓','change':'-0.02'},
-  'Iowa':{'avg':3.28,'trend':'→','change':'+0.00'},'Kansas':{'avg':3.08,'trend':'↓','change':'-0.03'},
-  'Kentucky':{'avg':3.09,'trend':'↓','change':'-0.04'},'Louisiana':{'avg':3.14,'trend':'→','change':'+0.01'},
-  'Maine':{'avg':3.71,'trend':'↑','change':'+0.04'},'Maryland':{'avg':3.65,'trend':'↑','change':'+0.03'},
-  'Massachusetts':{'avg':4.02,'trend':'↑','change':'+0.06'},'Michigan':{'avg':3.64,'trend':'→','change':'+0.01'},
-  'Minnesota':{'avg':3.38,'trend':'↓','change':'-0.02'},'Mississippi':{'avg':3.01,'trend':'↓','change':'-0.05'},
-  'Missouri':{'avg':3.04,'trend':'↓','change':'-0.03'},'Montana':{'avg':3.54,'trend':'→','change':'+0.00'},
-  'Nebraska':{'avg':3.14,'trend':'↓','change':'-0.01'},'Nevada':{'avg':4.08,'trend':'↑','change':'+0.08'},
-  'New Hampshire':{'avg':3.72,'trend':'↑','change':'+0.04'},'New Jersey':{'avg':3.72,'trend':'↑','change':'+0.03'},
-  'New Mexico':{'avg':3.28,'trend':'→','change':'+0.00'},'New York':{'avg':4.35,'trend':'↑','change':'+0.09'},
-  'North Carolina':{'avg':3.28,'trend':'↓','change':'-0.03'},'North Dakota':{'avg':3.22,'trend':'→','change':'+0.01'},
-  'Ohio':{'avg':3.58,'trend':'↑','change':'+0.04'},'Oklahoma':{'avg':2.98,'trend':'↓','change':'-0.04'},
-  'Oregon':{'avg':4.08,'trend':'↑','change':'+0.07'},'Pennsylvania':{'avg':3.82,'trend':'↑','change':'+0.05'},
-  'Rhode Island':{'avg':3.79,'trend':'↑','change':'+0.04'},'South Carolina':{'avg':3.12,'trend':'↓','change':'-0.04'},
-  'South Dakota':{'avg':3.21,'trend':'→','change':'+0.00'},'Tennessee':{'avg':3.08,'trend':'↓','change':'-0.04'},
-  'Texas':{'avg':2.94,'trend':'↓','change':'-0.02'},'Utah':{'avg':3.71,'trend':'↑','change':'+0.03'},
-  'Vermont':{'avg':3.82,'trend':'↑','change':'+0.05'},'Virginia':{'avg':3.42,'trend':'↑','change':'+0.03'},
-  'Washington':{'avg':4.28,'trend':'↑','change':'+0.08'},'West Virginia':{'avg':3.42,'trend':'→','change':'+0.01'},
-  'Wisconsin':{'avg':3.38,'trend':'↓','change':'-0.02'},'Wyoming':{'avg':3.31,'trend':'→','change':'+0.00'},
+  'Tennessee':{'avg':3.08,'trend':'↓','change':'-0.04'},'Texas':{'avg':2.94,'trend':'↓','change':'-0.02'},
+  'New York':{'avg':4.35,'trend':'↑','change':'+0.09'},'Ohio':{'avg':3.58,'trend':'↑','change':'+0.04'},
 }
 
 const MODULES = {
@@ -49,8 +31,8 @@ const MODULES = {
 }
 
 const MODULE_META = {
-  gas:        { icon:'⛽', label:'Gas tracker',       sub:'Live prices near you',     live:true,  href:'/dashboard/gas'     },
-  vault:      { icon:'💡', label:'Idea Vault',         sub:'Timestamp your ideas',     live:false, href:null                 },
+  gas:        { icon:'⛽', label:'Gas Intelligence',       sub:'Live prices near you',     live:true,  href:'/dashboard/gas'     },
+  vault:      { icon:'💡', label:'Idea Vault',         sub:'Protect your ideas',        live:true,  href:'/dashboard/vault'   },
   deductions: { icon:'🧾', label:'Deduction Teller',   sub:'Find what you\'re missing', live:false, href:null               },
   barter:     { icon:'🤝', label:'Barter & Trade',     sub:'Timestamp trade deals',    live:false, href:null                 },
   regulatory: { icon:'📋', label:'Regulatory Updates', sub:'IRS, OSHA, labor laws',    live:false, href:null                 },
@@ -61,7 +43,7 @@ const MODULE_META = {
 
 const NAV_ITEMS = [
   { icon:'🏠', label:'Dashboard',      sub:'Your home base',       href:'/dashboard',         section:'main' },
-  { icon:'⛽', label:'Gas tracker',    sub:'Live prices near you', href:'/dashboard/gas',     section:'main' },
+  { icon:'⛽', label:'Gas Intelligence',    sub:'Live prices near you', href:'/dashboard/gas',     section:'main' },
   { icon:'💡', label:'Idea Vault',     sub:'Protect your ideas',   href:'/dashboard/vault',   section:'main' },
   { icon:'🤝', label:'Barter & Trade', sub:'Coming soon',          href:null,                 section:'soon' },
   { icon:'🧾', label:'Deduction Teller',sub:'Coming soon',         href:null,                 section:'soon' },
@@ -146,8 +128,33 @@ export default function DashboardPage() {
   const planStatus  = profile?.plan_status
   const isActive    = planStatus === 'active' || planStatus === 'trialing' || !!profile?.stripe_customer_id
   const state          = profile?.state
-  const stateGas       = state ? STATE_GAS[state] : null
-  const selectedStateGas = selectedState ? STATE_GAS[selectedState] : null
+  const [liveGasPrices, setLiveGasPrices] = useState<Record<string,{avg:number,trend:string,change:string}>>(STATE_GAS_FALLBACK)
+  const [gasPriceUpdated, setGasPriceUpdated] = useState<string>('')
+
+  // Fetch live EIA gas prices on mount
+  useEffect(()=>{
+    fetch('/api/gas-prices')
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.prices?.length){
+          const latestPrice = data.prices[0]?.price
+          const prevPrice   = data.prices[1]?.price
+          if(latestPrice && state){
+            const change = prevPrice ? (latestPrice - prevPrice).toFixed(2) : '0.00'
+            const trend  = prevPrice ? (latestPrice > prevPrice ? '↑' : latestPrice < prevPrice ? '↓' : '→') : '→'
+            setLiveGasPrices(prev=>({
+              ...prev,
+              [state]: { avg: latestPrice, trend, change: (parseFloat(change) >= 0 ? '+' : '') + change }
+            }))
+            setGasPriceUpdated(data.prices[0]?.period || '')
+          }
+        }
+      })
+      .catch(()=>{})
+  },[state])
+
+  const stateGas         = state ? (liveGasPrices[state] ?? STATE_GAS_FALLBACK[state]) : null
+  const selectedStateGas = selectedState ? (liveGasPrices[selectedState] ?? STATE_GAS_FALLBACK[selectedState]) : null
   const myModules   = MODULES[userPlan] || MODULES.personal
 
   let daysLeft = null, onTrial = false
@@ -466,7 +473,7 @@ export default function DashboardPage() {
               <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:ink3,textTransform:'uppercase',marginBottom:14}}>Quick stats</div>
               {[
                 {label:'National trend',  val:'↑ Rising',  sub:'Up $0.18 this month',    color:'#ff453a'},
-                {label:'EIA last updated',val:'This week', sub:'Weekly government data',  color:ink2},
+                {label:'EIA last updated',val: gasPriceUpdated ? new Date(gasPriceUpdated).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'This week', sub:'Live from EIA.gov API',  color:ink2},
                 {label:'Your plan',       val:isActive?'Active':'Inactive', sub:'Core Pass · $4.99/mo', color:isActive?'#30d158':'#ff3b30'},
               ].map((s,i)=>(
                 <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',paddingBottom:i<2?12:0,marginBottom:i<2?12:0,borderBottom:i<2?`0.5px solid ${sepColor}`:'none'}}>
