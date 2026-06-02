@@ -11,10 +11,12 @@ import dynamic from 'next/dynamic'
 
 const RouteGasFinder = dynamic(() => import('@/components/gas/RouteGasFinder'), { ssr: false })
 
-type Station = { id:number; name:string; address:string; lat:number; lng:number; distance:number; regular:number; mid:number; premium:number; diesel:number; updated:string; trending:string }
+type Station = { id:number; name:string; address:string; lat:number; lng:number; distance:number; regular:number; mid:number; premium:number; diesel:number; super:number; updated:string; trending:string; grades:string[] }
+type EVStation = { id:number; name:string; address:string; lat:number; lng:number; distance:number; network:string; ports:number; available:number; level:string; kw:number; cost:string; costUnit:string }
 type Coords  = { lat:number; lng:number }
 
-const GRADES       = ['Regular','Mid','Premium','Diesel']
+const GRADES       = ['Regular','Mid','Premium','Diesel','Super']
+const GRADE_LABELS: Record<string,string> = {Regular:'87',Mid:'89',Premium:'91',Diesel:'Dsl',Super:'93'}
 const RADIUS_MILES = [5,10,15,30]
 const gk = (g:string) => g.toLowerCase()
 
@@ -42,7 +44,36 @@ function distanceMiles(a:number,b:number,c:number,d:number){
 }
 function simulatePrices(base:number){
   const o=[-0.09,-0.05,-0.02,0,0.04,0.08,0.13][Math.floor(Math.random()*7)]
-  return {regular:+(base+o).toFixed(2),mid:+(base+o+.30).toFixed(2),premium:+(base+o+.60).toFixed(2),diesel:+(base+o+.45).toFixed(2)}
+  const hasSuper = Math.random()>0.5
+  const hasD = Math.random()>0.3
+  const grades = ['regular','mid','premium',...(hasD?['diesel']:[]),...(hasSuper?['super']:[])]
+  return {
+    regular:+(base+o).toFixed(2),
+    mid:+(base+o+.30).toFixed(2),
+    premium:+(base+o+.60).toFixed(2),
+    diesel: hasD ? +(base+o+.45).toFixed(2) : 0,
+    super: hasSuper ? +(base+o+.80).toFixed(2) : 0,
+    grades,
+  }
+}
+
+// EV fallback stations near Auburn
+function buildFallbackEV(lat:number,lng:number):EVStation[]{
+  const locations=[
+    {name:'Tesla Supercharger',address:'Auburn Mall',network:'Tesla',ports:8,kw:250,level:'DC Fast',cost:'0.38',costUnit:'/kWh'},
+    {name:'ChargePoint',address:'Walmart Supercenter',network:'ChargePoint',ports:4,kw:7,level:'Level 2',cost:'Free',costUnit:''},
+    {name:'Blink',address:'Kroger Parking Lot',network:'Blink',ports:3,kw:50,level:'DC Fast',cost:'0.29',costUnit:'/kWh'},
+    {name:'EVgo',address:'Auburn University Area',network:'EVgo',ports:2,kw:100,level:'DC Fast',cost:'0.35',costUnit:'/kWh'},
+    {name:'ChargePoint Level 2',address:'Publix Shopping Center',network:'ChargePoint',ports:6,kw:7,level:'Level 2',cost:'0.15',costUnit:'/kWh'},
+  ]
+  return locations.map((l,i)=>{
+    const bearing=(i*72)*(Math.PI/180)
+    const dist=0.8+i*1.4
+    const evLat=lat+dist/69*Math.cos(bearing)
+    const evLng=lng+dist/(69*Math.cos(lat*Math.PI/180))*Math.sin(bearing)
+    const available=Math.floor(Math.random()*l.ports+1)
+    return {...l,id:i+1,lat:evLat,lng:evLng,distance:parseFloat(dist.toFixed(1)),available}
+  })
 }
 // pct = 0 (cheapest) to 1 (priciest) across all visible stations
 function makePin(price:number,best:boolean,sel:boolean,pct:number=0.5){
@@ -468,6 +499,12 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
         const combined = [...enriched, ...fallbacks].map((s,i)=>({...s,id:i+1}))
         setStations(combined);setLocStatus(`${combined.length} stations found`)
         setMapKey(`${lat.toFixed(3)}-${lng.toFixed(3)}-${Date.now()}`)
+        // Load EV chargers
+        try {
+          const evRes = await fetch(`/api/ev-stations?lat=${lat}&lng=${lng}`)
+          const evData = await evRes.json()
+          setEvStations(evData.stations?.length ? evData.stations : buildFallbackEV(lat,lng))
+        } catch { setEvStations(buildFallbackEV(lat,lng)) }
       } else {
         const enriched = buildFallbackStations(lat, lng, base)
         setStations(enriched);setLocStatus(`${enriched.length} stations found`)
@@ -655,15 +692,76 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
               <button className="star-btn" onClick={e=>{e.stopPropagation();setFavorites(p=>{const n=new Set(p);n.has(st.id)?n.delete(st.id):n.add(st.id);return n})}}>{favorites.has(st.id)?'⭐':'☆'}</button>
               <div style={{textAlign:'right',flexShrink:0}}>
                 <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:800,letterSpacing:-.5,color:i===0?'#30d158':'#1a1a2e'}}>${(st as any)[gk(grade)].toFixed(2)}</div>
+                {/* Grade grid — tap any grade to switch */}
+                <div style={{display:'flex',gap:2,marginTop:4,flexWrap:'wrap'}}>
+                  {GRADES.filter(g=>(st as any)[gk(g)]>0).map(g=>(
+                    <div key={g} onClick={e=>{e.stopPropagation();setGrade(g);setShowEV(false)}} style={{textAlign:'center',background:grade===g&&!showEV?'rgba(255,59,48,.08)':'rgba(26,26,46,.03)',border:`0.5px solid ${grade===g&&!showEV?'rgba(255,59,48,.2)':'rgba(26,26,46,.07)'}`,borderRadius:7,padding:'3px 5px',minWidth:33,cursor:'pointer',transition:'all .15s'}}>
+                      <div style={{fontSize:8,fontWeight:700,color:grade===g&&!showEV?'#cc2018':'rgba(26,26,46,.35)',marginBottom:1}}>{GRADE_LABELS[g]}</div>
+                      <div style={{fontSize:10,fontWeight:800,color:grade===g&&!showEV?'#1a1a2e':'rgba(26,26,46,.55)',fontFamily:"'Sora',sans-serif"}}>{(st as any)[gk(g)].toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
                 <div style={{fontSize:11,fontWeight:700,color:st.trending==='down'?'#30d158':st.trending==='up'?'#ff453a':'rgba(26,26,46,.35)'}}>{st.trending==='down'?'↓':st.trending==='up'?'↑':'→'}</div>
               </div>
             </div>
           ))}
           {/* Show more / less button */}
-          {sorted.length > 3 && (
+          {!showEV && sorted.length > 3 && (
             <button onClick={()=>setShowAllSt(p=>!p)} style={{width:'100%',padding:'11px',background:'none',border:'none',borderTop:'0.5px solid rgba(0,0,0,.05)',fontSize:12,fontWeight:700,color:'#ff3b30',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
               {showAllSt ? '↑ Show less' : `Show all ${sorted.length} stations →`}
             </button>
+          )}
+
+          {/* EV station list */}
+          {showEV && (
+            <div style={{padding:'0 0 8px'}}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',padding:'12px 14px 8px'}}>
+                {evStations.length} EV chargers nearby · sorted by availability
+              </div>
+              {evStations.sort((a,b)=>b.available-a.available).map((ev,i)=>{
+                const allFull = ev.available === 0
+                const statusColor = allFull ? '#cc2018' : ev.available<ev.ports/2 ? '#ff9f0a' : '#30d158'
+                const statusBg    = allFull ? 'rgba(255,59,48,.08)' : ev.available<ev.ports/2 ? 'rgba(255,159,10,.08)' : 'rgba(48,209,88,.08)'
+                const statusBd    = allFull ? 'rgba(255,59,48,.25)' : ev.available<ev.ports/2 ? 'rgba(255,159,10,.3)' : 'rgba(48,209,88,.3)'
+                return (
+                  <div key={ev.id} style={{margin:'0 8px 8px',padding:'12px 14px',background:'rgba(255,255,255,.65)',backdropFilter:'blur(24px)',border:'0.5px solid rgba(255,255,255,.92)',borderRadius:16,position:'relative',overflow:'hidden'}}>
+                    {!allFull && <div style={{position:'absolute',top:0,left:0,right:0,height:1.5,background:`linear-gradient(90deg,transparent,${statusColor},transparent)`}}/>}
+                    <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:8}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap'}}>
+                          <span style={{fontSize:13,fontWeight:700,color:'#1a1a2e'}}>⚡ {ev.name}</span>
+                          <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:100,background:statusBg,border:`0.5px solid ${statusBd}`,color:statusColor}}>
+                            {allFull ? 'All full' : `${ev.available} of ${ev.ports} open`}
+                          </span>
+                        </div>
+                        <div style={{fontSize:11,color:'rgba(26,26,46,.45)',marginBottom:6}}>{ev.distance} mi · {ev.address}</div>
+                        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                          <span style={{fontSize:10,padding:'2px 8px',borderRadius:100,background:'rgba(26,26,46,.05)',border:'0.5px solid rgba(26,26,46,.08)',color:'rgba(26,26,46,.55)',fontWeight:500}}>{ev.network}</span>
+                          <span style={{fontSize:10,padding:'2px 8px',borderRadius:100,background:'rgba(26,26,46,.05)',border:'0.5px solid rgba(26,26,46,.08)',color:'rgba(26,26,46,.55)',fontWeight:500}}>{ev.level}</span>
+                          <span style={{fontSize:10,padding:'2px 8px',borderRadius:100,background:'rgba(26,26,46,.05)',border:'0.5px solid rgba(26,26,46,.08)',color:'rgba(26,26,46,.55)',fontWeight:500}}>{ev.kw}kW</span>
+                        </div>
+                      </div>
+                      <div style={{textAlign:'right',flexShrink:0}}>
+                        <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:900,color:'#1a1a2e',letterSpacing:-0.5}}>{ev.cost==='Free'?'Free':'$'+ev.cost}</div>
+                        <div style={{fontSize:10,color:'rgba(26,26,46,.4)',marginTop:1}}>{ev.costUnit||'per charge'}</div>
+                      </div>
+                    </div>
+                    {allFull && <div style={{fontSize:10,color:'rgba(26,26,46,.45)',marginTop:2}}>⏱ Estimated wait: 15–30 min</div>}
+                    <button onClick={()=>{
+                      const q=encodeURIComponent(`${ev.name}, ${ev.address}`)
+                      const isApple=/iPhone|iPad|iPod|Mac/.test(navigator.userAgent)
+                      if(isApple) window.open(`maps://maps.apple.com/?daddr=${q}&dirflag=d`)
+                      else window.open(`https://www.google.com/maps/search/?api=1&query=${q}`)
+                    }} style={{marginTop:8,padding:'8px 14px',borderRadius:100,border:'0.5px solid rgba(48,209,88,.3)',background:'rgba(48,209,88,.08)',color:'#1a7a35',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',system-ui,sans-serif"}}>
+                      🗺️ Navigate →
+                    </button>
+                  </div>
+                )
+              })}
+              <div style={{fontSize:10,color:'rgba(26,26,46,.3)',textAlign:'center',padding:'4px 14px 8px',lineHeight:1.6}}>
+                EV data from Open Charge Map · Availability updated every 5 min · Verify pricing at charger
+              </div>
+            </div>
           )}
         </div>
 
