@@ -18,6 +18,7 @@ type Coords  = { lat:number; lng:number }
 const GRADES       = ['Regular','Mid','Premium','Diesel','Super']
 const GRADE_LABELS: Record<string,string> = {Regular:'87',Mid:'89',Premium:'91',Diesel:'Dsl',Super:'93'}
 const RADIUS_MILES = [5,10,15,30]
+const BASIC_RADIUS_MILES = [2]  // Basic plan: 2mi only
 const gk = (g:string) => g.toLowerCase()
 
 const AUBURN_LAT = 32.6099, AUBURN_LNG = -85.4808
@@ -379,6 +380,7 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
           </div>
           <div style={{position:'absolute',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:9991,background:'rgba(255,255,255,.97)',backdropFilter:'blur(24px)',border:'0.5px solid rgba(255,255,255,.98)',borderRadius:20,padding:'10px 16px',boxShadow:'0 8px 32px rgba(0,0,0,.15)',textAlign:'center'}}>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:2,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:8}}>Search radius</div>
+            {isBasicPlan && <div style={{fontSize:10,color:'#cc2018',fontWeight:600,marginBottom:6}}>Basic plan — 2 mile radius only · <span style={{textDecoration:'underline',cursor:'pointer'}} onClick={()=>router.push('/dashboard/billing')}>Upgrade</span></div>}
             <div style={{display:'flex',gap:10}}>
               {[{v:1,mi:'5'},{v:2,mi:'10'},{v:3,mi:'15'},{v:4,mi:'30'}].map(r=>{
                 const on=radius===r.v
@@ -403,6 +405,17 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
   const [history,setHistory]     = useState(FALLBACK_HISTORY)
   const [userCoords,setCoords]   = useState<Coords|null>(null)
   const [locStatus,setLocStatus] = useState('Finding your location...')
+  const [userPlan, setUserPlan]   = useState<string>('core')
+
+  useEffect(()=>{
+    supabase.auth.getUser().then(({data:{user}})=>{
+      if(!user) return
+      supabase.from('profiles').select('plan').eq('id',user.id).single()
+        .then(({data})=>{ if(data?.plan) setUserPlan(data.plan) })
+    })
+  },[])
+
+  const isBasicPlan = userPlan === 'basic'
   const [loading,setLoading]     = useState(false)
   const [mapKey,setMapKey]       = useState('init')
   const [selId,setSelId]         = useState<number|null>(null)
@@ -834,7 +847,7 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
           </ResponsiveContainer>
         </div>
 
-        <RouteGasFinder userCoords={userCoords} basePrice={bestPrice} isDark={false}/>
+        {!isBasicPlan ? <RouteGasFinder userCoords={userCoords} basePrice={bestPrice} isDark={false}/> : null}
         <div style={{fontSize:9,color:'rgba(26,26,46,.3)',textAlign:'center',letterSpacing:.5,paddingTop:8}}>DATA: EIA.GOV · GOOGLE PLACES · INFORMATIONAL USE ONLY</div>
       </div>
     </>
