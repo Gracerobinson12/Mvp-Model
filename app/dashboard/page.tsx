@@ -404,7 +404,7 @@ export default function DashboardPage() {
               <div style={{...card({padding:'14px 20px',marginBottom:14}),background:'rgba(255,59,48,0.07)',border:'0.5px solid rgba(255,59,48,0.22)',animation:'fadeUp .5s ease .05s both',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
                 <div>
                   <div style={{fontSize:14,fontWeight:700,color:ink,marginBottom:2}}>Subscribe to keep access</div>
-                  <div style={{fontSize:12,color:ink2}}>Core Pass · $4.99/mo · 7-day free trial · Cancel anytime</div>
+                  <div style={{fontSize:12,color:ink2}}>Core Pass · $9.99/mo · 7-day free trial · Cancel anytime</div>
                 </div>
                 <Link href="/dashboard/billing" style={{padding:'9px 20px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',borderRadius:100,fontSize:13,fontWeight:700,textDecoration:'none',whiteSpace:'nowrap',boxShadow:'0 4px 12px rgba(255,59,48,.3)'}}>
                   Subscribe →
@@ -476,7 +476,7 @@ export default function DashboardPage() {
               {[
                 {label:'National trend',  val:'↑ Rising',  sub:'Up $0.18 this month',    color:'#ff453a'},
                 {label:'EIA last updated',val: gasPriceUpdated ? new Date(gasPriceUpdated).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'This week', sub:'Live from EIA.gov API',  color:ink2},
-                {label:'Your plan',       val:isActive?'Active':'Inactive', sub:'Core Pass · $4.99/mo', color:isActive?'#30d158':'#ff3b30'},
+                {label:'Your plan',       val:isActive?'Active':'Inactive', sub:'Core Pass · $9.99/mo', color:isActive?'#30d158':'#ff3b30'},
               ].map((s,i)=>(
                 <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',paddingBottom:i<2?12:0,marginBottom:i<2?12:0,borderBottom:i<2?`0.5px solid ${sepColor}`:'none'}}>
                   <div>

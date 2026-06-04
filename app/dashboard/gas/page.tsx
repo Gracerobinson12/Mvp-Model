@@ -231,8 +231,7 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
   const boot=(L:any)=>{
     if(!mapDivRef.current||mapRef.current) return
     const map=L.map(mapDivRef.current,{center:[center.lat,center.lng],zoom:13,zoomControl:false,attributionControl:false})
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map)
-    L.control.zoom({position:'bottomright'}).addTo(map)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map)    L.control.zoom({position:'bottomright'}).addTo(map)
     if(center.lat&&center.lng){
       L.marker([center.lat,center.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
         html:'<div style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff6b35);border:3px solid #fff;box-shadow:0 0 0 5px rgba(255,59,48,.18),0 4px 12px rgba(255,59,48,.4)"></div>'
