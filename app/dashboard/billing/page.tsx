@@ -38,7 +38,7 @@ const PLANS = [
     price: 9.99,
     color: '#0a84ff',
     gradient: 'linear-gradient(135deg,#0a84ff,#30a0ff)',
-    live: false,
+    live: true,
     desc: 'Gas + protect your ideas and trades',
     features: [
       'Everything in Basic',
