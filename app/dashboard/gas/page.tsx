@@ -214,9 +214,9 @@ function ThanksModal({onClose}:{onClose:()=>void}){
 }
 
 // ── Map Component ─────────────────────────────────────────────────────────────
-function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,onRadiusChange}:{
+function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,onRadiusChange,isBasicPlan}:{
   stations:Station[],grade:string,selectedId:number|null,onSelect:(id:number)=>void,
-  userCoords:Coords|null,radius:number,onReport:()=>void,onRadiusChange:(r:number)=>void
+  userCoords:Coords|null,radius:number,onReport:()=>void,onRadiusChange:(r:number)=>void,isBasicPlan:boolean
 }){
   const containerRef = useRef<HTMLDivElement>(null)
   const mapDivRef    = useRef<HTMLDivElement>(null)
@@ -224,6 +224,7 @@ function GasMap({stations,grade,selectedId,onSelect,userCoords,radius,onReport,o
   const mksRef       = useRef<Record<number,any>>({})
   const circleRef    = useRef<any>(null)
   const [exp, setExp]= useState(false)
+  const router = useRouter()
 
   const center = userCoords??{lat:AUBURN_LAT,lng:AUBURN_LNG}
   const best   = stations.length?[...stations].sort((a:any,b:any)=>a[gk(grade)]-b[gk(grade)])[0]:null
@@ -608,6 +609,8 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
           radius={radius}
           onReport={()=>setReportSt(sel||sorted[0]||null)}
           onRadiusChange={setRadius}
+          isBasicPlan={isBasicPlan}
+
         />
 
         {/* Radius rings */}
