@@ -104,13 +104,19 @@ function MapsModal({station,destination,onClose}:{station:Station,destination:st
   const q = encodeURIComponent(`${station.name}, ${station.address}`)
   const dest = destination.trim()
   const goApple=()=>{
-    if(dest) window.open(`maps://maps.apple.com/?saddr=Current+Location&daddr=${encodeURIComponent(dest)}&via=${encodeURIComponent(station.name+', '+station.address)}&dirflag=d`)
-    else window.open(`maps://maps.apple.com/?q=${q}&dirflag=d`)
+    if(dest){
+      window.open(`maps://maps.apple.com/?saddr=${station.lat},${station.lng}&daddr=${encodeURIComponent(dest)}&dirflag=d`)
+    } else {
+      window.open(`maps://maps.apple.com/?ll=${station.lat},${station.lng}&q=${encodeURIComponent(station.name)}`)
+    }
     onClose()
   }
   const goGoogle=()=>{
-    if(dest) window.open(`https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination=${encodeURIComponent(dest)}&waypoints=${q}&travelmode=driving`)
-    else window.open(`https://www.google.com/maps/search/?api=1&query=${q}`)
+    if(dest){
+      window.open(`https://www.google.com/maps/dir/?api=1&origin=${station.lat},${station.lng}&destination=${encodeURIComponent(dest)}&waypoints=${station.lat},${station.lng}&travelmode=driving`)
+    } else {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${station.lat},${station.lng}`)
+    }
     onClose()
   }
   return (
