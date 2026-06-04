@@ -17,18 +17,18 @@ function GCIcon({ size = 28 }) {
 const PLANS = [
   {
     id: 'starter',
-    name: 'Starter',
-    price: 4.99,
+    name: 'Basic',
+    price: 2.99,
     color: '#ff3b30',
     gradient: 'linear-gradient(135deg,#ff3b30,#ff6b35)',
     live: true,
     desc: 'Gas intelligence for everyday drivers',
     features: [
       '⛽ Real-time gas prices near you',
-      '🗺️ Route gas finder',
+      '🗺️ USA price map all 50 states',
       '📊 USA price map all 50 states',
-      '🚗 Trip mode with live alerts',
-      '🔔 Tank reminder alerts',
+      '⚡ EV charger locations',
+      '📍 2 mile radius search',
     ],
     soon: ['💡 Idea Vault'],
   },
@@ -41,7 +41,7 @@ const PLANS = [
     live: false,
     desc: 'Gas + protect your ideas and trades',
     features: [
-      'Everything in Starter',
+      'Everything in Basic',
       '💡 Idea Vault — timestamp your ideas',
       '🤝 Barter & Trade Tracker',
       '📄 PDF receipts for agreements',
@@ -67,7 +67,7 @@ const PLANS = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 49.99,
+    price: 79.99,
     color: '#bf5af2',
     gradient: 'linear-gradient(135deg,#bf5af2,#da8fff)',
     live: false,
@@ -208,7 +208,7 @@ export default function BillingPage() {
             <div>
               <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:3}}>Current plan</div>
               <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',textTransform:'capitalize'}}>
-                {currentPlan === 'driver' ? 'Starter' : currentPlan === 'free' ? 'No plan' : currentPlan}
+                {currentPlan === 'driver' ? 'Basic' : currentPlan === 'free' ? 'No plan' : currentPlan}
               </div>
             </div>
           </div>
