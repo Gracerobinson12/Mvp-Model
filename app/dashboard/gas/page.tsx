@@ -423,7 +423,6 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
   const [favorites,setFavorites] = useState<Set<number>>(new Set())
   const [destination,setDest]    = useState('')
   const [showAllSt,setShowAllSt] = useState(false)
-  const [showEV,setShowEV] = useState(false)
   const [reportSt,setReportSt]   = useState<Station|null>(null)
   const [showThanks,setThanks]   = useState(false)
   const [mapsSt,setMapsSt]       = useState<Station|null>(null)
