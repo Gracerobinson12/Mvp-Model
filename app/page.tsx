@@ -330,32 +330,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
 
           <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
 
-            {/* Basic plan */}
-            <div
-              onClick={()=>setUserCat('basic')}
-              style={{border:`1.5px solid ${userCat==='basic'?'#ff9f0a':'rgba(0,0,0,.08)'}`,borderRadius:16,padding:'14px 16px',cursor:'pointer',background:userCat==='basic'?'rgba(255,159,10,.04)':'#f8f7fc',transition:'all .2s'}}>
-              <div style={{display:'flex',alignItems:'center',gap:12}}>
-                <div style={{width:42,height:42,borderRadius:12,background:'rgba(255,159,10,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>⛽</div>
-                <div style={{flex:1}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
-                    <span style={{fontSize:14,fontWeight:700,color:'#1a1a2e'}}>Basic</span>
-                    <span style={{fontSize:9,fontWeight:700,color:'#1a7a35',background:'rgba(48,209,88,.1)',border:'1px solid rgba(48,209,88,.2)',borderRadius:100,padding:'1px 7px'}}>Live Now</span>
-                  </div>
-                  <div style={{fontSize:11,color:'rgba(26,26,46,.5)',marginBottom:2}}>Gas prices near you · 2 mile radius</div>
-                  <div style={{fontSize:10,fontWeight:700,color:'#ff9f0a'}}>Basic · $2.99/mo</div>
-                </div>
-                <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${userCat==='basic'?'#ff9f0a':'rgba(0,0,0,.15)'}`,background:userCat==='basic'?'#ff9f0a':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  {userCat==='basic' && <div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
-                </div>
-              </div>
-              {userCat==='basic' && (
-                <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(0,0,0,.06)',display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {['⛽ Gas prices near you','⚡ EV chargers','🗺️ USA price map'].map((f,i)=>(
-                    <span key={i} style={{fontSize:10,background:'rgba(255,159,10,.07)',color:'#7a4800',padding:'2px 8px',borderRadius:100,fontWeight:600}}>{f}</span>
-                  ))}
-                </div>
-              )}
-            </div>
+           
 
             {/* Personal / Core */}
             <div
@@ -524,7 +499,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
             ))}
           </select>
           <div style={{background:'#f8f7fc',borderRadius:14,padding:'12px 14px',marginBottom:16,fontSize:12,color:'rgba(26,26,46,.6)',lineHeight:1.6}}>
-            {'✓ Opens immediately · 7-day free trial · Core $9.99/mo · Basic $2.99/mo · Cancel anytime'}
+            {'✓ Opens immediately · 7-day free trial · Core $9.99/mo · FOUNDING100 = $4.99 for 6 months ·  Cancel anytime'}
           </div>
 
           {/* ── FIXED: autoComplete="off" stops browser filling email into promo field ── */}

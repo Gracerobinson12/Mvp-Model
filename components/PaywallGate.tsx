@@ -94,9 +94,10 @@ export function PaywallScreen({ planRequired = 'driver' }: { planRequired?: stri
   const [loading, setLoading] = useState(false)
 
   const PLAN_INFO: Record<string, any> = {
-    driver:     { name:'Driver Pass',     price:'$4.99/mo',  color:'#ff3b30', emoji:'🚗', features:['Real-time gas prices near you','Route gas finder — cheapest on any trip','IRS mileage deduction calculator','Gas price drop alerts'] },
-    freelancer: { name:'Freelancer Pass', price:'$7.99/mo',  color:'#0a84ff', emoji:'💼', features:['Everything in Driver Pass','Full deduction teller','Home office tracker','IRS rule change alerts'] },
-    business:   { name:'Business Pass',   price:'$14.99/mo', color:'#30d158', emoji:'🏢', features:['Everything in Freelancer Pass','Live regulatory feed','Tariff intelligence','Labor law compliance updates'] },
+    basic:      { name:'Basic',      price:'$2.99/mo',  color:'#ff9f0a', emoji:'⛽', features:['⛽ Real-time gas prices near you (2mi radius)','⚡ EV charger locations near you (2mi radius)','🗺️ USA gas price map all 50 states','📊 Price trend tracking'] },
+    driver:     { name:'Core',       price:'$9.99/mo',  color:'#ff3b30', emoji:'⛽', features:['⛽ Real-time gas prices near you (all radii)','⚡ EV Intelligence module','🛣️ Route gas finder — cheapest on any trip','🔔 Gas price drop alerts','🗺️ USA price map all 50 states'] },
+    freelancer: { name:'Pro',        price:'$19.99/mo', color:'#0a84ff', emoji:'💼', features:['Everything in Core','💡 Ideas Vault — protect your ideas','🤝 Barter & Trade Tracker'] },
+    business:   { name:'Enterprise', price:'$79.99/mo', color:'#30d158', emoji:'🏢', features:['Everything in Pro','📋 Regulatory Updates','🌐 Tariff Intelligence','📈 Market Intelligence','📊 Assets & Liabilities'] },
   }
   const plan = PLAN_INFO[planRequired] || PLAN_INFO.driver
 
