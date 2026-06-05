@@ -177,14 +177,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
   const [promoDays,  setPromoDays] = useState(7)
 
   const USER_TYPES = [
-    {
-      id:'basic',
-      icon:'⛽',
-      label:'Basic',
-      sub:'Gas prices & EV Intelligence · 2 mile radius · Most affordable',
-      color:'#ff9f0a',
-      plans:'Basic · $2.99/mo',
-    },
+    
     {
       id:'driver',
       icon:'🔥',
@@ -460,7 +453,6 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
             disabled={!userCat}
             style={{width:'100%',padding:13,background:userCat?`linear-gradient(135deg,${userCat==='driver'?'#ff3b30,#ff6b35':userCat==='freelancer'?'#0a84ff,#30a0ff':'#30d158,#34c759'})`:'rgba(0,0,0,.08)',color:userCat?'#fff':'rgba(26,26,46,.3)',border:'none',borderRadius:100,fontSize:14,fontWeight:700,cursor:userCat?'pointer':'not-allowed',fontFamily:"'DM Sans',sans-serif",marginBottom:10,transition:'all .2s'}}>
             {!userCat ? 'Select a plan to continue'
-              : userCat==='basic' ? 'Continue with Basic →'
               : userCat==='driver' ? 'Continue with Core →'
               : userCat==='freelancer' ? 'Start with Personal + Notify Me for Pro →'
               : 'Start with Personal + Notify Me for Enterprise →'}
@@ -978,7 +970,7 @@ function LandingPage() {
             <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
             <Link href="/pricing" className="btn-secondary">View Plans</Link>
           </div>
-          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>Basic $2.99/mo · Core $9.99/mo · FOUNDING100 = $4.99 for 6 months · Cancel anytime</div>
+          <div style={{marginTop:14,fontSize:13,color:'var(--ink-3)'}}>· Core $9.99/mo · FOUNDING100 = $4.99 for 6 months · Cancel anytime</div>
           <div className="hero-trust">
             <span className="trust-item">For Drivers</span><div className="trust-dot"/>
             <span className="trust-item">For Freelancers</span><div className="trust-dot"/>

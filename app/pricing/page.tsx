@@ -15,29 +15,7 @@ function GCIcon({ size = 28 }) {
 }
 
 const PLANS = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: 2.99,
-    priceId: 'price_1Te3QGQoXngqrNXZgs7YJ9IN',
-    color: '#ff9f0a',
-    gradient: 'linear-gradient(135deg,#ff9f0a,#ffb340)',
-    live: true,
-    badge: 'New',
-    badgeLive: false,
-    desc: 'Gas prices near you. Simple.',
-    tag: '⛽ Gas only · 2 mile radius',
-    features: [
-      '⛽ Real-time gas prices near you',
-      '📍 2 mile search radius',
-      '87 · 89 · 91 · 93 · Diesel grades',
-      '⚡ EV charger locations',
-      '🗺️ USA price map all 50 states',
-    ],
-    locked: [],
-    lockedMsg: 'Route finder, Ideas Vault, and all other modules require Core or higher.',
-    cta: 'Start Free Trial — $2.99/mo →',
-  },
+  
   {
     id: 'core',
     name: 'Core',
@@ -48,10 +26,9 @@ const PLANS = [
     live: true,
     badge: 'Live Now',
     badgeLive: true,
-    desc: 'Full gas intelligence + Ideas Vault',
-    tag: 'Most popular',
+    desc: 'Full Gas and EV Intelligence',
     features: [
-      'Everything in Basic',
+      'Gas and EV Intelligence Finder',
       '🗺️ Full radius — 5 / 10 / 15 / 30 miles',
       '🛣️ Route finder — cheapest on any trip',
       '💡 Ideas Vault — live now',
@@ -77,7 +54,7 @@ const PLANS = [
     features: [
       'Everything in Core',
       '🤝 Barter & Trade Tracker',
-      '🧾 Deduction Teller',
+      'Ideas Vault',
       '🔔 Gas price drop email alerts',
       '📅 Tax deadline reminders',
     ],
@@ -332,7 +309,7 @@ export default function PricingPage() {
         <div style={{textAlign:'center',marginBottom:48,animation:'fadeUp .5s ease both'}}>
           <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'rgba(48,209,88,.1)',border:'0.5px solid rgba(48,209,88,.3)',borderRadius:100,padding:'4px 14px',fontSize:11,fontWeight:700,color:'#1a7a35',letterSpacing:.5,textTransform:'uppercase',marginBottom:16}}>
             <span style={{width:5,height:5,borderRadius:'50%',background:'#30d158',display:'inline-block',animation:'lp 1.5s ease infinite'}}/>
-            Basic & Core live now
+             Core live now
           </div>
           <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:'clamp(30px,5vw,52px)',fontWeight:900,letterSpacing:-2.5,color:'#1a1a2e',lineHeight:1,marginBottom:14}}>
             Simple, honest pricing
@@ -417,34 +394,7 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Plan comparison — Basic vs Core */}
-        <div style={{background:'rgba(255,255,255,.65)',backdropFilter:'blur(40px)',border:'0.5px solid rgba(255,255,255,.92)',borderRadius:24,padding:'24px',marginBottom:32,animation:'fadeUp .5s ease .3s both'}}>
-          <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:900,color:'#1a1a2e',marginBottom:4}}>Basic vs Core — what's the difference?</div>
-          <div style={{fontSize:13,color:'rgba(26,26,46,.5)',marginBottom:16,lineHeight:1.6}}>Both plans are live now. Here is exactly what each includes.</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-            <div>
-              <div style={{fontSize:12,fontWeight:700,color:'#ff9f0a',marginBottom:10,display:'flex',alignItems:'center',gap:6}}><span>⛽</span> Basic — $2.99/mo</div>
-              {['Gas prices near you','2 mile search radius only','All fuel grades (87/89/91/93/Dsl)','EV charger locations','USA price map'].map((f,i)=>(
-                <div key={i} style={{display:'flex',gap:8,fontSize:12,color:'rgba(26,26,46,.65)',marginBottom:6}}>
-                  <span style={{color:'#ff9f0a',fontWeight:700}}>✓</span>{f}
-                </div>
-              ))}
-              {['Route finder','10/15/30 mile radius','Ideas Vault'].map((f,i)=>(
-                <div key={i} style={{display:'flex',gap:8,fontSize:12,color:'rgba(26,26,46,.35)',marginBottom:6}}>
-                  <span style={{opacity:.4}}>✗</span>{f}
-                </div>
-              ))}
-            </div>
-            <div style={{borderLeft:'0.5px solid rgba(26,26,46,.08)',paddingLeft:16}}>
-              <div style={{fontSize:12,fontWeight:700,color:'#ff3b30',marginBottom:10,display:'flex',alignItems:'center',gap:6}}><span>🔥</span> Core — $4.99/mo</div>
-              {['Everything in Basic','Full 5/10/15/30 mile radius','Route finder — cheapest on any trip','Ideas Vault — seal your ideas','SHA-256 + RFC 3161 + Bitcoin proof','Download prior art certificate'].map((f,i)=>(
-                <div key={i} style={{display:'flex',gap:8,fontSize:12,color:'rgba(26,26,46,.65)',marginBottom:6}}>
-                  <span style={{color:'#ff3b30',fontWeight:700}}>✓</span>{f}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+       
 
         {/* Trust signals */}
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,animation:'fadeUp .5s ease .35s both'}}>
