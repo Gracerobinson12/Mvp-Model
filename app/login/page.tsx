@@ -110,7 +110,7 @@ export default function LoginPage() {
               <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:32,
                 fontWeight:900,letterSpacing:-1.5,color:'#1a1a2e',
                 lineHeight:1.1,marginBottom:8}}>
-                Sign in to<br/>GratIA Core
+                Sign in to<br/>Gratia Core
               </h1>
               <p style={{fontSize:14,color:'rgba(26,26,46,.5)'}}>
                 Business Intelligence Agency

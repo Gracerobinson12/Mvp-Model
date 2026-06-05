@@ -528,247 +528,213 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Gas Tracker Live Preview ──────────────────────────────────
-function GasTrackerPreview() {
-  const mapRef = useRef(null)
-  const [hoveredState, setHoveredState] = useState(null)
+// ── Interactive Gas Tracker Demo ─────────────────────────────
+// Drop this component into app/page.tsx replacing GasTrackerPreview
 
-  const stateInfo = {
-    "Alabama":{"low":2.89,"high":3.98,"avg":3.12},
-    "Alaska":{"low":4.21,"high":5.48,"avg":4.82},
-    "Arizona":{"low":3.34,"high":4.12,"avg":3.71},
-    "Arkansas":{"low":2.81,"high":3.28,"avg":2.99},
-    "California":{"low":2.79,"high":5.89,"avg":4.94},
-    "Colorado":{"low":3.21,"high":3.98,"avg":3.58},
-    "Connecticut":{"low":3.62,"high":4.21,"avg":3.89},
-    "Delaware":{"low":3.41,"high":3.82,"avg":3.61},
-    "Florida":{"low":3.21,"high":3.89,"avg":3.51},
-    "Georgia":{"low":2.98,"high":3.61,"avg":3.19},
-    "Hawaii":{"low":4.52,"high":5.62,"avg":5.12},
-    "Idaho":{"low":3.42,"high":3.98,"avg":3.68},
-    "Illinois":{"low":3.58,"high":4.62,"avg":4.21},
-    "Indiana":{"low":3.28,"high":3.72,"avg":3.48},
-    "Iowa":{"low":3.11,"high":3.48,"avg":3.28},
-    "Kansas":{"low":2.91,"high":3.31,"avg":3.08},
-    "Kentucky":{"low":2.88,"high":3.32,"avg":3.09},
-    "Louisiana":{"low":2.89,"high":3.52,"avg":3.14},
-    "Maine":{"low":3.51,"high":3.98,"avg":3.71},
-    "Maryland":{"low":3.42,"high":3.91,"avg":3.65},
-    "Massachusetts":{"low":3.71,"high":4.48,"avg":4.02},
-    "Michigan":{"low":3.41,"high":3.92,"avg":3.64},
-    "Minnesota":{"low":3.18,"high":3.62,"avg":3.38},
-    "Mississippi":{"low":2.82,"high":3.28,"avg":3.01},
-    "Missouri":{"low":2.88,"high":3.24,"avg":3.04},
-    "Montana":{"low":3.31,"high":3.82,"avg":3.54},
-    "Nebraska":{"low":2.95,"high":3.38,"avg":3.14},
-    "Nevada":{"low":3.62,"high":4.41,"avg":4.08},
-    "New Hampshire":{"low":3.52,"high":3.98,"avg":3.72},
-    "New Jersey":{"low":3.51,"high":3.98,"avg":3.72},
-    "New Mexico":{"low":3.01,"high":3.58,"avg":3.28},
-    "New York":{"low":3.82,"high":4.92,"avg":4.35},
-    "North Carolina":{"low":3.08,"high":3.52,"avg":3.28},
-    "North Dakota":{"low":3.02,"high":3.48,"avg":3.22},
-    "Ohio":{"low":3.32,"high":3.89,"avg":3.58},
-    "Oklahoma":{"low":2.81,"high":3.24,"avg":2.98},
-    "Oregon":{"low":3.71,"high":4.52,"avg":4.08},
-    "Pennsylvania":{"low":3.58,"high":4.12,"avg":3.82},
-    "Rhode Island":{"low":3.61,"high":4.02,"avg":3.79},
-    "South Carolina":{"low":2.92,"high":3.38,"avg":3.12},
-    "South Dakota":{"low":3.01,"high":3.45,"avg":3.21},
-    "Tennessee":{"low":2.88,"high":3.28,"avg":3.08},
-    "Texas":{"low":2.79,"high":3.45,"avg":2.94},
-    "Utah":{"low":3.48,"high":3.98,"avg":3.71},
-    "Vermont":{"low":3.62,"high":4.08,"avg":3.82},
-    "Virginia":{"low":3.18,"high":3.72,"avg":3.42},
-    "Washington":{"low":3.89,"high":4.78,"avg":4.28},
-    "West Virginia":{"low":3.21,"high":3.68,"avg":3.42},
-    "Wisconsin":{"low":3.18,"high":3.62,"avg":3.38},
-    "Wyoming":{"low":3.08,"high":3.62,"avg":3.31}
-  }
+function GasTrackerDemo({ onStart }: { onStart: () => void }) {
+  const [phase, setPhase] = React.useState<'idle'|'typing'|'searching'|'results'|'route'|'done'>('idle')
+  const [typed, setTyped] = React.useState('')
+  const [stationsVisible, setStationsVisible] = React.useState(0)
+  const [selectedStation, setSelectedStation] = React.useState<number|null>(null)
+  const [routeProgress, setRouteProgress] = React.useState(0)
+  const destination = 'Atlanta, GA'
 
-  const fipsToName = {
-    "01":"Alabama","02":"Alaska","04":"Arizona","05":"Arkansas","06":"California",
-    "08":"Colorado","09":"Connecticut","10":"Delaware","12":"Florida","13":"Georgia",
-    "15":"Hawaii","16":"Idaho","17":"Illinois","18":"Indiana","19":"Iowa",
-    "20":"Kansas","21":"Kentucky","22":"Louisiana","23":"Maine","24":"Maryland",
-    "25":"Massachusetts","26":"Michigan","27":"Minnesota","28":"Mississippi","29":"Missouri",
-    "30":"Montana","31":"Nebraska","32":"Nevada","33":"New Hampshire","34":"New Jersey",
-    "35":"New Mexico","36":"New York","37":"North Carolina","38":"North Dakota","39":"Ohio",
-    "40":"Oklahoma","41":"Oregon","42":"Pennsylvania","44":"Rhode Island","45":"South Carolina",
-    "46":"South Dakota","47":"Tennessee","48":"Texas","49":"Utah","50":"Vermont",
-    "51":"Virginia","53":"Washington","54":"West Virginia","55":"Wisconsin","56":"Wyoming"
-  }
+  const stations = [
+    { name:'Circle K',    dist:'0.8 mi', price:'$3.06', grade:'87', savings:'Cheapest', color:'#30d158', rank:1 },
+    { name:'Exxon',       dist:'1.1 mi', price:'$3.09', grade:'87', savings:'',         color:'#a8e063', rank:2 },
+    { name:'Marathon',    dist:'1.5 mi', price:'$3.14', grade:'87', savings:'',         color:'#ffd60a', rank:3 },
+    { name:'Shell',       dist:'2.2 mi', price:'$3.18', grade:'87', savings:'',         color:'#ff9500', rank:4 },
+  ]
 
-  function highColor(h) {
-    if (h < 3.50) return '#30d158'
-    if (h < 4.00) return '#a8d96a'
-    if (h < 4.50) return '#ff9f0a'
-    if (h < 5.00) return '#ff6b35'
-    return '#ff3b30'
-  }
+  React.useEffect(() => {
+    if (phase !== 'idle') return
+    const t = setTimeout(() => setPhase('typing'), 800)
+    return () => clearTimeout(t)
+  }, [phase])
 
-  useEffect(() => {
-    if (!mapRef.current) return
-
-    const loadMap = (d3, topojson) => {
-      if (!mapRef.current) return
-      mapRef.current.innerHTML = ''
-
-      const W = mapRef.current.offsetWidth || 500
-      const H = 180
-
-      const svg = d3.select(mapRef.current)
-        .append('svg')
-        .attr('width', '100%')
-        .attr('height', H)
-        .attr('viewBox', `0 0 ${W} ${H}`)
-        .style('display', 'block')
-
-      const proj = d3.geoAlbersUsa()
-        .scale(W * 1.28)
-        .translate([W / 2, H / 2])
-
-      const path = d3.geoPath().projection(proj)
-
-      fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json')
-        .then(r => r.json())
-        .then(us => {
-          const feats = topojson.feature(us, us.objects.states).features
-
-          // Draw state fills
-          svg.selectAll('path.state')
-            .data(feats)
-            .enter()
-            .append('path')
-            .attr('class', 'state')
-            .attr('d', path)
-            .attr('fill', d => {
-              const id   = String(d.id).padStart(2,'0')
-              const name = fipsToName[id]
-              const data = stateInfo[name]
-              return data ? highColor(data.high) : '#c8d8c0'
-            })
-            .attr('opacity', 0.8)
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 0.6)
-            .style('cursor', 'pointer')
-            .on('mouseover', function(event, d) {
-              const id   = String(d.id).padStart(2,'0')
-              const name = fipsToName[id]
-              const data = stateInfo[name]
-              if (!name || !data) return
-              d3.select(this).attr('opacity', 1).attr('stroke-width', 1.5)
-              setHoveredState({name, data, x: event.offsetX, y: event.offsetY})
-            })
-            .on('mousemove', function(event) {
-              setHoveredState(s => s ? {...s, x: event.offsetX, y: event.offsetY} : s)
-            })
-            .on('mouseout', function() {
-              d3.select(this).attr('opacity', 0.8).attr('stroke-width', 0.6)
-              setHoveredState(null)
-            })
-        })
-        .catch(() => {})
+  React.useEffect(() => {
+    if (phase !== 'typing') return
+    if (typed.length < destination.length) {
+      const t = setTimeout(() => setTyped(destination.slice(0, typed.length + 1)), 60)
+      return () => clearTimeout(t)
+    } else {
+      const t = setTimeout(() => setPhase('searching'), 600)
+      return () => clearTimeout(t)
     }
+  }, [phase, typed])
 
-    // Load D3 + TopoJSON
-    const loadScript = (src, id) => new Promise(resolve => {
-      if (document.getElementById(id)) { resolve(); return }
-      const s = document.createElement('script')
-      s.id = id; s.src = src
-      s.onload = resolve
-      document.head.appendChild(s)
-    })
+  React.useEffect(() => {
+    if (phase !== 'searching') return
+    const t = setTimeout(() => setPhase('results'), 1200)
+    return () => clearTimeout(t)
+  }, [phase])
 
-    Promise.all([
-      loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js', 'preview-d3'),
-      loadScript('https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js', 'preview-topo'),
-    ]).then(() => loadMap((window as any).d3, (window as any).topojson))
+  React.useEffect(() => {
+    if (phase !== 'results') return
+    let count = 0
+    const t = setInterval(() => {
+      count++
+      setStationsVisible(count)
+      if (count >= stations.length) {
+        clearInterval(t)
+        setTimeout(() => { setSelectedStation(0); setPhase('route') }, 800)
+      }
+    }, 300)
+    return () => clearInterval(t)
+  }, [phase])
 
-    return () => { if (mapRef.current) mapRef.current.innerHTML = '' }
-  }, [])
+  React.useEffect(() => {
+    if (phase !== 'route') return
+    let p = 0
+    const t = setInterval(() => {
+      p += 2
+      setRouteProgress(p)
+      if (p >= 100) {
+        clearInterval(t)
+        setTimeout(() => setPhase('done'), 400)
+      }
+    }, 30)
+    return () => clearInterval(t)
+  }, [phase])
 
+  const reset = () => {
+    setPhase('idle')
+    setTyped('')
+    setStationsVisible(0)
+    setSelectedStation(null)
+    setRouteProgress(0)
+  }
 
-
-  const cheapest = Object.entries(stateInfo).sort((a,b) => a[1].avg - b[1].avg)[0]
-  const priciest  = Object.entries(stateInfo).sort((a,b) => b[1].high - a[1].high)[0]
+  const saving = phase === 'done' ? '$0.36' : null
 
   return (
-    <div style={{background:'rgba(0,0,0,.04)',border:'1px solid rgba(0,0,0,.08)',borderRadius:14,overflow:'hidden',marginBottom:10}}>
+    <div style={{position:'relative',borderRadius:20,overflow:'hidden',background:'rgba(0,0,0,.03)',border:'1px solid rgba(0,0,0,.07)',marginBottom:10}}>
 
-      {/* KPI row */}
-      <div style={{display:'flex',borderBottom:'1px solid rgba(0,0,0,.06)',background:'rgba(255,255,255,.5)'}}>
-        {[
-          {label:'Cheapest State', val:`TX $${cheapest[1].avg.toFixed(2)}`, color:'#30d158'},
-          {label:'Most Expensive', val:`CA $${priciest[1].high.toFixed(2)}`, color:'#ff3b30'},
-          {label:'Natl Trend',     val:'Rising', color:'#ff453a'},
-        ].map((k,i)=>(
-          <div key={i} style={{flex:1,padding:'8px 10px',borderRight:i<2?'1px solid rgba(0,0,0,.06)':'none',textAlign:'center'}}>
-            <div style={{fontSize:7,fontWeight:700,letterSpacing:1,color:'rgba(26,26,46,.35)',textTransform:'uppercase',marginBottom:2}}>{k.label}</div>
-            <div style={{fontSize:12,fontWeight:800,color:k.color,letterSpacing:-.3}}>{i===2?'↑ ':''}{k.val}</div>
-          </div>
-        ))}
+      {/* App header */}
+      <div style={{background:'rgba(255,255,255,.9)',backdropFilter:'blur(20px)',borderBottom:'0.5px solid rgba(0,0,0,.06)',padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:24,height:24,borderRadius:7,background:'linear-gradient(135deg,#ff3b30,#ff6b35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>⛽</div>
+          <span style={{fontSize:12,fontWeight:700,color:'#1a1a2e',fontFamily:"'Sora',sans-serif"}}>Gas Intelligence</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:4,background:'rgba(48,209,88,.1)',border:'0.5px solid rgba(48,209,88,.3)',borderRadius:100,padding:'2px 8px'}}>
+          <div style={{width:4,height:4,borderRadius:'50%',background:'#30d158',animation:'lp 1.4s ease infinite'}}/>
+          <span style={{fontSize:9,fontWeight:700,color:'#1a7a35'}}>LIVE</span>
+        </div>
       </div>
 
-      {/* Map container */}
-      <div style={{position:'relative',height:180,overflow:'hidden',background:'#e8f2f8'}}>
-        <div ref={mapRef} style={{width:'100%',height:'100%'}}/>
+      {/* Route input */}
+      <div style={{padding:'12px 14px',background:'rgba(255,255,255,.7)',borderBottom:'0.5px solid rgba(0,0,0,.05)'}}>
+        <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:6}}>🛣️ Route Gas Finder</div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <div style={{flex:1,background:'rgba(255,59,48,.06)',border:'1px solid rgba(255,59,48,.2)',borderRadius:10,padding:'8px 12px',fontSize:12,color:'#1a1a2e',fontFamily:"'DM Sans',sans-serif",minHeight:34,display:'flex',alignItems:'center',gap:6}}>
+            <span style={{fontSize:10}}>📍</span>
+            <span style={{color:'rgba(26,26,46,.4)'}}>My Location</span>
+          </div>
+          <span style={{fontSize:12,color:'rgba(26,26,46,.3)'}}>→</span>
+          <div style={{flex:1,background:phase==='idle'?'rgba(0,0,0,.03)':'rgba(255,59,48,.06)',border:`1px solid ${phase==='idle'?'rgba(0,0,0,.08)':'rgba(255,59,48,.25)'}`,borderRadius:10,padding:'8px 12px',fontSize:12,color:'#1a1a2e',fontFamily:"'DM Sans',sans-serif",minHeight:34,display:'flex',alignItems:'center',gap:6,transition:'all .3s'}}>
+            <span style={{fontSize:10}}>🏁</span>
+            <span style={{color:typed?'#1a1a2e':'rgba(26,26,46,.3)'}}>{typed || 'Destination...'}{phase==='typing'?<span style={{animation:'blink 1s ease infinite',opacity:.6}}>|</span>:''}</span>
+          </div>
+        </div>
+      </div>
 
-        {/* Hover tooltip */}
-        {hoveredState && (
-          <div style={{
-            position:'absolute',
-            left: Math.min(hoveredState.x, 280),
-            top:  Math.max(hoveredState.y - 80, 4),
-            background:'rgba(26,26,46,.95)',
-            color:'#fff',
-            borderRadius:10,
-            padding:'8px 12px',
-            pointerEvents:'none',
-            zIndex:30,
-            whiteSpace:'nowrap',
-            boxShadow:'0 4px 16px rgba(0,0,0,.25)',
-          }}>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:'rgba(255,255,255,.5)',textTransform:'uppercase',marginBottom:3}}>
-              {hoveredState.name} · Highest Pump
+      {/* Map area */}
+      <div style={{position:'relative',height:160,background:'linear-gradient(135deg,#e8f2f8,#ddeef5)',overflow:'hidden'}}>
+        {/* Fake road */}
+        <svg style={{position:'absolute',inset:0,width:'100%',height:'100%'}} viewBox="0 0 400 160" preserveAspectRatio="none">
+          <path d="M 0 90 C 80 85, 150 100, 200 80 S 320 60, 400 70" stroke="#d0d8e0" strokeWidth="18" fill="none" strokeLinecap="round"/>
+          <path d="M 0 90 C 80 85, 150 100, 200 80 S 320 60, 400 70" stroke="#e8eef2" strokeWidth="14" fill="none" strokeLinecap="round"/>
+          <path d="M 0 90 C 80 85, 150 100, 200 80 S 320 60, 400 70" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeDasharray="12 8"/>
+          {/* Route highlight */}
+          {phase === 'route' || phase === 'done' ? (
+            <path d="M 0 90 C 80 85, 150 100, 200 80 S 320 60, 400 70"
+              stroke="#ff3b30" strokeWidth="3" fill="none" strokeLinecap="round"
+              strokeDasharray="400" strokeDashoffset={400 - routeProgress * 4}
+              style={{transition:'stroke-dashoffset .1s linear'}}/>
+          ) : null}
+        </svg>
+
+        {/* User dot */}
+        <div style={{position:'absolute',left:20,top:82,width:14,height:14,borderRadius:'50%',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',border:'2px solid white',boxShadow:'0 0 0 4px rgba(255,59,48,.2)',zIndex:10}}/>
+
+        {/* Station pins */}
+        {stations.slice(0, stationsVisible).map((s, i) => {
+          const positions = [{left:80,top:68},{left:130,top:74},{left:185,top:60},{left:240,top:62}]
+          const pos = positions[i]
+          const isSelected = selectedStation === i
+          return (
+            <div key={i} onClick={() => setSelectedStation(i)} style={{position:'absolute',left:pos.left,top:pos.top - (isSelected?8:0),zIndex:isSelected?20:10,cursor:'pointer',animation:'pinDrop .3s cubic-bezier(.34,1.56,.64,1)',transition:'top .2s cubic-bezier(.34,1.56,.64,1)'}}>
+              <div style={{background:isSelected?s.color:'rgba(255,255,255,.95)',border:`1.5px solid ${s.color}`,borderRadius:8,padding:'3px 7px',fontSize:10,fontWeight:800,color:isSelected?'white':'#1a1a2e',boxShadow:isSelected?`0 4px 12px ${s.color}60`:'0 2px 6px rgba(0,0,0,.15)',whiteSpace:'nowrap',fontFamily:"'Sora',sans-serif"}}>
+                {i===0?'★ ':''}{s.price}
+              </div>
+              <div style={{width:6,height:6,borderRadius:'50%',background:s.color,margin:'2px auto 0'}}/>
             </div>
-            <div style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:'#ff3b30',lineHeight:1,marginBottom:4}}>
-              ${hoveredState.data.high.toFixed(2)}
-            </div>
-            <div style={{display:'flex',gap:10}}>
-              <span style={{fontSize:10,color:'#30d158',fontWeight:700}}>Low ${hoveredState.data.low.toFixed(2)}</span>
-              <span style={{fontSize:10,color:'rgba(255,255,255,.35)'}}>·</span>
-              <span style={{fontSize:10,color:'rgba(255,255,255,.6)',fontWeight:600}}>Avg ${hoveredState.data.avg.toFixed(2)}</span>
-            </div>
+          )
+        })}
+
+        {/* Destination pin */}
+        {(phase === 'route' || phase === 'done') && (
+          <div style={{position:'absolute',right:20,top:52,zIndex:10,animation:'pinDrop .4s cubic-bezier(.34,1.56,.64,1)'}}>
+            <div style={{background:'#1a1a2e',borderRadius:8,padding:'3px 8px',fontSize:10,fontWeight:700,color:'white',whiteSpace:'nowrap'}}>🏁 Atlanta</div>
           </div>
         )}
 
-        {/* Legend */}
-        <div style={{position:'absolute',bottom:6,left:8,display:'flex',flexDirection:'column',gap:2}}>
-          {[
-            {color:'#30d158',label:'Under $3.50'},
-            {color:'#ff9f0a',label:'$4.00–$4.50'},
-            {color:'#ff3b30',label:'Over $5.00'},
-          ].map((l,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:4}}>
-              <div style={{width:7,height:7,borderRadius:'50%',background:l.color,border:'1px solid rgba(255,255,255,.7)',flexShrink:0}}/>
-              <span style={{fontSize:8,fontWeight:600,color:'rgba(26,26,46,.7)',background:'rgba(255,255,255,.7)',padding:'1px 5px',borderRadius:3}}>{l.label}</span>
-            </div>
-          ))}
+        {/* Searching overlay */}
+        {phase === 'searching' && (
+          <div style={{position:'absolute',inset:0,background:'rgba(255,255,255,.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            <div style={{width:16,height:16,border:'2.5px solid rgba(255,59,48,.2)',borderTopColor:'#ff3b30',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>
+            <span style={{fontSize:12,fontWeight:600,color:'#ff3b30',fontFamily:"'DM Sans',sans-serif"}}>Finding cheapest stops...</span>
+          </div>
+        )}
+      </div>
+
+      {/* Results */}
+      {(phase === 'results' || phase === 'route' || phase === 'done') && (
+        <div style={{padding:'10px 14px',background:'rgba(255,255,255,.85)'}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:8}}>Stations along your route</div>
+          <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:4}}>
+            {stations.slice(0, stationsVisible).map((s, i) => (
+              <div key={i} onClick={() => setSelectedStation(i)}
+                style={{flexShrink:0,background:selectedStation===i?`${s.color}12`:'rgba(0,0,0,.03)',border:`1px solid ${selectedStation===i?s.color:'rgba(0,0,0,.08)'}`,borderRadius:12,padding:'8px 12px',cursor:'pointer',transition:'all .2s',animation:'fadeUp .3s ease both',animationDelay:`${i*.05}s`}}>
+                <div style={{fontSize:9,fontWeight:700,color:'rgba(26,26,46,.4)',marginBottom:3}}>{s.dist}</div>
+                <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:900,color:s.color,lineHeight:1}}>{s.price}</div>
+                <div style={{fontSize:9,color:'rgba(26,26,46,.5)',marginTop:2}}>{s.name}</div>
+                {s.savings && <div style={{fontSize:8,fontWeight:700,color:s.color,background:`${s.color}15`,borderRadius:100,padding:'1px 5px',marginTop:3,display:'inline-block'}}>{s.savings}</div>}
+              </div>
+            ))}
+          </div>
         </div>
+      )}
 
+      {/* Savings banner */}
+      {phase === 'done' && (
+        <div style={{padding:'10px 14px',background:'linear-gradient(135deg,rgba(48,209,88,.12),rgba(48,209,88,.06))',borderTop:'0.5px solid rgba(48,209,88,.2)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'#1a7a35'}}>✓ Route optimized · You save {saving}/gal</div>
+            <div style={{fontSize:9,color:'rgba(26,26,46,.45)',marginTop:2}}>vs most expensive station on route</div>
+          </div>
+          <button onClick={onStart} style={{padding:'7px 14px',background:'linear-gradient(135deg,#ff3b30,#ff6b35)',color:'#fff',border:'none',borderRadius:100,fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",whiteSpace:'nowrap',boxShadow:'0 3px 10px rgba(255,59,48,.35)'}}>
+            Try it free →
+          </button>
+        </div>
+      )}
 
-      </div>
+      {/* Replay button */}
+      {phase === 'done' && (
+        <button onClick={reset} style={{position:'absolute',top:52,right:10,background:'rgba(255,255,255,.8)',border:'0.5px solid rgba(0,0,0,.1)',borderRadius:100,padding:'3px 8px',fontSize:9,fontWeight:600,cursor:'pointer',color:'rgba(26,26,46,.5)',fontFamily:"'DM Sans',sans-serif"}}>
+          ↺ Replay
+        </button>
+      )}
 
-      {/* Live bar */}
-      <div style={{padding:'6px 12px',display:'flex',alignItems:'center',gap:6,background:'rgba(255,59,48,.04)'}}>
-        <div style={{width:5,height:5,borderRadius:'50%',background:'#ff3b30',animation:'lp 1.4s ease-in-out infinite'}}/>
-        <span style={{fontSize:9,color:'rgba(26,26,46,.4)',fontWeight:600,letterSpacing:.5}}>EIA.GOV · WEEKLY AVERAGES · HOVER STATE FOR HIGHEST PRICE</span>
-      </div>
+      <style>{`
+        @keyframes pinDrop{from{opacity:0;transform:translateY(-12px) scale(.7)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes lp{0%,100%{opacity:1}50%{opacity:.25}}
+      `}</style>
     </div>
   )
 }
-
 
 function FoundingPopup({ onClose }: { onClose: () => void }) {
   const [copied, setCopied] = useState(false)
@@ -1006,7 +972,7 @@ function LandingPage() {
               <div className="card-desc" style={{marginBottom:16}}>Real-time gas prices at stations near you. Compare grades, track trends, and calculate your IRS mileage deduction.</div>
 
               {/* ── Live Preview ── */}
-              <GasTrackerPreview/>
+              <GasTrackerDemo onStart={()=>setShowModal(true)}/>
 
               <br/>
               <span className="card-cta" onClick={() => setShowModal(true)} style={{cursor:'pointer'}}>Start Free Trial →</span>
