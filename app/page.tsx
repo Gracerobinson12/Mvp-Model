@@ -181,7 +181,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       id:'basic',
       icon:'⛽',
       label:'Basic',
-      sub:'Gas prices only · 2 mile radius · Most affordable',
+      sub:'Gas prices & EV Intelligence · 2 mile radius · Most affordable',
       color:'#ff9f0a',
       plans:'Basic · $2.99/mo',
     },
@@ -189,7 +189,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       id:'driver',
       icon:'🔥',
       label:'Core',
-      sub:'Full gas intelligence + route finder + Ideas Vault',
+      sub:'Full gas intelligence + route finder +  EV Intelligence',
       color:'#ff3b30',
       plans:'Core Pass · $9.99/mo',
     },
@@ -197,9 +197,9 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       id:'freelancer',
       icon:'💼',
       label:'Self-Employed',
-      sub:'Gig drivers, freelancers, contractors — gas + mileage + deductions',
+      sub:'Gig drivers, freelancers, contractors — gas + mileage',
       color:'#0a84ff',
-      plans:'Pro Pass · Coming Soon',
+      plans:'Pro Pass · $19.99/mo',
     },
     {
       id:'business',
@@ -207,7 +207,7 @@ function QuickSignupModal({ onClose }: { onClose: () => void }) {
       label:'Business',
       sub:'Owners and operators who need compliance, tariffs, and team tools',
       color:'#30d158',
-      plans:'Business Pass · Coming Soon',
+      plans:'Enterprise Pass · $79.99/mo ',
     },
   ]
   const selectedType = USER_TYPES.find(t => t.id === userCat) || USER_TYPES[0]
@@ -998,7 +998,7 @@ function LandingPage() {
             Now in Early Access · First 20 members get 20 days free
           </div>
           <h1>Business<br/><span className="accent">intelligence</span><br/><span className="light-word">at your fingertips</span></h1>
-          <p className="hero-sub">Real-time gas prices from $2.99/mo. Route finder, Ideas Vault, regulatory updates, and tax deductions — built for drivers, freelancers, and growing businesses.</p>
+          <p className="hero-sub">Real-time gas prices from $2.99/mo. Route finder, Ideas Vault, and regulatory updates — built for drivers, freelancers, and growing businesses.</p>
           <div className="hero-actions">
             <button onClick={() => setShowModal(true)} className="btn-primary">Start 7-Day Free Trial →</button>
             <Link href="/pricing" className="btn-secondary">View Plans</Link>
