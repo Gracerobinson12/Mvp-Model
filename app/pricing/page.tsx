@@ -46,9 +46,9 @@ const PLANS = [
     priceId: '',
     color: '#0a84ff',
     gradient: 'linear-gradient(135deg,#0a84ff,#30a0ff)',
-    live: false,
-    badge: 'Coming Soon',
-    badgeLive: false,
+    live: true,
+    badge: 'Live Now',
+    badgeLive: true,
     desc: 'For freelancers and self-employed',
     tag: '',
     features: [

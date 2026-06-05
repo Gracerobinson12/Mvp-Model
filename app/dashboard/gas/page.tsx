@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { supabase } from '@/lib/supabase'
-import { usePaywall, TrialBanner, TasteTimer } from '@/components/PaywallGate'
+import { usePaywall, TrialBanner, TasteTimer, PaywallScreen } from '@/components/PaywallGate'
 import dynamic from 'next/dynamic'
 
 const RouteGasFinder = dynamic(() => import('@/components/gas/RouteGasFinder'), { ssr: false })
@@ -865,9 +865,10 @@ function GasPageContent({daysLeft}:{daysLeft:number|null}){
 }
 
 export default function GasPage(){
-  const{allowed,checking,daysLeft}=usePaywall('driver')
+  const{allowed,checking,daysLeft,profile}=usePaywall('driver')
   const[phase,setPhase]=React.useState<'loading'|'taste'|'paywall'|'access'>('loading')
-  React.useEffect(()=>{
+const userPlan = 'driver'  
+React.useEffect(()=>{
     if(checking) return
     if(allowed){setPhase('access');return}
     const raw=localStorage.getItem('gratia_signup_time')
@@ -876,7 +877,7 @@ export default function GasPage(){
     setPhase('paywall')
   },[checking,allowed])
   if(phase==='loading'||checking) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f0eff4',fontFamily:'system-ui',color:'rgba(0,0,0,.4)',fontSize:14}}>Loading...</div>
-  if(phase==='paywall') return <SubscribeScreen/>
+  if(phase==='paywall') return <PaywallScreen planRequired={userPlan}/>
   if(phase==='access') return <GasPageContent daysLeft={daysLeft}/>
   return <><GasPageContent daysLeft={null}/><TasteTimer onExpire={()=>{localStorage.removeItem('gratia_signup_time');setPhase('paywall')}}/></>
 }
