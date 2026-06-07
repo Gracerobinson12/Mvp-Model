@@ -189,12 +189,10 @@ export default function BillingPage() {
         {/* Current plan status */}
         <div className="gc-card" style={{padding:'20px 24px',marginBottom:20,animation:'fadeUp .5s ease .05s both',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
           <div style={{display:'flex',alignItems:'center',gap:14}}>
-            <div style={{width:44,height:44,borderRadius:13,background:'rgba(255,59,48,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>⛽</div>
-            <div>
+            <div style={{width:44,height:44,borderRadius:13,background:currentPlan==='business'?'rgba(48,209,88,.1)':currentPlan==='freelancer'?'rgba(10,132,255,.1)':'rgba(255,59,48,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{currentPlan==='business'?'🏢':currentPlan==='freelancer'?'💼':'⛽'}</div>            <div>
               <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:'rgba(26,26,46,.4)',textTransform:'uppercase',marginBottom:3}}>Current plan</div>
               <div style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e',textTransform:'capitalize'}}>
-                {currentPlan === 'driver' ? 'Basic' : currentPlan === 'free' ? 'No plan' : currentPlan}
-              </div>
+              {currentPlan === 'driver' ? 'Core' : currentPlan === 'freelancer' ? 'Pro' : currentPlan === 'business' ? 'Enterprise' : currentPlan === 'free' ? 'No plan' : currentPlan}               </div>
             </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
