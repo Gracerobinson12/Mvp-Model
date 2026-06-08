@@ -31,9 +31,8 @@ const PLANS = [
       'Gas and EV Intelligence Finder',
       '🗺️ Full radius — 5 / 10 / 15 / 30 miles',
       '🛣️ Route finder — cheapest on any trip',
-      '💡 Ideas Vault — live now',
-      '🔒 SHA-256 + RFC 3161 + Bitcoin proof',
-      '📄 Downloadable prior art certificate',
+      '✓🔔 Gas price drop alerts',
+      '✓📊 Price trend tracking — 30 days',
     ],
     locked: [],
     cta: 'Start 7-Day Free Trial →',
@@ -58,7 +57,7 @@ const PLANS = [
       '🔔 Gas price drop email alerts',
       '📅 Tax deadline reminders',
     ],
-    cta: 'Notify me when live',
+    cta: 'Start 7-Day Free Trial →',
   },
   {
     id: 'enterprise',
@@ -67,7 +66,7 @@ const PLANS = [
     priceId: '',
     color: '#bf5af2',
     gradient: 'linear-gradient(135deg,#bf5af2,#da8fff)',
-    live: false,
+    live: true,
     badge: 'Coming Soon',
     badgeLive: false,
     desc: 'Business intelligence for operators',
@@ -80,7 +79,7 @@ const PLANS = [
       '📊 Assets & Liabilities tracker',
       '👥 3 team seats',
     ],
-    cta: 'Notify me when live',
+    cta: 'Start 7-Day Free Trial →',
   },
 ]
 
