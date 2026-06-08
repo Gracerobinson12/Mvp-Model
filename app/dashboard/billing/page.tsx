@@ -38,7 +38,7 @@ const PLANS = [
     price: 19.99,
     color: '#30d158',
     gradient: 'linear-gradient(135deg,#30d158,#34c759)',
-    live: false,
+    live: true,
     desc: 'Full suite for freelancers and gig workers',
     features: [
       'Everything in Core',

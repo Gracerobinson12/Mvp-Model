@@ -63,7 +63,8 @@ function getNavItems(plan) {
     { icon:'📋', label:'Regulations',      sub:'Stay ahead of rules',   href:'/dashboard/regulations/setup', section:'main'    },
   ]
   const account = [
-    { icon:'💳', label:'My plan',          sub:'Billing & upgrades',    href:'/dashboard/billing',           section:'account' },
+    { icon:'⚙️', label:'Settings', sub:'Profile & preferences', href:'/dashboard/settings', section:'account' },
+    { icon:'💳', label:'My plan', sub:'Billing & upgrades', href:'/dashboard/billing', section:'account' },
     { icon:'🚪', label:'Sign out',         sub:null,                    href:'signout',                      section:'account' },
   ]
 
@@ -243,9 +244,7 @@ export default function DashboardPage() {
                 <div style={{width:5,height:5,borderRadius:'50%',background:isActive?'#30d158':'#ff3b30',animation:'lp 1.4s ease infinite'}}/>
                 {onTrial ? `${daysLeft}d trial` : isActive ? planInfo.label : 'Subscribe'}
               </div>
-              <div style={{width:34,height:34,borderRadius:'50%',background:`linear-gradient(135deg,${planInfo.color},${planInfo.color}99)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',flexShrink:0,boxShadow:`0 2px 10px ${planInfo.color}55`}}>
-                {initial}
-              </div>
+              
             </div>
           </div>
 
