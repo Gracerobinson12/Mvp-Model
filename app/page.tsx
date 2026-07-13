@@ -626,24 +626,37 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
   };
 
   const handleCode = async () => {
-    if (!code.trim()) { setError('Enter your access code.'); return; }
-    setLoading(true); setError('');
-    const trimmed = code.trim().toUpperCase();
-    const master  = process.env.NEXT_PUBLIC_LAUNCH_CODE;
-    if (master && trimmed === master.toUpperCase()) {
-      setCookie('granted'); onUnlock(); return;
-    }
+  if (!code.trim()) { setError('Enter your access code.'); return; }
+  setLoading(true); setError('');
+  const trimmed = code.trim().toUpperCase();
+
+  // ── Valid codes — add yours here ──
+  const VALID_CODES = ['GRATIA2026', 'FOUNDING', 'EARLYBIRD'];
+
+  if (VALID_CODES.includes(trimmed)) {
+    setCookie('granted'); onUnlock(); return;
+  }
+
+  // ── Supabase fallback ──
+  try {
     const { data } = await supabase
       .from('access_codes')
       .select('*')
       .eq('code', trimmed)
       .eq('active', true)
       .single();
-    if (!data) { setError('Invalid code. Try again or join the waitlist.'); setLoading(false); return; }
-    if (data.max_uses && data.uses_count >= data.max_uses) { setError('This code has reached its limit.'); setLoading(false); return; }
-    await supabase.from('access_codes').update({ uses_count: (data.uses_count ?? 0) + 1 }).eq('code', trimmed);
+
+    if (!data) {
+      setError('Invalid code. Try again or join the waitlist.');
+      setLoading(false); return;
+    }
+
     setCookie('granted'); setLoading(false); onUnlock();
-  };
+  } catch {
+    setError('Invalid code. Try again or join the waitlist.');
+    setLoading(false);
+  }
+};
 
   const inp: React.CSSProperties = {
     width: '100%', padding: '13px 16px', borderRadius: 12,
