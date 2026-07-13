@@ -231,7 +231,7 @@ function ModuleToggleCarousel() {
 }
 
 // ── Landing Page ──────────────────────────────────────────────
-export default function LandingPage() {
+function LandingPage() {
   const [checked, setChecked] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -586,4 +586,198 @@ export default function LandingPage() {
       </AnimatePresence>
     </>
   );
+}
+
+// ── Cookie helpers ────────────────────────────────────────────
+const COOKIE_KEY  = 'gc_access';
+const COOKIE_DAYS = 30;
+function setCookie(val: string) {
+  const exp = new Date(Date.now() + COOKIE_DAYS * 864e5).toUTCString();
+  document.cookie = `${COOKIE_KEY}=${val};expires=${exp};path=/;SameSite=Lax`;
+}
+function getCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match(new RegExp(`(?:^|;\\s*)${COOKIE_KEY}=([^;]*)`));
+  return m ? m[1] : null;
+}
+
+// ── Gate page ─────────────────────────────────────────────────
+import { supabase } from '@/lib/supabase';
+
+function GatePage({ onUnlock }: { onUnlock: () => void }) {
+  const [view,      setView]      = React.useState<'main'|'code'>('main');
+  const [email,     setEmail]     = React.useState('');
+  const [code,      setCode]      = React.useState('');
+  const [submitted, setSubmitted] = React.useState(false);
+  const [loading,   setLoading]   = React.useState(false);
+  const [error,     setError]     = React.useState('');
+
+  const handleWaitlist = async () => {
+    if (!email.trim() || !email.includes('@')) { setError('Enter a valid email address.'); return; }
+    setLoading(true); setError('');
+    try {
+      const { error: dbErr } = await supabase
+        .from('waitlist')
+        .insert({ email: email.trim().toLowerCase(), source: 'launch_gate' });
+      if (dbErr && !dbErr.message.includes('duplicate')) throw dbErr;
+      setSubmitted(true);
+    } catch { setError('Something went wrong. Try again.'); }
+    finally { setLoading(false); }
+  };
+
+  const handleCode = async () => {
+    if (!code.trim()) { setError('Enter your access code.'); return; }
+    setLoading(true); setError('');
+    const trimmed = code.trim().toUpperCase();
+    const master  = process.env.NEXT_PUBLIC_LAUNCH_CODE;
+    if (master && trimmed === master.toUpperCase()) {
+      setCookie('granted'); onUnlock(); return;
+    }
+    const { data } = await supabase
+      .from('access_codes')
+      .select('*')
+      .eq('code', trimmed)
+      .eq('active', true)
+      .single();
+    if (!data) { setError('Invalid code. Try again or join the waitlist.'); setLoading(false); return; }
+    if (data.max_uses && data.uses_count >= data.max_uses) { setError('This code has reached its limit.'); setLoading(false); return; }
+    await supabase.from('access_codes').update({ uses_count: (data.uses_count ?? 0) + 1 }).eq('code', trimmed);
+    setCookie('granted'); setLoading(false); onUnlock();
+  };
+
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '13px 16px', borderRadius: 12,
+    fontSize: 15, fontFamily: 'inherit', outline: 'none',
+    background: 'rgba(120,120,128,0.08)',
+    border: `1px solid ${error ? '#ff3b30' : 'rgba(0,0,0,0.1)'}`,
+    color: '#1c1c1e', boxSizing: 'border-box', transition: 'border-color 0.2s',
+  };
+
+  const scatteredBadges = [
+    { text: 'Tariff Intelligence', color: '#ff3b30', rotate: -6 },
+    { text: 'Ideas Vault',         color: '#af52de', rotate: 8  },
+    { text: 'Market Intelligence', color: '#ff9500', rotate: -4 },
+    { text: 'Regulatory Updates',  color: '#7c3aed', rotate: 12 },
+    { text: 'Shield',              color: '#0a84ff', rotate: -9 },
+  ];
+  const driftPaths = [
+    { x:['-25vw','30vw','-10vw','25vw','-25vw'], y:['-20vh','20vh','-10vh','30vh','-20vh'] },
+    { x:['25vw','-30vw','15vw','-20vw','25vw'],  y:['25vh','-15vh','10vh','-25vh','25vh']  },
+    { x:['-10vw','20vw','-35vw','5vw','-10vw'],  y:['30vh','-25vh','20vh','-15vh','30vh']  },
+    { x:['35vw','-20vw','-5vw','15vw','35vw'],   y:['-15vh','30vh','-25vh','10vh','-15vh'] },
+    { x:['-20vw','15vw','30vw','-30vw','-20vw'], y:['10vh','-20vh','25vh','-15vh','10vh']  },
+  ];
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:9990, background:'#f2f2f7', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden', fontFamily:"'DM Sans',system-ui,sans-serif" }}>
+      <style>{`@keyframes rainbowShift{to{background-position:200% center;}}`}</style>
+
+      {/* Background mesh */}
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
+        <div style={{ position:'absolute', top:'-12%', left:'-5%', width:'55vw', height:'55vw', borderRadius:'50%', background:'radial-gradient(circle,rgba(255,59,48,0.09) 0%,transparent 70%)', filter:'blur(40px)', animation:'meshFloat1 18s ease-in-out infinite' }} />
+        <div style={{ position:'absolute', top:'25%', right:'-8%', width:'60vw', height:'60vw', borderRadius:'50%', background:'radial-gradient(circle,rgba(191,90,242,0.07) 0%,transparent 70%)', filter:'blur(50px)', animation:'meshFloat2 22s ease-in-out infinite' }} />
+      </div>
+
+      {/* Drifting badges */}
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
+        {scatteredBadges.map((badge, idx) => (
+          <motion.div key={idx}
+            animate={{ x: driftPaths[idx].x, y: driftPaths[idx].y, rotate:[badge.rotate, badge.rotate+10, badge.rotate-10, badge.rotate] }}
+            transition={{ duration: 24+idx*5, repeat:Infinity, ease:'easeInOut' }}
+            style={{ position:'absolute', top:'45%', left:'42%', padding:'8px 18px', borderRadius:100, fontSize:13.5, fontWeight:700, color:'#fff', background:badge.color, whiteSpace:'nowrap' }}
+          >{badge.text}</motion.div>
+        ))}
+      </div>
+
+      {/* Glass card */}
+      <motion.div
+        initial={{ opacity:0, scale:0.96, y:20 }}
+        animate={{ opacity:1, scale:1, y:0 }}
+        transition={{ type:'spring', stiffness:200, damping:24 }}
+        style={{ position:'relative', zIndex:10, width:'min(420px, calc(100vw - 32px))', background:'rgba(255,255,255,0.88)', backdropFilter:'blur(60px) saturate(180%)', WebkitBackdropFilter:'blur(60px) saturate(180%)', border:'1px solid rgba(255,255,255,0.95)', borderRadius:28, overflow:'hidden', boxShadow:'0 40px 100px rgba(0,0,0,0.16), 0 0 0 0.5px rgba(0,0,0,0.05)' }}
+      >
+        {/* Rainbow trim */}
+        <div style={{ height:3, background:'linear-gradient(90deg,#ff3b30,#ff9f0a,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff3b30)', backgroundSize:'200% auto', animation:'rainbowShift 3s linear infinite' }} />
+
+        <div style={{ padding:'32px 32px 28px' }}>
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
+            <GCIcon size={52} />
+          </div>
+
+          <AnimatePresence mode="wait">
+            {/* Main — waitlist */}
+            {view === 'main' && !submitted && (
+              <motion.div key="main" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} transition={{ duration:0.2 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, background:'rgba(255,59,48,0.08)', border:'0.5px solid rgba(255,59,48,0.2)', borderRadius:100, padding:'4px 12px', fontSize:11, fontWeight:700, color:'#ff3b30', letterSpacing:'0.08em', textTransform:'uppercase' as const, marginBottom:16, width:'fit-content', margin:'0 auto 16px' }}>
+                  <div style={{ width:5, height:5, borderRadius:'50%', background:'#ff3b30' }} /> Coming soon
+                </div>
+                <h1 style={{ fontFamily:"'Sora',sans-serif", fontSize:24, fontWeight:900, letterSpacing:'-1px', lineHeight:1.15, color:'#1c1c1e', textAlign:'center', marginBottom:10 }}>Business intelligence<br />for everyone.</h1>
+                <p style={{ fontSize:14, color:'rgba(28,28,30,0.52)', lineHeight:1.65, textAlign:'center', marginBottom:22 }}>Gratia Core is launching soon. Join the waitlist and we'll email you the moment doors open.</p>
+                <input type="email" placeholder="your@email.com" value={email} autoFocus onChange={e => { setEmail(e.target.value); setError(''); }} onKeyDown={e => e.key==='Enter' && handleWaitlist()} style={{ ...inp, marginBottom: error?6:12 }} />
+                {error && <p style={{ fontSize:12, color:'#ff3b30', marginBottom:10 }}>{error}</p>}
+                <button onClick={handleWaitlist} disabled={loading} style={{ width:'100%', padding:14, borderRadius:100, fontSize:15, fontWeight:700, border:'none', cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', background:email.trim()?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(0,0,0,0.07)', color:email.trim()?'#fff':'rgba(28,28,30,0.28)', boxShadow:email.trim()?'0 4px 16px rgba(255,59,48,0.35)':'none', marginBottom:16 }}>
+                  {loading ? 'Joining…' : 'Join the waitlist →'}
+                </button>
+                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
+                  <div style={{ flex:1, height:'0.5px', background:'rgba(0,0,0,0.08)' }} />
+                  <span style={{ fontSize:12, color:'rgba(28,28,30,0.38)' }}>or</span>
+                  <div style={{ flex:1, height:'0.5px', background:'rgba(0,0,0,0.08)' }} />
+                </div>
+                <button onClick={() => { setView('code'); setError(''); }} style={{ width:'100%', padding:11, borderRadius:100, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', background:'rgba(120,120,128,0.08)', border:'1px solid rgba(0,0,0,0.08)', color:'rgba(28,28,30,0.6)', transition:'all 0.2s' }}>
+                  I have an access code
+                </button>
+              </motion.div>
+            )}
+
+            {/* Submitted */}
+            {view === 'main' && submitted && (
+              <motion.div key="done" initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} style={{ textAlign:'center', padding:'8px 0 12px' }}>
+                <div style={{ fontSize:40, marginBottom:14 }}>🎉</div>
+                <h2 style={{ fontFamily:"'Sora',sans-serif", fontSize:20, fontWeight:900, color:'#1c1c1e', marginBottom:8 }}>You're on the list.</h2>
+                <p style={{ fontSize:14, color:'rgba(28,28,30,0.52)', lineHeight:1.65, marginBottom:20 }}>We'll email <strong style={{ color:'#1c1c1e' }}>{email}</strong> the moment Gratia Core opens.</p>
+                <button onClick={() => { setView('code'); setError(''); }} style={{ padding:'10px 22px', borderRadius:100, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', background:'rgba(120,120,128,0.08)', border:'1px solid rgba(0,0,0,0.08)', color:'rgba(28,28,30,0.6)' }}>
+                  I have an access code →
+                </button>
+              </motion.div>
+            )}
+
+            {/* Code entry */}
+            {view === 'code' && (
+              <motion.div key="code" initial={{ opacity:0, x:10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }} transition={{ duration:0.2 }}>
+                <h2 style={{ fontFamily:"'Sora',sans-serif", fontSize:20, fontWeight:900, color:'#1c1c1e', marginBottom:6, textAlign:'center' }}>Enter your code</h2>
+                <p style={{ fontSize:13, color:'rgba(28,28,30,0.48)', textAlign:'center', marginBottom:22, lineHeight:1.55 }}>Got an early access code? Enter it below to unlock Gratia Core.</p>
+                <input type="text" placeholder="XXXXXXXX" value={code} autoFocus onChange={e => { setCode(e.target.value.toUpperCase()); setError(''); }} onKeyDown={e => e.key==='Enter' && handleCode()} style={{ ...inp, fontSize:18, fontWeight:700, letterSpacing:'0.12em', textAlign:'center' as const, marginBottom:error?6:14 }} />
+                {error && <p style={{ fontSize:12, color:'#ff3b30', marginBottom:10 }}>{error}</p>}
+                <button onClick={handleCode} disabled={loading || !code.trim()} style={{ width:'100%', padding:14, borderRadius:100, fontSize:15, fontWeight:700, border:'none', cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', background:code.trim()?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(0,0,0,0.07)', color:code.trim()?'#fff':'rgba(28,28,30,0.28)', boxShadow:code.trim()?'0 4px 16px rgba(255,59,48,0.35)':'none', marginBottom:14 }}>
+                  {loading ? 'Checking…' : 'Unlock access →'}
+                </button>
+                <button onClick={() => { setView('main'); setError(''); setCode(''); }} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'rgba(28,28,30,0.42)', fontFamily:'inherit', width:'100%', textAlign:'center' as const }}>
+                  ← Back
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+
+      <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.8 }} style={{ position:'relative', zIndex:10, fontSize:11, color:'rgba(28,28,30,0.3)', marginTop:20, textAlign:'center' }}>
+        Gratia Core · Business Intelligence · © {new Date().getFullYear()}
+      </motion.p>
+    </div>
+  );
+}
+
+// ── Root — checks cookie, shows gate or landing ───────────────
+export default function RootPage() {
+  const [status, setStatus] = React.useState<'checking'|'locked'|'unlocked'>('checking');
+
+  useEffect(() => {
+    setStatus(getCookie() === 'granted' ? 'unlocked' : 'locked');
+  }, []);
+
+  const handleUnlock = useCallback(() => setStatus('unlocked'), []);
+
+  if (status === 'checking') return <div style={{ position:'fixed', inset:0, background:'#f2f2f7' }} />;
+  if (status === 'unlocked') return <LandingPage />;
+  return <GatePage onUnlock={handleUnlock} />;
 }
