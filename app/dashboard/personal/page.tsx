@@ -288,13 +288,13 @@ export default function PersonalDashboard() {
   const itemBg   = D ? 'rgba(255,255,255,0.05)' : 'rgba(28,28,46,0.03)';
   const itemBdr  = D ? 'rgba(255,255,255,0.08)' : 'rgba(28,28,46,0.07)';
 
-  // ── Node config ───────────────────────────────────────────
+  // ── Node config — Option E: 3D floating badge ────────────────
   const NODES = {
-    vault:    { emoji: '💡', label: 'Ideas vault',  color: '#0a84ff', beamGrad: ['rgba(10,132,255,0)', 'rgba(10,132,255,0.65)', 'rgba(10,132,255,0)'],  nodeBg: D ? 'rgba(10,132,255,0.18)' : 'rgba(10,132,255,0.12)', style: { top: '12%', left: '12%'  } },
-    barter:   { emoji: '🤝', label: 'Barter',       color: '#30d158', beamGrad: ['rgba(48,209,88,0)', 'rgba(48,209,88,0.55)', 'rgba(48,209,88,0)'],     nodeBg: D ? 'rgba(48,209,88,0.15)'  : 'rgba(48,209,88,0.1)',  style: { top: '12%', right: '15%' } },
-    duty:     { emoji: '⚓', label: 'Sample duty',  color: '#ff9500', beamGrad: ['rgba(255,149,0,0)', 'rgba(255,149,0,0.55)', 'rgba(255,149,0,0)'],     nodeBg: D ? 'rgba(255,149,0,0.15)'  : 'rgba(255,149,0,0.1)',  style: { bottom: '22%', left: '9%' } },
-    settings: { emoji: '⚙️', label: 'Settings',     color: '#ff3b30', beamGrad: ['rgba(255,59,48,0)', 'rgba(255,59,48,0.45)', 'rgba(255,59,48,0)'],      nodeBg: D ? 'rgba(255,59,48,0.12)'  : 'rgba(255,59,48,0.08)', style: { bottom: '22%', right: '12%'} },
-    billing:  { emoji: '💳', label: 'Billing',      color: D ? 'rgba(255,255,255,0.4)' : 'rgba(28,28,46,0.35)', beamGrad: D ? ['rgba(255,255,255,0)','rgba(255,255,255,0.25)','rgba(255,255,255,0)'] : ['rgba(52,170,220,0)','rgba(52,170,220,0.3)','rgba(52,170,220,0)'], nodeBg: D ? 'rgba(255,255,255,0.07)' : 'rgba(28,28,46,0.05)', style: { top: '47%', left: '5%'   } },
+    vault:    { emoji: '💡', label: 'Ideas vault',  color: '#0a84ff', shadow: '#0056b3', grad: 'linear-gradient(135deg,#0a84ff,#34aadc)', glow: 'rgba(10,132,255,0.4)',  beamGrad: ['rgba(10,132,255,0)', 'rgba(10,132,255,0.65)', 'rgba(10,132,255,0)'],  nodeBg: D ? 'rgba(10,132,255,0.18)' : 'rgba(10,132,255,0.12)', style: { top: '12%', left: '12%'  } },
+    barter:   { emoji: '🤝', label: 'Barter',       color: '#30d158', shadow: '#0d5c28', grad: 'linear-gradient(135deg,#30d158,#1a7a35)', glow: 'rgba(48,209,88,0.4)',   beamGrad: ['rgba(48,209,88,0)', 'rgba(48,209,88,0.55)', 'rgba(48,209,88,0)'],     nodeBg: D ? 'rgba(48,209,88,0.15)'  : 'rgba(48,209,88,0.1)',  style: { top: '12%', right: '15%' } },
+    duty:     { emoji: '⚓', label: 'Sample duty',  color: '#ff9500', shadow: '#7a4200', grad: 'linear-gradient(135deg,#ff9500,#ff6b00)', glow: 'rgba(255,149,0,0.4)',   beamGrad: ['rgba(255,149,0,0)', 'rgba(255,149,0,0.55)', 'rgba(255,149,0,0)'],     nodeBg: D ? 'rgba(255,149,0,0.15)'  : 'rgba(255,149,0,0.1)',  style: { bottom: '22%', left: '9%' } },
+    settings: { emoji: '⚙️', label: 'Settings',     color: '#ff3b30', shadow: '#8b1a14', grad: 'linear-gradient(135deg,#ff3b30,#ff6b35)', glow: 'rgba(255,59,48,0.4)',   beamGrad: ['rgba(255,59,48,0)', 'rgba(255,59,48,0.45)', 'rgba(255,59,48,0)'],      nodeBg: D ? 'rgba(255,59,48,0.12)'  : 'rgba(255,59,48,0.08)', style: { bottom: '22%', right: '12%'} },
+    billing:  { emoji: '💳', label: 'Billing',      color: '#636366', shadow: '#3a3a3c', grad: 'rgba(28,28,46,0.12)', glow: 'rgba(28,28,46,0.2)', beamGrad: D ? ['rgba(255,255,255,0)','rgba(255,255,255,0.25)','rgba(255,255,255,0)'] : ['rgba(52,170,220,0)','rgba(52,170,220,0.3)','rgba(52,170,220,0)'], nodeBg: D ? 'rgba(255,255,255,0.07)' : 'rgba(28,28,46,0.07)', style: { top: '47%', left: '5%'   } },
   };
 
   // ── Panel content ─────────────────────────────────────────
@@ -456,11 +456,13 @@ export default function PersonalDashboard() {
 
           <div style={{ flex: 1 }} />
 
-          {/* Trial pill */}
-          {onTrial && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: D ? 'rgba(255,149,0,0.12)' : 'rgba(255,149,0,0.1)', border: '0.5px solid rgba(255,149,0,0.25)', borderRadius: 100, padding: '4px 10px', flexShrink: 0 }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#ff9500', animation: 'dotPulse 1.5s ease infinite' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#b45309' }}>{daysLeft}d trial</span>
+          {/* Trial / active status pill */}
+          {isActive && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: onTrial ? D ? 'rgba(255,149,0,0.12)' : 'rgba(255,149,0,0.1)' : D ? 'rgba(48,209,88,0.12)' : 'rgba(48,209,88,0.1)', border: `0.5px solid ${onTrial ? 'rgba(255,149,0,0.25)' : 'rgba(48,209,88,0.25)'}`, borderRadius: 100, padding: '4px 10px', flexShrink: 0 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: onTrial ? '#ff9500' : '#30d158', animation: 'dotPulse 1.5s ease infinite' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: onTrial ? '#b45309' : '#1a7a35' }}>
+                {onTrial ? `${daysLeft}d left in trial` : 'Active ✓'}
+              </span>
             </div>
           )}
 
@@ -528,15 +530,33 @@ export default function PersonalDashboard() {
               <p style={{ fontSize: 9, color: D ? 'rgba(255,255,255,0.18)' : 'rgba(28,28,46,0.2)', marginTop: 1 }}>Last login · {lastLogin}</p>
             </div>
 
-            {/* Nodes */}
+            {/* Nodes — Option E: 3D floating badge */}
             {Object.entries(NODES).map(([id, n]) => (
               <div key={id} ref={el => nodeRefs.current[id] = el} className="gc-node" onClick={() => setActiveNode(id)} style={{ position: 'absolute', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, ...n.style }}>
-                {activeNode === id && <div style={{ position: 'absolute', inset: -7, borderRadius: 22, border: `1.5px solid ${n.color}`, background: D ? `${n.color}08` : `${n.color}05`, pointerEvents: 'none', opacity: 0.8 }} />}
-                <div style={{ width: id === 'billing' ? 46 : 54, height: id === 'billing' ? 46 : 54, borderRadius: 16, background: n.nodeBg, border: `1px solid ${D ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.82)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: id === 'billing' ? 18 : 22, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', boxShadow: activeNode === id ? `0 0 20px 3px ${n.color}25, ${D ? '0 2px 0 rgba(255,255,255,0.06) inset' : '0 2px 0 rgba(255,255,255,0.9) inset'}` : (D ? '0 2px 0 rgba(255,255,255,0.06) inset' : '0 2px 0 rgba(255,255,255,0.9) inset, 0 4px 12px rgba(0,0,0,0.06)'), transition: 'box-shadow 0.3s', position: 'relative' }}>
-                  {n.emoji}
-                  <div style={{ position: 'absolute', top: 3, left: 5, right: 5, height: 14, borderRadius: '8px 8px 0 0', background: 'linear-gradient(180deg,rgba(255,255,255,0.4) 0%,rgba(255,255,255,0) 100%)', pointerEvents: 'none' }} />
+                {/* 3D badge */}
+                <div style={{ position: 'relative', width: id === 'billing' ? 46 : 56, height: id === 'billing' ? 50 : 60 }}>
+                  {/* Shadow/depth layer */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 3, right: 3, height: id === 'billing' ? 42 : 52, borderRadius: id === 'billing' ? 12 : 16, background: n.shadow }} />
+                  {/* Main card (lifted) */}
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0,
+                    height: id === 'billing' ? 42 : 52,
+                    borderRadius: id === 'billing' ? 12 : 16,
+                    background: n.grad,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: id === 'billing' ? 18 : 24,
+                    border: '1px solid rgba(255,255,255,0.35)',
+                    boxShadow: activeNode === id
+                      ? `0 0 0 2px ${n.color}, 0 6px 20px ${n.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
+                      : `0 4px 16px ${n.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`,
+                    transition: 'all 0.2s',
+                  }}>
+                    {n.emoji}
+                    {/* Glass reflection */}
+                    <div style={{ position: 'absolute', top: 3, left: 5, right: 5, height: 16, borderRadius: '8px 8px 0 0', background: 'linear-gradient(180deg,rgba(255,255,255,0.35) 0%,rgba(255,255,255,0) 100%)', pointerEvents: 'none' }} />
+                  </div>
                 </div>
-                <span style={{ fontSize: id === 'billing' ? 9 : 10, fontWeight: 600, color: activeNode === id ? n.color : ink3, textAlign: 'center', whiteSpace: 'nowrap', transition: 'color 0.2s' }}>{n.label}</span>
+                <span style={{ fontSize: id === 'billing' ? 9 : 10, fontWeight: 700, color: activeNode === id ? n.color : ink3, textAlign: 'center', whiteSpace: 'nowrap', transition: 'color 0.2s' }}>{n.label}</span>
               </div>
             ))}
           </div>
