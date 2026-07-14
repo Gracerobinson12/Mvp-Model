@@ -329,7 +329,7 @@ export default function PersonalDashboard() {
         </div>
         <div style={{ height: '0.5px', background: sep, margin: '12px 0' }} />
         {['Logo design ↔ SEO audit', 'Dev work ↔ Copywriting', 'Photography ↔ Social media'].map((s, i) => (
-          <div key={i} style={pCard()}}>
+          <div key={i} style={pCard()}>
             <span style={{ fontSize: 14 }}>🤝</span>
             <span style={{ fontSize: 12, color: ink2 }}>{s}</span>
           </div>
