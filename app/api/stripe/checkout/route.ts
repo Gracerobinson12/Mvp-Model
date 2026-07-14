@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
         plan: 'personal' | 'business';
       };
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-    const priceId = PRICE_IDS[plan];
+const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://gratiacore.com';
+const priceId = PRICE_IDS[plan];
 
     if (!priceId) {
       return NextResponse.json(
