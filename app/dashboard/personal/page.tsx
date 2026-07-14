@@ -1,5 +1,6 @@
-'use client';
 // @ts-nocheck
+/* eslint-disable */
+'use client';
 
 /**
  * app/dashboard/personal/page.tsx
@@ -250,12 +251,20 @@ export default function PersonalDashboard() {
   const displayName = profile?.first_name || profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
   const initial     = (profile?.first_name?.[0] || user?.email?.[0] || 'G').toUpperCase();
   const email       = user?.email ?? '';
-  const isActive    = profile?.plan_status === 'active' || profile?.plan_status === 'trialing' || !!profile?.stripe_customer_id;
-  const onTrial     = profile?.plan_status === 'trialing';
+  const createdAt   = profile?.created_at ? new Date(profile.created_at).getTime() : Date.now();
+  const accountAgeDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
+  const isActive    =
+    profile?.plan_status === 'active' ||
+    profile?.plan_status === 'trialing' ||
+    !!profile?.stripe_customer_id ||
+    accountAgeDays < 8;
+  const onTrial     = profile?.plan_status === 'trialing' || accountAgeDays < 8;
   let daysLeft      = null;
   if (profile?.trial_ends_at) {
     const end = new Date(profile.trial_ends_at);
-    if (end > new Date()) daysLeft = Math.ceil((end - Date.now()) / (1000 * 60 * 60 * 24));
+    if (end > new Date()) daysLeft = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  } else {
+    daysLeft = Math.max(0, Math.ceil(8 - accountAgeDays));
   }
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
