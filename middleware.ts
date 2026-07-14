@@ -35,8 +35,11 @@ export async function middleware(request: NextRequest) {
 
   // ── 2. Protect /dashboard/* routes ───────────────────────────
   if (pathname.startsWith('/dashboard')) {
+    // If coming back from Stripe checkout, let them through
+    // The dashboard page itself will verify and update the profile
+    const sessionId = request.nextUrl.searchParams.get('session_id');
+    if (sessionId) return NextResponse.next();
 
-    // Build a response object so Supabase can refresh cookies
     const response = NextResponse.next({
       request: { headers: request.headers },
     });

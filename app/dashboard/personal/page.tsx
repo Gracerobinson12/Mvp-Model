@@ -194,6 +194,26 @@ export default function PersonalDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/'); return; }
       setUser(user);
+
+      // If coming back from Stripe, verify + update profile first
+      const sessionId = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('session_id')
+        : null;
+
+      if (sessionId) {
+        try {
+          await fetch('/api/verify-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, userId: user.id }),
+          });
+          // Clean URL — remove session_id from address bar
+          window.history.replaceState({}, '', '/dashboard/personal');
+        } catch (e) {
+          console.error('Session verification failed', e);
+        }
+      }
+
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       if (prof) setProfile(prof);
       await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
