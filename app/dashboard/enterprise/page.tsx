@@ -155,6 +155,7 @@ export default function EnterpriseDashboard() {
   const [activeNode, setActiveNode] = useState('tariff');
   const [showHelp,   setShowHelp]   = useState(false);
   const [svgLines,   setSvgLines]   = useState([]);
+  const [stats,      setStats]      = useState({ tariff: 0, reg: 0, signals: 0 });
 
   const canvasRef = useRef(null);
   const nodeRefs  = useRef({});
@@ -186,9 +187,35 @@ export default function EnterpriseDashboard() {
         } catch (e) {}
       }
 
-      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
       if (prof) setProfile(prof);
-      await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+
+      // Load real stats — only if user has industry set
+      const { data: indProf } = await supabase
+        .from('industry_profiles')
+        .select('industry')
+        .eq('user_id', user.id)
+        .single();
+
+      if (indProf?.industry) {
+        const [{ count: regCount }, { count: sigCount }] = await Promise.all([
+          supabase.from('reg_updates').select('*', { count: 'exact', head: true })
+            .contains('industries', [indProf.industry]),
+          supabase.from('market_signals').select('*', { count: 'exact', head: true })
+            .eq('industry', indProf.industry),
+        ]);
+        setStats({ tariff: 0, reg: regCount || 0, signals: sigCount || 0 });
+      }
+
+      await supabase.from('profiles')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('id', user.id);
+
       setLoading(false);
     };
     init();
@@ -223,15 +250,24 @@ export default function EnterpriseDashboard() {
   const initial     = (profile?.first_name?.[0] || user?.email?.[0] || 'G').toUpperCase();
   const email       = user?.email ?? '';
   const bizName     = profile?.biz_name || 'Your business';
-  const createdAt   = profile?.created_at ? new Date(profile.created_at).getTime() : Date.now();
+  const createdAt      = profile?.created_at ? new Date(profile.created_at).getTime() : Date.now();
   const accountAgeDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
-  const isActive    = profile?.plan_status === 'active' || profile?.plan_status === 'trialing' || !!profile?.stripe_customer_id || accountAgeDays < 8;
-  const onTrial     = profile?.plan_status === 'trialing' || accountAgeDays < 8;
-  let daysLeft      = null;
+  // New account OR has active/trialing status OR has stripe customer = active
+  const isActive =
+    accountAgeDays < 8 ||
+    profile?.plan_status === 'active' ||
+    profile?.plan_status === 'trialing' ||
+    !!profile?.stripe_customer_id;
+  const onTrial =
+    profile?.plan_status === 'trialing' ||
+    (accountAgeDays < 8 && profile?.plan_status !== 'active');
+  let daysLeft = null;
   if (profile?.trial_ends_at) {
     const end = new Date(profile.trial_ends_at);
     if (end > new Date()) daysLeft = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  } else { daysLeft = Math.max(0, Math.ceil(8 - accountAgeDays)); }
+  } else {
+    daysLeft = Math.max(0, Math.ceil(8 - accountAgeDays));
+  }
 
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -442,12 +478,12 @@ export default function EnterpriseDashboard() {
             </div>
           </div>
 
-          {/* Business stats */}
+          {/* Business stats — real counts from DB */}
           <div style={{ display: 'flex', gap: 5 }}>
             {[
-              { label: 'tariff alerts', val: '3',  color: '#ff3b30', bg: D ? 'rgba(255,59,48,0.15)' : 'rgba(255,59,48,0.1)', bdr: 'rgba(255,59,48,0.2)' },
-              { label: 'reg updates',  val: '8',  color: '#7c3aed', bg: D ? 'rgba(124,58,237,0.15)' : 'rgba(124,58,237,0.1)', bdr: 'rgba(124,58,237,0.2)' },
-              { label: 'signals',      val: '12', color: '#0a84ff', bg: D ? 'rgba(10,132,255,0.15)' : 'rgba(10,132,255,0.1)', bdr: 'rgba(10,132,255,0.2)' },
+              { label: 'tariff alerts', val: stats.tariff, color: '#ff3b30', bg: D ? 'rgba(255,59,48,0.15)' : 'rgba(255,59,48,0.1)', bdr: 'rgba(255,59,48,0.2)' },
+              { label: 'reg updates',  val: stats.reg,    color: '#7c3aed', bg: D ? 'rgba(124,58,237,0.15)' : 'rgba(124,58,237,0.1)', bdr: 'rgba(124,58,237,0.2)' },
+              { label: 'signals',      val: stats.signals, color: '#0a84ff', bg: D ? 'rgba(10,132,255,0.15)' : 'rgba(10,132,255,0.1)', bdr: 'rgba(10,132,255,0.2)' },
             ].map((s, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3, background: s.bg, border: `0.5px solid ${s.bdr}`, borderRadius: 100, padding: '3px 8px' }}>
                 <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 11, fontWeight: 900, color: s.color }}>{s.val}</span>
