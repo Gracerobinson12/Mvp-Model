@@ -153,9 +153,9 @@ export default function PublicBarterBoard() {
 
       // Load public listings
       const { data, count } = await supabase
-        .from('barter_listings')
-        .select('*, profiles(first_name, barter_rating, barter_trades_count)', { count: 'exact' })
-        .eq('is_public', true)
+        .from('public_barter_board')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
         .eq('status', 'open')
         .order('created_at', { ascending: false });
 

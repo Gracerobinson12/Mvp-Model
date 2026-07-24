@@ -536,6 +536,7 @@ function LandingPage() {
           <div>
             <p className="gc-footer-col-label">Product</p>
             <a href="#modules" className="gc-footer-link">Modules</a>
+            <Link href="/barter" className="gc-footer-link">Barter board</Link>   
             <Link href="/pricing" className="gc-footer-link">Pricing</Link>
             <Link href="/changelog" className="gc-footer-link">Changelog</Link>
           </div>
@@ -572,6 +573,7 @@ function LandingPage() {
       <header className="navbar">
         <nav className="nav-pill">
           <a href="#modules" className="nav-item">Modules</a>
+          <Link href="/barter" className="nav-item">Barter board</Link>   
           <Link href="/pricing" className="nav-item">Pricing</Link>
           <Link href="/about" className="nav-item">About</Link>
         </nav>
