@@ -194,7 +194,7 @@ export default function SettingsPage() {
 
         {/* Nav */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0',marginBottom:8}}>
-          <button onClick={()=>router.push('/dashboard')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:6,color:'rgba(26,26,46,.5)',fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>← Dashboard</button>
+          <button onClick={()=>router.push('/dashboard/personal')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:6,color:'rgba(26,26,46,.5)',fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>← Dashboard</button>
           <Link href="/" style={{textDecoration:'none',display:'flex',alignItems:'center',gap:8}}>
             <GCIcon size={26}/>
             <span style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:800,letterSpacing:-.5,color:'#1a1a2e'}}>Gratia Core</span>

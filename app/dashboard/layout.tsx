@@ -42,21 +42,36 @@ export default function DashboardLayout({ children }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace('/login'); return; }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan, plan_status, onboarded')       
-        .eq('id', user.id)
-        .single();
+        const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan, plan_status, onboarded, role')   // ← add role
+    .eq('id', user.id)
+    .single();
 
-      // no active/trialing plan → send to upgrade instead of showing the dashboard
-      if (!profile || !ALLOWED.includes(profile.plan_status)) {
-        router.replace('/pricing');
-        return;
-      }
-      if (!profile.onboarded) {          // ← add this
-        router.replace('/onboarding');
-        return;
-      }
+  // not logged in already handled above (redirects to /login)
+
+  // OWNER: always goes to admin, gets in regardless of plan/onboarding
+  if (profile?.role === 'owner') {
+    setPlan('enterprise');
+    setChecking(false);
+    return;   // owner bypasses trial + onboarding checks
+  }
+
+  // NON-OWNER trying to reach the admin page → kick out
+  if (pathname.startsWith('/dashboard/admin')) {
+    router.replace('/dashboard/personal');
+    return;
+  }
+
+  // normal gating for everyone else
+  if (!profile || !ALLOWED.includes(profile.plan_status)) {
+    router.replace('/pricing');
+    return;
+  }
+  if (!profile.onboarded) {
+    router.replace('/onboarding');
+    return;
+  }
       setPlan(profile.plan || 'personal');
       setChecking(false);
     };
