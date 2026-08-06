@@ -17,6 +17,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 type Plan = 'personal' | 'business';
 type Mode = 'light' | 'dark';
@@ -175,27 +176,44 @@ export function QuickSignupModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleStartTrial = useCallback(async () => {
-    if (!pwValid) { setError('Password must be at least 8 characters.'); return; }
-    if (!pwMatch) { setError("Passwords don't match."); return; }
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, firstName, lastName, bizName, password, plan }),
-      });
-      if (!res.ok) {
-        const { message } = await res.json().catch(() => ({}));
-        throw new Error(message ?? 'Could not start checkout. Try again.');
-      }
-      const { url } = await res.json();
-      window.location.href = url;
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
-      setLoading(false);
+  if (!pwValid) { setError('Password must be at least 8 characters.'); return; }
+  if (!pwMatch) { setError("Passwords don't match."); return; }
+  setError('');
+  setLoading(true);
+  try {
+    // 1. Sign up client-side so browser gets a session immediately
+    const { error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { first_name: firstName, last_name: lastName, plan },
+      },
+    });
+    if (authError && !authError.message.includes('already registered')) {
+      throw new Error(authError.message);
     }
-  }, [email, firstName, lastName, bizName, password, plan, pwValid, pwMatch]);
+
+    // 2. Store redirect target
+    localStorage.setItem('gc_signup_email', email);
+    localStorage.setItem('gc_post_login', plan === 'business' ? '/onboarding/enterprise' : '/onboarding/individual');
+
+    // 3. Go to Stripe
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, firstName, lastName, bizName, password, plan }),
+    });
+    if (!res.ok) {
+      const { message } = await res.json().catch(() => ({}));
+      throw new Error(message ?? 'Could not start checkout. Try again.');
+    }
+    const { url } = await res.json();
+    window.location.href = url;
+  } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : 'Something went wrong.');
+    setLoading(false);
+  }
+}, [email, firstName, lastName, bizName, password, plan, pwValid, pwMatch]);
 
   const PlanToggle = (
     <div style={{

@@ -147,7 +147,6 @@ function ModuleToggleCarousel() {
       cursor: abs > 0 ? 'pointer' : 'default',
     };
   };
-
   return (
     <div style={{ paddingBottom: 60 }}>
       <div style={{ textAlign: 'center', marginBottom: 40 }}>

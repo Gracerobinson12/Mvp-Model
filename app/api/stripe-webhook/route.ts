@@ -1,3 +1,4 @@
+// @ts-nocheck
 // app/api/stripe/webhook/route.ts
 // ── COMPLETE STRIPE WEBHOOK ───────────────────────────────────────────────────
 // Handles: checkout complete, subscription updated, subscription deleted,

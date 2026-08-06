@@ -26,10 +26,9 @@ export default function PublicListingPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data, count } = await supabase
+    const { data } = await supabase
       .from('public_barter_board')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false });
+      .select('*')
       .eq('public_id', public_id)
       .single();
       if (!data) { setNotFound(true); setLoading(false); return; }

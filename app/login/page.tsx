@@ -54,8 +54,9 @@ export default function LoginPage() {
       }
 
       // 3. Not admin — go to dashboard
-      router.push('/dashboard')
-
+      const redirect = localStorage.getItem('gc_post_login') || '/dashboard';
+      localStorage.removeItem('gc_post_login');
+      router.push(redirect);
     } catch (e: any) {
       setError(e?.message || 'Invalid email or password.')
       setLoading(false)

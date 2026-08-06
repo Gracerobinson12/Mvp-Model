@@ -18,8 +18,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Routes that are always public — no auth needed
-const PUBLIC_ROUTES = ['/login', '/pricing', '/about', '/contact', '/terms', '/privacy', '/cookies'];
-
+const PUBLIC_ROUTES = ['/login', '/pricing', '/about', '/contact', '/terms', '/privacy', '/cookies', '/onboarding', '/confirm', '/auth'];
 // Plan statuses that are allowed into the dashboard
 const ACTIVE_STATUSES = ['active', 'trialing'];
 
