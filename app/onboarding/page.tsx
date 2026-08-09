@@ -66,8 +66,8 @@ export default function OnboardingPage() {
       const { data:{ user } } = await supabase.auth.getUser();
       if (!user) { router.replace('/login'); return; }
       setUser(user);
-      const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).single();
-      setPlan(data?.plan || 'individual');
+      const { data } = await supabase.from('profiles').select('plan, first_name').eq('id', user.id).single();
+      setPlan(data?.plan || 'individual'); if (data?.first_name) set('first_name', data.first_name);
     })();
   }, [router]);
 
@@ -105,7 +105,17 @@ export default function OnboardingPage() {
     onboarded: true,
   }).eq('id', user.id);
 
-  router.replace(plan === 'enterprise' ? '/dashboard/enterprise' : '/dashboard/personal');
+  // Verify Stripe session to set plan_status
+const params = new URLSearchParams(window.location.search);
+const sessionId = params.get('session_id');
+if (sessionId) {
+  await fetch('/api/verify-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, userId: user.id }),
+  });
+}
+router.replace(plan === 'enterprise' ? '/dashboard/enterprise' : '/dashboard/personal');
 };
 
   if (!plan) return <div style={{position:'fixed',inset:0,background:'#e8eef5'}} />;
@@ -113,15 +123,13 @@ export default function OnboardingPage() {
   // ---------- INDIVIDUAL: 2 steps ----------
   if (plan !== 'enterprise') {
     if (step === 1) return (
-      <Shell eyebrow="Individual" total={2} step={1} title="What should we call you?" sub="This is the name other members see on your barter listings.">
-        {label('Your name')}
-        <input style={input} value={f.first_name} onChange={e=>set('first_name',e.target.value)} placeholder="First name" />
+      <Shell eyebrow="Individual" total={2} step={1} title={`Welcome${f.first_name ? `, ${f.first_name}` : ''}! What do you do?`} sub="This is the name other members see on your barter listings.">
         {label('What do you do?')}
         <Pills items={SKILLS} val={f.skills} set={v=>set('skills',v)} multi />
         <div style={{display:'flex',marginTop:22}}>
           <button style={{...primary(f.first_name),flex:1}} disabled={!f.first_name} onClick={()=>setStep(2)}>Next →</button>
         </div>
-      </Shell>
+      </Shell>ƒ
     );
     return (
       <Shell eyebrow="Individual" total={2} step={2} title="Anything you're looking to trade?" sub="Optional — helps us match you on the barter board. You can skip and do this later.">
