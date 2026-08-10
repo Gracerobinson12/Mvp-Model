@@ -129,7 +129,7 @@ router.replace(plan === 'enterprise' ? '/dashboard/enterprise' : '/dashboard/per
         <div style={{display:'flex',marginTop:22}}>
           <button style={{...primary(f.first_name),flex:1}} disabled={!f.first_name} onClick={()=>setStep(2)}>Next →</button>
         </div>
-      </Shell>ƒ
+      </Shell>
     );
     return (
       <Shell eyebrow="Individual" total={2} step={2} title="Anything you're looking to trade?" sub="Optional — helps us match you on the barter board. You can skip and do this later.">
