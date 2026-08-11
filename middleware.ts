@@ -120,17 +120,9 @@ export async function middleware(request: NextRequest) {
     // All good — let the request through
     return response;
   }
-
-  // ── 3. Protect /api/stripe/* routes ──────────────────────────
-  // Stripe API routes should only be called from your own frontend
+// ── 3. Stripe API routes — allow all ──────────────────────────
   if (pathname.startsWith('/api/stripe')) {
-    const origin = request.headers.get('origin');
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-
-    // Block requests from unknown origins (not from your domain)
-    if (origin && appUrl && !origin.includes('gratiacore.com') && !origin.includes('localhost')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    return NextResponse.next();
   }
 
   // All other routes — pass through
