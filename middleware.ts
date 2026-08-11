@@ -128,7 +128,7 @@ export async function middleware(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
     // Block requests from unknown origins (not from your domain)
-    if (origin && appUrl && !origin.startsWith(appUrl) && !origin.includes('localhost')) {
+    if (origin && appUrl && !origin.includes('gratiacore.com') && !origin.includes('localhost')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
   }
