@@ -76,7 +76,7 @@ export async function middleware(request: NextRequest) {
     // Check subscription status in profiles table
     const { data: profile } = await supabase
       .from('profiles')
-      .select('plan_status, selected_plan, trial_ends_at')
+      .select('plan_status, plan, trial_ends_at')
       .eq('id', user.id)
       .single();
 
@@ -106,12 +106,11 @@ export async function middleware(request: NextRequest) {
 
     // ── Plan/route mismatch protection ──────────────────────────
     // Prevent a personal plan user accessing /dashboard/enterprise
-    if (pathname.startsWith('/dashboard/enterprise') && profile.selected_plan === 'personal') {
-      const url = request.nextUrl.clone();
+    if (pathname.startsWith('/dashboard/enterprise') && profile.plan === 'individual') {
       url.pathname = '/dashboard/personal';
       return NextResponse.redirect(url);
     }
-    if (pathname.startsWith('/dashboard/personal') && profile.selected_plan === 'business') {
+    if (pathname.startsWith('/dashboard/personal') && profile.plan === 'enterprise') {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard/enterprise';
       return NextResponse.redirect(url);
