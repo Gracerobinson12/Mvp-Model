@@ -127,7 +127,7 @@ router.replace(plan === 'enterprise' ? '/dashboard/enterprise' : '/dashboard/per
         {label('What do you do?')}
         <Pills items={SKILLS} val={f.skills} set={v=>set('skills',v)} multi />
         <div style={{display:'flex',marginTop:22}}>
-          <button style={{...primary(f.first_name),flex:1}} disabled={!f.first_name} onClick={()=>setStep(2)}>Next →</button>
+          <button style={{...primary(true),flex:1}} onClick={()=>setStep(2)}>Next →</button>
         </div>
       </Shell>
     );
