@@ -1,83 +1,83 @@
 // app/api/vault/seal/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import crypto from 'crypto'
+// Real, honest sealing: SHA-256 hash of the document + a server timestamp, saved to the DB.
+// Designed so RFC-3161 (notarized) and Bitcoin/OpenTimestamps (anchored) slot in later
+// as upgrades via the seal_level column — existing 'basic' seals upgrade cleanly.
+//
+// What this proves TODAY (honest):
+//   - Integrity: the exact document content, unaltered (SHA-256).
+//   - Time-of-record: when it was recorded in our system (server timestamp).
+// What it does NOT yet claim: third-party notarization or blockchain anchoring.
+//
+// Requires (server-only, never NEXT_PUBLIC_):
+//   SUPABASE_SERVICE_ROLE_KEY   — lets the server write the seal past RLS
+//   NEXT_PUBLIC_SUPABASE_URL    — already in your env
 
-const supabase = createClient(
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { createHash, randomUUID } from 'crypto';
+
+const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+);
 
 export async function POST(req: NextRequest) {
-  const { ideaId } = await req.json()
-  if (!ideaId) return NextResponse.json({ error: 'Missing ideaId' }, { status: 400 })
-
-  // Fetch the idea
-  const { data: idea, error: fetchErr } = await supabase
-    .from('vault_ideas').select('*').eq('id', ideaId).single()
-  if (fetchErr || !idea) return NextResponse.json({ error: 'Idea not found' }, { status: 404 })
-
-  // 1. Build canonical document string
-  const canonical = JSON.stringify({
-    id: idea.id,
-    user_id: idea.user_id,
-    title: idea.title,
-    description: idea.description,
-    expanded_doc: idea.expanded_doc,
-    created_at: idea.created_at,
-    sealed_at: new Date().toISOString(),
-  })
-
-  // 2. SHA-256 hash
-  const hash = crypto.createHash('sha256').update(canonical).digest('hex')
-
-  // 3. RFC 3161 timestamp via FreeTSA (free, accredited)
-  let tsrToken = null
   try {
-    // Generate timestamp request
-    const tsReq = await fetch('https://freetsa.org/tsr', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/timestamp-query' },
-      body: Buffer.from(hash, 'hex'),
-    })
-    if (tsReq.ok) {
-      const tsrBuffer = await tsReq.arrayBuffer()
-      tsrToken = Buffer.from(tsrBuffer).toString('base64')
-    }
-  } catch (e) {
-    console.error('RFC 3161 error:', e)
-    // Continue without — hash + bitcoin still valuable
-    tsrToken = `simulated-tsr-${Date.now()}` // fallback for dev
+    // 1. Identify the caller from their access token (never trust a user_id from the body).
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
+
+    const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+    if (authErr || !user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
+
+    const { ideaId } = await req.json();
+    if (!ideaId) return NextResponse.json({ ok: false, error: 'Missing ideaId' }, { status: 400 });
+
+    // 2. Load the idea and verify it belongs to this user.
+    const { data: idea, error: loadErr } = await admin
+      .from('vault_ideas')
+      .select('*')
+      .eq('id', ideaId)
+      .eq('user_id', user.id)   // ownership check — can't seal someone else's idea
+      .single();
+    if (loadErr || !idea) return NextResponse.json({ ok: false, error: 'Idea not found' }, { status: 404 });
+    if (idea.status === 'sealed') return NextResponse.json({ ok: false, error: 'Already sealed' }, { status: 409 });
+
+    // 3. Build the canonical document string and hash it. This is the fingerprint.
+    const sealedAt = new Date().toISOString();
+    const canonical = [
+      'GRATIA CORE — IDEAS VAULT SEAL',
+      `idea_id: ${idea.id}`,
+      `user_id: ${user.id}`,
+      `title: ${idea.title}`,
+      `document:\n${idea.expanded_doc || idea.description || ''}`,
+      `sealed_at: ${sealedAt}`,
+    ].join('\n');
+
+    const sealHash = createHash('sha256').update(canonical, 'utf8').digest('hex');
+    const sealId = `GC-${randomUUID().split('-')[0].toUpperCase()}`;
+
+    // 4. Save the seal. seal_level = 'basic' now; upgrades to 'notarized' / 'anchored' later.
+    const { data: sealed, error: updErr } = await admin
+      .from('vault_ideas')
+      .update({
+        status: 'sealed',
+        seal_hash: sealHash,
+        seal_id: sealId,
+        sealed_at: sealedAt,
+        seal_level: 'basic',
+        strength: { hash: true, rfc: false, bitcoin: false },
+      })
+      .eq('id', ideaId)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+    if (updErr) throw updErr;
+
+    return NextResponse.json({ ok: true, idea: sealed });
+  } catch (e: any) {
+    console.error('vault/seal error:', e);
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
-
-  // 4. Generate seal ID
-  const sealId = `GC-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`
-  const sealedAt = new Date().toISOString()
-
-  // 5. Update the idea in Supabase
-  const { data: updated, error: updateErr } = await supabase
-    .from('vault_ideas')
-    .update({
-      status: 'sealed',
-      seal_hash: hash,
-      seal_id: sealId,
-      seal_tsr: tsrToken,
-      sealed_at: sealedAt,
-      strength: { hash: true, rfc: !!tsrToken, bitcoin: false },
-      // Bitcoin anchor happens async — set to true after confirmation
-    })
-    .eq('id', ideaId)
-    .select()
-    .single()
-
-  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
-
-  // 6. Queue Bitcoin anchor async (in production: use a background job/queue)
-  // For now we simulate — in real build: call opentimestamps.org API
-  // and update bitcoin_block + strength.bitcoin when confirmed
-  supabase.from('vault_ideas').update({
-    bitcoin_block: `pending-${Date.now()}`,
-  }).eq('id', ideaId).then(() => {})
-
-  return NextResponse.json({ ok: true, idea: updated })
 }

@@ -1,196 +1,215 @@
-// @ts-nocheck
 'use client';
+// @ts-nocheck
+// app/onboarding/page.tsx — tier-branched setup, runs AFTER account + payment.
+// Reads ?tier= (solutions | intelligence | bundle). Solutions = 1 screen.
+// Intelligence/bundle = 4 steps (name+business, country+state, industries[], delivery).
+// Writes everything to profiles (single source of truth). No writing-style step (per-update
+// explanation handles that later). Access itself is gated by entitlement elsewhere.
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { onboardingKind } from '@/lib/pricing';
+import { INDUSTRIES } from '@/lib/cfr-taxonomy';
 
-const INDUSTRIES = ['E-commerce','Retail','SaaS','Technology','Health & Wellness','Food & Beverage','Manufacturing','Construction','Finance','Professional Services','Logistics','Hospitality','Beauty','Real Estate','Creative & Media','Education','Nonprofit','Import/Export','Something Else'];
-const EMP = ['Just me','2–14','15–49','50–99','100+'];
-const COUNTRIES = ['China','Vietnam','India','Mexico','EU','Bangladesh','Indonesia','Other'];
-const SHIP = ['Under $800','$800–$10k','$10k–$100k','Over $100k'];
-const SKILLS = ['Design','Development','Writing','Marketing','Photo/Video','Audio','Business','Consulting','Other'];
+// INDUSTRIES now comes from the shared taxonomy (maps to CFR categories)
+const US_STATES = ['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
+const COUNTRIES = ['United States','Canada','United Kingdom','Australia','Other'];
+const CHANNELS = [
+  { key: 'email', label: 'Email', icon: '\u2709\ufe0f', sub: 'Alerts to your inbox' },
+  { key: 'text',  label: 'Text',  icon: '\u{1F4AC}', sub: 'SMS to your phone' },
+  { key: 'inapp', label: 'In-app', icon: '\u{1F514}', sub: 'Notifications here' },
+];
 
-// shared bits
-const wrap = { minHeight:'100vh', background:'radial-gradient(ellipse 80% 60% at 20% -10%,rgba(255,59,48,0.10) 0%,transparent 60%),#e8eef5', fontFamily:"'DM Sans',system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', padding:20 };
-const card = { width:'min(580px,100%)', background:'rgba(255,255,255,0.72)', backdropFilter:'blur(40px) saturate(180%)', border:'1px solid rgba(255,255,255,0.9)', borderRadius:24, overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.12)' };
-const input = { width:'100%', padding:'12px 14px', borderRadius:12, border:'1px solid rgba(0,0,0,0.12)', background:'#fff', fontSize:14, fontFamily:'inherit' };
-const primary = (on) => ({ padding:13, borderRadius:100, border:'none', fontSize:15, fontWeight:700, cursor:on?'pointer':'not-allowed', fontFamily:'inherit', background:on?'linear-gradient(135deg,#ff3b30,#ff6b35)':'rgba(0,0,0,0.08)', color:on?'#fff':'rgba(28,28,30,0.3)' });
-const back = { padding:'13px 20px', borderRadius:100, border:'1px solid rgba(0,0,0,0.12)', background:'rgba(255,255,255,0.7)', color:'#1c1c1e', fontSize:14, cursor:'pointer', fontFamily:'inherit' };
-const label = (t,o) => <p style={{fontSize:11,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase',color:'rgba(28,28,30,0.5)',margin:'16px 0 8px'}}>{t}{o&&<span style={{textTransform:'none',letterSpacing:0,fontWeight:400,color:'rgba(28,28,30,0.35)'}}> ({o})</span>}</p>;
-
-function Pills({ items, val, set, multi }) {
-  const on = (i) => multi ? val.includes(i) : val === i;
-  const toggle = (i) => multi ? set(val.includes(i) ? val.filter(x=>x!==i) : [...val,i]) : set(i);
+function GCIcon({ size = 26 }) {
   return (
-    <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
-      {items.map(i => (
-        <button key={i} onClick={()=>toggle(i)} style={{padding:'8px 14px',borderRadius:100,fontSize:14,fontWeight:on(i)?700:500,cursor:'pointer',border:`1px solid ${on(i)?'#ff3b30':'rgba(0,0,0,0.1)'}`,background:on(i)?'rgba(255,59,48,0.1)':'rgba(255,255,255,0.6)',color:on(i)?'#cc2018':'rgba(28,28,30,0.6)',fontFamily:'inherit'}}>{i}</button>
-      ))}
-    </div>
-  );
-}
-
-function Shell({ eyebrow, total, step, title, sub, children }) {
-  return (
-    <div style={wrap}><div style={card}>
-      <div style={{height:3,background:'linear-gradient(90deg,#ff3b30,#ff9f0a,#ffd60a,#30d158,#0a84ff,#bf5af2)'}} />
-      <div style={{padding:'26px 30px 30px'}}>
-        <div style={{height:4,background:'rgba(0,0,0,0.06)',borderRadius:99,marginBottom:16}}><div style={{height:4,width:`${(step/total)*100}%`,background:'#ff3b30',borderRadius:99}} /></div>
-        <p style={{fontSize:12,fontWeight:800,letterSpacing:'0.08em',textTransform:'uppercase',color:'#ff3b30',marginBottom:6}}>{eyebrow} · step {step} of {total}</p>
-        <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:23,fontWeight:900,letterSpacing:'-1px',color:'#1c1c1e',marginBottom:5}}>{title}</h1>
-        <p style={{fontSize:14,color:'rgba(28,28,30,0.55)',lineHeight:1.5,marginBottom:14}}>{sub}</p>
-        {children}
-      </div>
-    </div></div>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
+      <rect width="512" height="512" rx="114" fill="#ff3b30" />
+      <text x="256" y="350" fontFamily="'Arial Black',Arial,sans-serif" fontSize="220" fontWeight="900" fill="white" textAnchor="middle" letterSpacing="-14">GC</text>
+    </svg>
   );
 }
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const sp = useSearchParams();
+  const tier = (sp.get('tier') || 'intelligence');
+  const kind = onboardingKind(tier);          // 'solutions' | 'intelligence'
+  const isIntel = kind === 'intelligence';
+  const accent = tier === 'solutions' ? '#30d158' : tier === 'bundle' ? '#ff3b30' : '#0a84ff';
+  const accent2 = tier === 'solutions' ? '#1a7a35' : tier === 'bundle' ? '#ff6b35' : '#378add';
+
   const [user, setUser] = useState(null);
-  const [plan, setPlan] = useState(null);
+  const [ready, setReady] = useState(false);
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
-  const [f, setF] = useState({
-    first_name:'', skills:[], trade_want:'',
-    business_name:'', employee_count:'', customer_type:'',
-    industry:'', sub_industry:'', state:'', city:'',
-    imports:'', origin_countries:[], avg_shipment_value:'', hts_codes:'',
-    ideas:'', growth:[], alert_frequency:'daily',
-  });
-  const set = (k,v) => setF(p=>({...p,[k]:v}));
+  const [error, setError] = useState('');
+  const [f, setF] = useState({ first_name: '', business_name: '', country: 'United States', state: '', industries: [] as string[], delivery_channel: 'email' });
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+
+  const totalSteps = isIntel ? 4 : 1;
 
   useEffect(() => {
     (async () => {
-      const { data:{ user } } = await supabase.auth.getUser();
-      if (!user) { router.replace('/login'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace(`/signup`); return; }   // no account → start at signup, not login
       setUser(user);
-      const { data } = await supabase.from('profiles').select('plan, first_name').eq('id', user.id).single();
-      setPlan(data?.plan || 'individual'); if (data?.first_name) set('first_name', data.first_name);
+      setReady(true);
+      const { data } = await supabase.from('profiles').select('first_name').eq('id', user.id).single();
+      if (data?.first_name) set('first_name', data.first_name);
     })();
   }, [router]);
 
-  const saveAndGo = async () => {
-  setSaving(true);
+  // SOLUTIONS AUTO-FORWARD: name/email captured at signup, nothing else to ask → go to the tool.
+  useEffect(() => {
+    if (!ready || isIntel) return;
+    (async () => {
+      if (user) await supabase.from('profiles').update({ onboarded: true }).eq('id', user.id);
+      router.replace('/dashboard/vault');
+    })();
+  }, [ready, isIntel, user]);
 
-  // save EVERYTHING to industry_profiles — full record
-  await supabase.from('industry_profiles').upsert({
-    user_id: user.id,
-    industry: f.industry || null,
-    sub_industry: f.sub_industry || null,
-    business_name: f.business_name || null,
-    employee_count: f.employee_count || null,
-    customer_type: f.customer_type || null,
-    state: f.state || null,
-    city: f.city || null,
-    imports: f.imports || null,
-    origin_countries: f.origin_countries.length ? f.origin_countries : null,
-    avg_shipment_value: f.avg_shipment_value || null,
-    hts_codes: f.hts_codes ? f.hts_codes.split(',').map(s => s.trim()).filter(Boolean) : null,
-    ideas: f.ideas || null,
-    growth_directions: f.growth.length ? f.growth : null,
-    alert_frequency: f.alert_frequency || 'daily',
-    skills: f.skills.length ? f.skills : null,
-    trade_want: f.trade_want || null,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
+  const finish = async () => {
+    setSaving(true); setError('');
+    try {
+      const patch: any = {
+        first_name: f.first_name || null,
+        business_name: f.business_name || null,
+        onboarded: true,
+      };
+      if (isIntel) {
+        patch.country = f.country || null;
+        patch.state = f.state || null;
+        patch.industries = f.industries.length ? f.industries : [];
+        patch.delivery_channel = f.delivery_channel || 'email';
+      }
+      const { error: e } = await supabase.from('profiles').update(patch).eq('id', user.id);
+      if (e) throw e;
+      // land where the product lives
+      router.replace(isIntel ? '/dashboard/intelligence' : '/dashboard/vault');
+    } catch (e) { setError(e.message || 'Something went wrong'); setSaving(false); }
+  };
 
-  // mirror the essentials onto profiles + mark onboarded
-  await supabase.from('profiles').update({
-    first_name: f.first_name || null,
-    business_name: f.business_name || null,
-    industry: f.industry || null,
-    state: f.state || null,
-    onboarded: true,
-  }).eq('id', user.id);
+  // ---- shared styles ----
+  const inp = { width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid rgba(0,0,0,0.12)', background: '#fff', fontSize: 14, fontFamily: 'inherit', outline: 'none', color: '#1a1a2e', boxSizing: 'border-box' };
+  const lbl = { fontSize: 11, fontWeight: 600, color: 'rgba(26,26,46,0.5)', display: 'block', marginBottom: 6 };
+  const primary = (on = true) => ({ padding: 13, borderRadius: 100, border: 'none', fontSize: 15, fontWeight: 700, cursor: on ? 'pointer' : 'not-allowed', fontFamily: 'inherit', background: on ? `linear-gradient(135deg,${accent},${accent2})` : 'rgba(0,0,0,0.08)', color: on ? '#fff' : 'rgba(26,26,46,0.3)', boxShadow: on ? `0 4px 16px ${accent}55` : 'none' });
+  const backBtn = { padding: '13px 18px', borderRadius: 100, border: '0.5px solid rgba(0,0,0,0.12)', background: 'rgba(255,255,255,0.7)', color: 'rgba(26,26,46,0.6)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' };
 
-  // Verify Stripe session to set plan_status
-const params = new URLSearchParams(window.location.search);
-const sessionId = params.get('session_id');
-if (sessionId) {
-  await fetch('/api/verify-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, userId: user.id }),
-  });
-}
-router.replace(plan === 'enterprise' ? '/dashboard/enterprise' : '/dashboard/personal');
-};
-
-  if (!plan) return <div style={{position:'fixed',inset:0,background:'#e8eef5'}} />;
-
-  // ---------- INDIVIDUAL: 2 steps ----------
-  if (plan !== 'enterprise') {
-    if (step === 1) return (
-      <Shell eyebrow="Individual" total={2} step={1} title={`Welcome${f.first_name ? `, ${f.first_name}` : ''}! What do you do?`} sub="This is the name other members see on your barter listings.">
-        {label('What do you do?')}
-        <Pills items={SKILLS} val={f.skills} set={v=>set('skills',v)} multi />
-        <div style={{display:'flex',marginTop:22}}>
-          <button style={{...primary(true),flex:1}} onClick={()=>setStep(2)}>Next →</button>
+  const shell = (eyebrow, title, sub, body, footer) => (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',system-ui,sans-serif", background: `radial-gradient(ellipse 70% 50% at 15% 5%,${accent}18 0%,transparent 55%),linear-gradient(160deg,#f0eff4,#eae9f2 50%,#f2f0f7)` }}>
+      <div style={{ width: 'min(500px,100%)', background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(40px)', border: '0.5px solid rgba(255,255,255,0.92)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }}>
+        <div style={{ height: 3, background: `linear-gradient(90deg,${accent},${accent2})` }} />
+        <div style={{ padding: '24px 28px 28px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <GCIcon size={22} /><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 800, color: '#1a1a2e' }}>Gratia Core</span>
+          </div>
+          {isIntel && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+              {Array.from({ length: totalSteps }).map((_, i) => <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: step > i ? accent : 'rgba(0,0,0,0.08)', transition: 'background .3s' }} />)}
+            </div>
+          )}
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: accent2, marginBottom: 6 }}>{eyebrow}</p>
+          <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 21, fontWeight: 900, letterSpacing: '-0.5px', color: '#1a1a2e', marginBottom: 6 }}>{title}</h1>
+          <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.55)', lineHeight: 1.6, marginBottom: 20 }}>{sub}</p>
+          {body}
+          {error && <p style={{ fontSize: 12, color: '#ff3b30', marginTop: 12 }}>{error}</p>}
+          <div style={{ marginTop: 20 }}>{footer}</div>
         </div>
-      </Shell>
-    );
-    return (
-      <Shell eyebrow="Individual" total={2} step={2} title="Anything you're looking to trade?" sub="Optional — helps us match you on the barter board. You can skip and do this later.">
-        {label('What you want in return','optional')}
-        <input style={input} value={f.trade_want} onChange={e=>set('trade_want',e.target.value)} placeholder="e.g. web development, a logo, copywriting" />
-        <div style={{display:'flex',gap:10,marginTop:22}}>
-          <button style={back} onClick={()=>setStep(1)}>← Back</button>
-          <button style={{...primary(true),flex:1}} disabled={saving} onClick={saveAndGo}>{saving?'Setting up…':'Enter my dashboard →'}</button>
-        </div>
-      </Shell>
+      </div>
+    </div>
+  );
+
+  // hold render until auth confirmed — prevents the flash-then-redirect
+  if (!ready) return <div style={{minHeight:'100vh',background:'#f0eff4'}} />;
+
+  // ---- SOLUTIONS: one screen ----
+  if (!isIntel) {
+    return shell(
+      'Solutions · setup',
+      "You're in. One quick thing.",
+      'Your tools are ready. What should we call you?',
+      <>
+        <label style={lbl}>First name</label>
+        <input value={f.first_name} onChange={e => set('first_name', e.target.value)} placeholder="Grace" style={inp} />
+        <div style={{ background: 'rgba(48,209,88,0.06)', border: '0.5px solid rgba(48,209,88,0.18)', borderRadius: 12, padding: '11px 13px', marginTop: 14, fontSize: 12, color: 'rgba(26,26,46,0.6)' }}>✓ Ideas Vault &amp; Barter unlocked</div>
+      </>,
+      <button onClick={finish} disabled={saving || !f.first_name.trim()} style={{ ...primary(!!f.first_name.trim()), width: '100%' }}>{saving ? 'Setting up…' : 'Enter my tools →'}</button>
     );
   }
 
-  // ---------- ENTERPRISE: 6 steps ----------
-  const T = 6;
-  if (step === 1) return (
-    <Shell eyebrow="Business" total={T} step={1} title="Tell us about your business" sub="We use this to decide which rules and thresholds actually apply to you.">
-      {label('Business name')}<input style={input} value={f.business_name} onChange={e=>set('business_name',e.target.value)} placeholder="Acme Corp" />
-      {label('Employee count')}<Pills items={EMP} val={f.employee_count} set={v=>set('employee_count',v)} />
-      {label('Who are your customers?')}<Pills items={['Other businesses','Consumers','Both']} val={f.customer_type} set={v=>set('customer_type',v)} />
-      <div style={{display:'flex',marginTop:22}}><button style={{...primary(f.business_name),flex:1}} disabled={!f.business_name} onClick={()=>setStep(2)}>Next →</button></div>
-    </Shell>
+  // ---- INTELLIGENCE / BUNDLE: 4 steps ----
+  if (step === 1) return shell(
+    (tier === 'bundle' ? 'Gratia Core' : 'Intelligence') + ' · setup',
+    'Let\u2019s get you set up',
+    'First, the basics.',
+    <>
+      <label style={lbl}>First name</label>
+      <input value={f.first_name} onChange={e => set('first_name', e.target.value)} placeholder="Grace" style={{ ...inp, marginBottom: 14 }} />
+      <label style={lbl}>Business name</label>
+      <input value={f.business_name} onChange={e => set('business_name', e.target.value)} placeholder="Acme Co" style={inp} />
+    </>,
+    <button onClick={() => setStep(2)} disabled={!f.first_name.trim()} style={{ ...primary(!!f.first_name.trim()), width: '100%' }}>Next →</button>
   );
-  if (step === 2) return (
-    <Shell eyebrow="Business" total={T} step={2} title="What industry are you in?" sub="This decides which agencies and market signals we watch for you.">
-      <Pills items={INDUSTRIES} val={f.industry} set={v=>set('industry',v)} />
-      {label('What do you actually sell?','optional')}<input style={input} value={f.sub_industry} onChange={e=>set('sub_industry',e.target.value)} placeholder="Organic cotton baby clothes, DTC + Amazon" />
-      <div style={{display:'flex',gap:10,marginTop:22}}><button style={back} onClick={()=>setStep(1)}>← Back</button><button style={{...primary(f.industry),flex:1}} disabled={!f.industry} onClick={()=>setStep(3)}>Next →</button></div>
-    </Shell>
+
+  if (step === 2) return shell(
+    'Location',
+    'Where are you based?',
+    'Federal coverage is live now — state-level is coming, so we\u2019ll save yours.',
+    <>
+      <label style={lbl}>Country</label>
+      <select value={f.country} onChange={e => set('country', e.target.value)} style={{ ...inp, marginBottom: 14, appearance: 'none' }}>
+        {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+      </select>
+      <label style={lbl}>State {f.country !== 'United States' && <span style={{ fontWeight: 400, color: 'rgba(26,26,46,0.35)' }}>(or region)</span>}</label>
+      {f.country === 'United States'
+        ? <select value={f.state} onChange={e => set('state', e.target.value)} style={{ ...inp, appearance: 'none' }}><option value="">Select…</option>{US_STATES.map(s => <option key={s}>{s}</option>)}</select>
+        : <input value={f.state} onChange={e => set('state', e.target.value)} placeholder="Region" style={inp} />}
+    </>,
+    <div style={{ display: 'flex', gap: 8 }}>
+      <button onClick={() => setStep(1)} style={backBtn}>← Back</button>
+      <button onClick={() => setStep(3)} disabled={!f.state.trim()} style={{ ...primary(!!f.state.trim()), flex: 1 }}>Next →</button>
+    </div>
   );
-  if (step === 3) return (
-    <Shell eyebrow="Business" total={T} step={3} title="Where are you based?" sub="Federal coverage is live now. State-level monitoring is coming soon — we'll save your location and switch it on automatically.">
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-        <div>{label('State')}<input style={input} value={f.state} onChange={e=>set('state',e.target.value)} placeholder="Texas" /></div>
-        <div>{label('City')}<input style={input} value={f.city} onChange={e=>set('city',e.target.value)} placeholder="Austin" /></div>
-      </div>
-      <div style={{display:'flex',gap:10,marginTop:22}}><button style={back} onClick={()=>setStep(2)}>← Back</button><button style={{...primary(true),flex:1}} onClick={()=>setStep(4)}>Next →</button></div>
-    </Shell>
+
+  if (step === 3) return shell(
+    'Industries',
+    'What do you work in?',
+    'Pick all that apply — you\u2019ll get regulatory and market updates across every one.',
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, maxHeight: 260, overflowY: 'auto' }}>
+      {INDUSTRIES.map(ind => {
+        const on = f.industries.includes(ind);
+        return <button key={ind} onClick={() => set('industries', on ? f.industries.filter(x => x !== ind) : [...f.industries, ind])} style={{ padding: '8px 14px', borderRadius: 100, fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit', border: `0.5px solid ${on ? accent : 'rgba(0,0,0,0.1)'}`, background: on ? `${accent}1a` : 'rgba(255,255,255,0.6)', color: on ? accent2 : 'rgba(26,26,46,0.6)' }}>{on ? '✓ ' : ''}{ind}</button>;
+      })}
+    </div>,
+    <div style={{ display: 'flex', gap: 8 }}>
+      <button onClick={() => setStep(2)} style={backBtn}>← Back</button>
+      <button onClick={() => setStep(4)} disabled={f.industries.length === 0} style={{ ...primary(f.industries.length > 0), flex: 1 }}>Next → {f.industries.length > 0 && `(${f.industries.length})`}</button>
+    </div>
   );
-  if (step === 4) return (
-    <Shell eyebrow="Business" total={T} step={4} title="Do you import goods?" sub="This powers Tariff Intelligence — we alert you when your specific products are affected.">
-      {label('Do you bring goods in from other countries?')}<Pills items={['Yes, I import','No imports','A supplier handles it']} val={f.imports} set={v=>set('imports',v)} />
-      {f.imports==='Yes, I import' && <>
-        {label('Where do they come from?')}<Pills items={COUNTRIES} val={f.origin_countries} set={v=>set('origin_countries',v)} multi />
-        {label('Average shipment value')}<Pills items={SHIP} val={f.avg_shipment_value} set={v=>set('avg_shipment_value',v)} />
-        {label('HTS codes','optional — makes alerts exact')}<input style={input} value={f.hts_codes} onChange={e=>set('hts_codes',e.target.value)} placeholder="e.g. 6110.20 — or leave blank" />
-      </>}
-      <div style={{display:'flex',gap:10,marginTop:22}}><button style={back} onClick={()=>setStep(3)}>← Back</button><button style={{...primary(true),flex:1}} onClick={()=>setStep(5)}>{f.imports==='No imports'?'Skip →':'Next →'}</button></div>
-    </Shell>
-  );
-  if (step === 5) return (
-    <Shell eyebrow="Business" total={T} step={5} title="What should we watch for you?" sub="We track what people search for and buy, then flag what points at something you could sell.">
-      {label('Ideas you\'re sitting on','optional')}<textarea style={{...input,minHeight:70,resize:'vertical'}} value={f.ideas} onChange={e=>set('ideas',e.target.value)} placeholder="A subscription box. A new product line. Selling wholesale." />
-      {label('If it worked, where would you grow?')}<Pills items={['Adjacent products','New channel','New customer type','New region','Subscription','Not sure yet']} val={f.growth} set={v=>set('growth',v)} multi />
-      <div style={{display:'flex',gap:10,marginTop:22}}><button style={back} onClick={()=>setStep(4)}>← Back</button><button style={{...primary(true),flex:1}} onClick={()=>setStep(6)}>Next →</button></div>
-    </Shell>
-  );
-  return (
-    <Shell eyebrow="Business" total={T} step={6} title="How should we alert you?" sub="You can change any of this later in settings.">
-      {label('Alert frequency')}<Pills items={['Immediately','Daily digest','Weekly']} val={f.alert_frequency} set={v=>set('alert_frequency',v)} />
-      <div style={{display:'flex',gap:10,marginTop:22}}><button style={back} onClick={()=>setStep(5)}>← Back</button><button style={{...primary(true),flex:1}} disabled={saving} onClick={saveAndGo}>{saving?'Setting up…':'Launch my dashboard →'}</button></div>
-    </Shell>
+
+  return shell(
+    'Delivery',
+    'How should we reach you?',
+    'Where your alerts land. Change it any time in settings.',
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {CHANNELS.map(c => {
+        const on = f.delivery_channel === c.key;
+        return (
+          <button key={c.key} onClick={() => set('delivery_channel', c.key)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', border: `0.5px solid ${on ? accent : 'rgba(0,0,0,0.08)'}`, background: on ? `${accent}14` : 'rgba(255,255,255,0.6)' }}>
+            <span style={{ fontSize: 18 }}>{c.icon}</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>{c.label}</p>
+              <p style={{ fontSize: 11, color: 'rgba(26,26,46,0.5)', margin: 0 }}>{c.sub}</p>
+            </div>
+            {on && <span style={{ color: accent2, fontWeight: 700 }}>✓</span>}
+          </button>
+        );
+      })}
+    </div>,
+    <div style={{ display: 'flex', gap: 8 }}>
+      <button onClick={() => setStep(3)} style={backBtn}>← Back</button>
+      <button onClick={finish} disabled={saving} style={{ ...primary(true), flex: 1 }}>{saving ? 'Finishing…' : 'Show my intelligence →'}</button>
+    </div>
   );
 }

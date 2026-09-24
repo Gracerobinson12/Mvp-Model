@@ -1,0 +1,1 @@
+export default function Cookies() { return <div style={{padding:40,fontFamily:'system-ui',maxWidth:800,margin:'0 auto'}}><h1>Cookie Policy</h1><p style={{marginTop:20,color:'#6b7280'}}>Coming soon.</p></div> }
