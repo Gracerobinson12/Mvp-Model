@@ -4,7 +4,7 @@
 // Monthly vs Yearly toggle (they choose), explains what's included, Intelligence waitlist capture.
 // STUB payment for now — swap startTrialStub() for real Stripe later (see header note in old file).
 
-import React, { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect  } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -35,7 +35,7 @@ const INCLUDES = {
   ],
 };
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const tier = sp.get('tier') || 'solutions';
@@ -170,5 +170,14 @@ export default function CheckoutPage() {
         </div>
       </div>
     </>
+  );
+}
+
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#f0eff4' }} />}>
+      <CheckoutPageInner />
+    </Suspense>
   );
 }

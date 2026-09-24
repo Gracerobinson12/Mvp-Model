@@ -6,7 +6,7 @@
 // Writes everything to profiles (single source of truth). No writing-style step (per-update
 // explanation handles that later). Access itself is gated by entitlement elsewhere.
 
-import { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect  } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { onboardingKind } from '@/lib/pricing';
@@ -30,7 +30,7 @@ function GCIcon({ size = 26 }) {
   );
 }
 
-export default function OnboardingPage() {
+function OnboardingPageInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const tier = (sp.get('tier') || 'intelligence');
@@ -211,5 +211,14 @@ export default function OnboardingPage() {
       <button onClick={() => setStep(3)} style={backBtn}>← Back</button>
       <button onClick={finish} disabled={saving} style={{ ...primary(true), flex: 1 }}>{saving ? 'Finishing…' : 'Show my intelligence →'}</button>
     </div>
+  );
+}
+
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#f0eff4' }} />}>
+      <OnboardingPageInner />
+    </Suspense>
   );
 }
