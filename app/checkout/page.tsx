@@ -73,23 +73,23 @@ function CheckoutPageInner() {
   };
 
   // STUB — replace with Stripe. Marks trialing + flips entitlement, then → dashboard.
-  const startTrialStub = async () => {
+  const startTrial = async () => {
     if (!user) return;
     setLoading(true); setError('');
     try {
-      const patch = {
-        plan: tier === 'bundle' ? 'bundle' : tier,
-        plan_status: 'trialing',
-        trial_ends_at: new Date(Date.now() + TRIAL_DAYS * 864e5).toISOString(),
-        has_solutions: t.grants.solutions,
-        has_intelligence: t.grants.intelligence,
-        onboarded: true,
-      };
-      const { error: e } = await supabase.from('profiles').update(patch).eq('id', user.id);
-      if (e) throw e;
-      // Solutions → the Solutions dashboard; Intelligence/bundle → intelligence onboarding then deck
-      router.replace(tier === 'solutions' ? '/dashboard/solutions' : `/onboarding?tier=${tier}&cycle=${cycle}`);
-    } catch (e) { setError(e.message || 'Something went wrong'); setLoading(false); }
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({ tier, cycle }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'Could not start checkout');
+      window.location.href = data.url;   // → Stripe hosted checkout
+    } catch (e) {
+      setError(e.message || 'Something went wrong');
+      setLoading(false);
+    }
   };
 
   return (
@@ -144,10 +144,10 @@ function CheckoutPageInner() {
 
             {error && <p style={{ fontSize: 12, color: '#ff3b30', marginBottom: 12 }}>{error}</p>}
 
-            <button onClick={startTrialStub} disabled={loading || !user} style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${accent},${accent2})`, boxShadow: `0 6px 20px ${accent}55` }}>
+            <button onClick={startTrial} disabled={loading || !user} style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${accent},${accent2})`, boxShadow: `0 6px 20px ${accent}55` }}>
               {loading ? 'Starting…' : `Start free trial — ${cycle === 'annual' ? `$${t.annual}/yr` : `$${t.monthly}/mo`} after ${TRIAL_DAYS} days →`}
             </button>
-            <p style={{ fontSize: 11, color: 'rgba(26,26,46,0.4)', textAlign: 'center', marginTop: 12 }}>Testing mode · no charge yet · cancel anytime</p>
+            <p style={{ fontSize: 11, color: 'rgba(26,26,46,0.4)', textAlign: 'center', marginTop: 12 }}>Secure checkout by Stripe · cancel anytime</p>
 
             {/* Intelligence waitlist — for Solutions buyers */}
             {showWaitlist && (

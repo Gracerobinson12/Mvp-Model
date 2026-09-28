@@ -96,6 +96,8 @@ export default function SolutionsHub() {
     else router.push('/dashboard/solutions');
   };
 
+  const trialDays = profile?.trial_ends_at ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at) - Date.now()) / 86400000)) : null;
+  const trialLabel = profile?.plan_status === 'trialing' && trialDays !== null ? `Trial · ${trialDays}d left` : (profile?.plan_status === 'active' ? 'Active plan' : '');
   const name = profile?.first_name || profile?.full_name?.split(' ')[0] || 'there';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -122,11 +124,12 @@ export default function SolutionsHub() {
               <div onClick={goHome} style={{ cursor: 'pointer' }}><GCIcon size={30} /></div>
               <div>
                 <p style={{ fontFamily: "'Sora',sans-serif", fontSize: 16, fontWeight: 800, color: ink }}>Solutions</p>
-                <p style={{ fontSize: 11, color: ink3 }}>{greeting}, {name}</p>
+                <p style={{ fontSize: 11, color: ink3 }}>{greeting}, {name}{trialLabel ? ` · ${trialLabel}` : ''}</p>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button onClick={() => setMode(m => m === 'dark' ? 'light' : 'dark')} style={{ background: card, border: `0.5px solid ${cardBdr}`, borderRadius: 100, padding: '6px 12px', cursor: 'pointer', color: ink2, fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>{D ? '☀︎ Light' : '☾ Dark'}</button>
+              <button onClick={() => router.push('/dashboard/settings')} style={{ background: card, border: `0.5px solid ${cardBdr}`, borderRadius: 100, padding: '6px 12px', cursor: 'pointer', color: ink2, fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>⚙ Settings</button>
               <button onClick={async () => { await supabase.auth.signOut(); router.replace('/'); }} style={{ background: card, border: `0.5px solid ${cardBdr}`, borderRadius: 100, padding: '6px 12px', cursor: 'pointer', color: ink2, fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>Sign out</button>
             </div>
           </div>
@@ -181,6 +184,18 @@ export default function SolutionsHub() {
                 <p style={{ fontSize: 12, color: ink2, marginTop: 2 }}>AI data protection — redact before it reaches any AI tool.</p>
               </div>
               <span style={{ fontSize: 13, fontWeight: 700, color: D ? '#4a9eff' : '#0a84ff', whiteSpace: 'nowrap' }}>Visit ↗</span>
+            </div>
+          </a>
+
+          {/* Need advice? → Advisory */}
+          <a href="/advisory" className="tool-tile" style={{ display: 'block', marginTop: 6 }}>
+            <div style={{ background: card, border: `0.5px solid ${cardBdr}`, borderRadius: 16, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg,#ff3b30,#ff6b35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>💬</div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: ink, margin: 0 }}>Need business or tech advice?</p>
+                <p style={{ fontSize: 12, color: ink2, margin: '2px 0 0' }}>Advisory is open — tell us the problem, we\'ll help you solve it.</p>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#cc2018', whiteSpace: 'nowrap' }}>Let\'s talk →</span>
             </div>
           </a>
 
