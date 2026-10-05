@@ -23,7 +23,9 @@ export default function SettingsPage() {
   const [lastName, setLastName] = useState('');
   const [business, setBusiness] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [curPass, setCurPass] = useState('');
   const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState('');
 
@@ -66,10 +68,16 @@ export default function SettingsPage() {
     flash(error ? error.message : 'Check both inboxes — confirm the change from the email we just sent.');
   };
   const changePass = async () => {
-    if (newPass.length < 8) { flash('Password must be at least 8 characters.'); return; }
+    if (!curPass) { flash('Enter your current password.'); return; }
+    if (newPass.length < 8) { flash('New password must be at least 8 characters.'); return; }
+    if (newPass !== confirmPass) { flash('New passwords don\'t match.'); return; }
     setBusy('pass');
+    // 1) verify current password by re-authenticating
+    const { error: reauthErr } = await supabase.auth.signInWithPassword({ email: user.email, password: curPass });
+    if (reauthErr) { setBusy(''); flash('Current password is incorrect.'); return; }
+    // 2) set the new password
     const { error } = await supabase.auth.updateUser({ password: newPass });
-    setBusy(''); setNewPass('');
+    setBusy(''); setCurPass(''); setNewPass(''); setConfirmPass('');
     flash(error ? error.message : 'Password updated.');
   };
   const openBilling = async () => {
@@ -138,8 +146,18 @@ export default function SettingsPage() {
           {/* Password */}
           <div style={sectionCard}>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: ink3, marginBottom: 12 }}>Password</p>
+            <input type="password" value={curPass} onChange={e => setCurPass(e.target.value)} placeholder="Current password" style={inp} />
             <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New password (min 8 chars)" style={inp} />
+            <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirm new password" style={inp} />
             <button onClick={changePass} disabled={busy === 'pass'} style={btn}>{busy === 'pass' ? 'Updating…' : 'Change password'}</button>
+            <p style={{ fontSize: 11, color: ink3, marginTop: 8, lineHeight: 1.5 }}>For your security, we verify your current password before changing it.</p>
+          </div>
+
+          {/* Report a problem */}
+          <div style={sectionCard}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: ink3, marginBottom: 8 }}>Security &amp; support</p>
+            <p style={{ fontSize: 13, color: ink2, lineHeight: 1.55, marginBottom: 12 }}>See something you didn\'t do, or something not working? Report it and we\'ll look into it.</p>
+            <Link href="/report" style={{ display: 'inline-block', padding: '10px 18px', borderRadius: 100, background: D ? 'rgba(255,255,255,0.1)' : 'rgba(28,28,46,0.06)', color: ink, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>Report a problem →</Link>
           </div>
 
           {/* Sign out */}

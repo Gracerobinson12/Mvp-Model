@@ -201,7 +201,7 @@ export default function SolutionsHub() {
 
           <p style={{ fontSize: 10, color: ink3, textAlign: 'center', marginTop: 28, lineHeight: 1.7 }}>
             Records created here establish existence and integrity — not legal advice.<br />
-            <Link href="/terms" style={{ color: ink3 }}>Terms</Link> · <Link href="/privacy" style={{ color: ink3 }}>Privacy</Link>
+            <Link href="/terms" style={{ color: ink3 }}>Terms</Link> · <Link href="/privacy" style={{ color: ink3 }}>Privacy</Link> · <Link href="/report" style={{ color: ink3 }}>Report a problem</Link>
           </p>
         </div>
       </div>
