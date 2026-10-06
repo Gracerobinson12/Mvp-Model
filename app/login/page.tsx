@@ -143,7 +143,7 @@ export default function LoginPage() {
                   color:'rgba(26,26,46,.4)',textTransform:'uppercase'}}>
                   Password
                 </label>
-                <a href="/reset-password" style={{fontSize:12,color:'#ff3b30',
+                <a href="/forgot-password" style={{fontSize:12,color:'#ff3b30',
                   textDecoration:'none',fontWeight:500}}>
                   Forgot password?
                 </a>

@@ -26,6 +26,9 @@ export default function SettingsPage() {
   const [curPass, setCurPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
+  const [pwStep, setPwStep] = useState('verify'); // 'verify' | 'set'
+  const [pwMsg, setPwMsg] = useState('');
+  const [passDone, setPassDone] = useState(false);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState('');
 
@@ -67,18 +70,25 @@ export default function SettingsPage() {
     setBusy('');
     flash(error ? error.message : 'Check both inboxes — confirm the change from the email we just sent.');
   };
-  const changePass = async () => {
-    if (!curPass) { flash('Enter your current password.'); return; }
-    if (newPass.length < 8) { flash('New password must be at least 8 characters.'); return; }
-    if (newPass !== confirmPass) { flash('New passwords don\'t match.'); return; }
-    setBusy('pass');
-    // 1) verify current password by re-authenticating
-    const { error: reauthErr } = await supabase.auth.signInWithPassword({ email: user.email, password: curPass });
-    if (reauthErr) { setBusy(''); flash('Current password is incorrect.'); return; }
-    // 2) set the new password
+  const verifyCurrent = async () => {
+    if (!curPass) { setPwMsg('Enter your current password.'); return; }
+    setBusy('pwverify'); setPwMsg('');
+    const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: curPass });
+    setBusy('');
+    if (error) { setPwMsg('That password is incorrect.'); return; }
+    setPwStep('set'); setPwMsg('');  // verified → reveal new-password fields
+  };
+
+  const setNewPassword = async () => {
+    if (newPass.length < 8) { setPwMsg('New password must be at least 8 characters.'); return; }
+    if (newPass !== confirmPass) { setPwMsg('New passwords don\'t match.'); return; }
+    setBusy('pwset'); setPwMsg('');
     const { error } = await supabase.auth.updateUser({ password: newPass });
-    setBusy(''); setCurPass(''); setNewPass(''); setConfirmPass('');
-    flash(error ? error.message : 'Password updated.');
+    setBusy('');
+    if (error) { setPwMsg(error.message); return; }
+    // confirmed changed
+    setCurPass(''); setNewPass(''); setConfirmPass(''); setPwStep('verify');
+    flash('✓ Your password has been changed.');
   };
   const openBilling = async () => {
     setBusy('billing');
@@ -143,14 +153,30 @@ export default function SettingsPage() {
             <p style={{ fontSize: 11, color: ink3, marginTop: 8, lineHeight: 1.5 }}>Changing your email requires confirming from a link we send to the new address.</p>
           </div>
 
-          {/* Password */}
+          {/* Password — step 1: verify current, step 2: set new */}
           <div style={sectionCard}>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: ink3, marginBottom: 12 }}>Password</p>
-            <input type="password" value={curPass} onChange={e => setCurPass(e.target.value)} placeholder="Current password" style={inp} />
-            <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="New password (min 8 chars)" style={inp} />
-            <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Confirm new password" style={inp} />
-            <button onClick={changePass} disabled={busy === 'pass'} style={btn}>{busy === 'pass' ? 'Updating…' : 'Change password'}</button>
-            <p style={{ fontSize: 11, color: ink3, marginTop: 8, lineHeight: 1.5 }}>For your security, we verify your current password before changing it.</p>
+            {pwStep === 'verify' ? (
+              <>
+                <label style={lbl}>Current password</label>
+                <input type="password" value={curPass} onChange={e => { setCurPass(e.target.value); setPwMsg(''); }} onKeyDown={e => e.key === 'Enter' && verifyCurrent()} placeholder="Enter your current password" style={inp} />
+                {pwMsg && <p style={{ fontSize: 12, color: '#ff3b30', marginBottom: 10 }}>{pwMsg}</p>}
+                <button onClick={verifyCurrent} disabled={busy === 'pwverify'} style={btn}>{busy === 'pwverify' ? 'Verifying…' : 'Verify to change password'}</button>
+              </>
+            ) : (
+              <>
+                <div style={{ background: 'rgba(48,209,88,0.1)', border: '0.5px solid rgba(48,209,88,0.3)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: D ? '#4ade80' : '#1a7a35', marginBottom: 12 }}>✓ Identity verified — set your new password</div>
+                <label style={lbl}>New password</label>
+                <input type="password" value={newPass} onChange={e => { setNewPass(e.target.value); setPwMsg(''); }} placeholder="New password (min 8 chars)" style={inp} />
+                <label style={lbl}>Confirm new password</label>
+                <input type="password" value={confirmPass} onChange={e => { setConfirmPass(e.target.value); setPwMsg(''); }} onKeyDown={e => e.key === 'Enter' && setNewPassword()} placeholder="Re-enter new password" style={inp} />
+                {pwMsg && <p style={{ fontSize: 12, color: '#ff3b30', marginBottom: 10 }}>{pwMsg}</p>}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setPwStep('verify'); setCurPass(''); setNewPass(''); setConfirmPass(''); setPwMsg(''); }} style={{ ...btn, background: D ? 'rgba(255,255,255,0.1)' : 'rgba(28,28,46,0.06)', color: ink }}>Cancel</button>
+                  <button onClick={setNewPassword} disabled={busy === 'pwset'} style={{ ...btn, flex: 1 }}>{busy === 'pwset' ? 'Changing…' : 'Change password'}</button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Report a problem */}
