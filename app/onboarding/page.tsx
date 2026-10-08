@@ -65,7 +65,7 @@ function OnboardingPageInner() {
     if (!ready || isIntel) return;
     (async () => {
       if (user) await supabase.from('profiles').update({ onboarded: true }).eq('id', user.id);
-      router.replace('/dashboard/vault');
+      router.replace('/dashboard/solutions');
     })();
   }, [ready, isIntel, user]);
 
@@ -86,7 +86,7 @@ function OnboardingPageInner() {
       const { error: e } = await supabase.from('profiles').update(patch).eq('id', user.id);
       if (e) throw e;
       // land where the product lives
-      router.replace(isIntel ? '/dashboard/intelligence' : '/dashboard/vault');
+      router.replace(isIntel ? '/dashboard/intelligence' : '/dashboard/solutions');
     } catch (e) { setError(e.message || 'Something went wrong'); setSaving(false); }
   };
 

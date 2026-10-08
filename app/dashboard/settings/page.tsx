@@ -103,6 +103,7 @@ export default function SettingsPage() {
 
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eef1f6', color: 'rgba(26,26,46,0.4)', fontFamily: "'DM Sans',sans-serif" }}>Loading…</div>;
 
+  const homeHref = profile?.has_intelligence ? '/dashboard/intelligence' : '/dashboard/solutions';
   const trialDays = profile?.trial_ends_at ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at) - Date.now()) / 86400000)) : null;
   const planLabel = profile?.plan === 'bundle' ? 'Gratia Core (bundle)' : profile?.plan === 'intelligence' ? 'Intelligence' : profile?.has_solutions ? 'Solutions' : 'No active plan';
 
@@ -113,10 +114,10 @@ export default function SettingsPage() {
         <div style={{ maxWidth: 620, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Link href="/dashboard/solutions" style={{ textDecoration: 'none' }}><GCIcon size={28} /></Link>
+              <Link href={homeHref} style={{ textDecoration: 'none' }}><GCIcon size={28} /></Link>
               <div><p style={{ fontFamily: "'Sora',sans-serif", fontSize: 16, fontWeight: 800, color: ink }}>Settings</p><p style={{ fontSize: 11, color: ink3 }}>{user?.email}</p></div>
             </div>
-            <Link href="/dashboard/solutions" style={{ fontSize: 13, color: ink2, textDecoration: 'none' }}>← Dashboard</Link>
+            <Link href={homeHref} style={{ fontSize: 13, color: ink2, textDecoration: 'none' }}>← Dashboard</Link>
           </div>
 
           {msg && <div style={{ background: 'rgba(48,209,88,0.1)', border: '0.5px solid rgba(48,209,88,0.3)', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: D?'#4ade80':'#1a7a35', marginBottom: 14 }}>{msg}</div>}
