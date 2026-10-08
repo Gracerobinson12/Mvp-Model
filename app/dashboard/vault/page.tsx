@@ -1,11 +1,11 @@
 'use client';
 // @ts-nocheck
 // app/dashboard/vault/page.tsx — Ideas Vault. Honest sealing: SHA-256 + server timestamp.
-// Labels reflect ONLY what the seal route actually does today. RFC-3161 / Bitcoin shown as
-// "coming" upgrades, never as active claims.
+// Now with "Bring it to life" → Launch HQ on sealed ideas.
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 type Idea = {
@@ -195,7 +195,7 @@ function SealModal({ idea, onClose, onSealed }) {
   );
 }
 
-function IdeaCard({ idea, onSeal, onDownload }) {
+function IdeaCard({ idea, onSeal, onDownload, onLaunch }) {
   const isSealed = idea.status === 'sealed';
   return (
     <div style={{ background: 'rgba(255,255,255,.65)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: `0.5px solid ${isSealed ? 'rgba(48,209,88,.25)' : 'rgba(255,255,255,.92)'}`, borderRadius: 18, padding: '16px 18px', marginBottom: 10, position: 'relative', overflow: 'hidden' }}>
@@ -221,13 +221,15 @@ function IdeaCard({ idea, onSeal, onDownload }) {
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         {!isSealed && <button onClick={() => onSeal(idea)} style={{ flex: 1, padding: '9px 14px', borderRadius: 100, border: 'none', background: 'linear-gradient(135deg,#30d158,#34c759)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 3px 10px rgba(48,209,88,.3)' }}>🔒 Seal now</button>}
-        {isSealed && <button onClick={() => onDownload(idea)} style={{ flex: 1, padding: '9px 14px', borderRadius: 100, border: '0.5px solid rgba(48,209,88,.3)', background: 'rgba(48,209,88,.08)', color: '#1a7a35', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>📄 Download certificate</button>}
+        {isSealed && <button onClick={() => onDownload(idea)} style={{ flex: 1, padding: '9px 14px', borderRadius: 100, border: '0.5px solid rgba(48,209,88,.3)', background: 'rgba(48,209,88,.08)', color: '#1a7a35', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>📄 Certificate</button>}
+        <button onClick={() => onLaunch(idea)} style={{ flex: 1, padding: '9px 14px', borderRadius: 100, border: 'none', background: 'linear-gradient(135deg,#1f45c7,#3a6ff0)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 3px 10px rgba(31,69,199,.3)' }}>🚀 Bring it to life</button>
       </div>
     </div>
   );
 }
 
 export default function IdeasVaultPage() {
+  const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -245,6 +247,8 @@ export default function IdeasVaultPage() {
     } catch (e) {}
     setLoading(false);
   };
+
+  const launchIdea = (idea: Idea) => { router.push(`/dashboard/vault/launch/${idea.id}`); };
 
   const downloadCert = (idea: Idea) => {
     const text = `GRATIA CORE — IDEAS VAULT · SEAL CERTIFICATE\n\n` +
@@ -282,7 +286,7 @@ export default function IdeasVaultPage() {
       <div style={{ background: '#f0eff4', backgroundImage: 'radial-gradient(ellipse 70% 50% at 15% 5%,rgba(255,59,48,.09) 0%,transparent 55%)', minHeight: '100vh', padding: '14px 14px 80px', color: '#1a1a2e' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
           <div>
-            <Link href="/dashboard" style={{ fontSize: 11, color: 'rgba(26,26,46,.4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>← Dashboard</Link>
+            <Link href="/dashboard/solutions" style={{ fontSize: 11, color: 'rgba(26,26,46,.4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>← Dashboard</Link>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '2.5px', color: '#ff3b30', textTransform: 'uppercase', marginBottom: 4 }}>💡 Ideas Vault</div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 30, fontWeight: 900, letterSpacing: -2, lineHeight: 1 }}>PROTECT YOUR <span style={{ color: '#ff3b30' }}>IDEAS</span></div>
           </div>
@@ -302,10 +306,10 @@ export default function IdeasVaultPage() {
           <div style={{ background: 'rgba(255,59,48,.06)', border: '0.5px solid rgba(255,59,48,.18)', borderRadius: 20, padding: '20px 22px', marginBottom: 16, animation: 'fadeUp .4s ease both' }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 900, color: '#1a1a2e', marginBottom: 8 }}>Document it before you share it</div>
             <div style={{ fontSize: 13, color: 'rgba(26,26,46,.6)', lineHeight: 1.7, marginBottom: 16 }}>
-              Write your idea, then seal it. Sealing creates a SHA-256 fingerprint of your document and records the exact time — so if ownership is ever questioned, you have proof it existed, unaltered, on that date.
+              Write your idea, then seal it. Sealing creates a SHA-256 fingerprint of your document and records the exact time — so if ownership is ever questioned, you have proof it existed, unaltered, on that date. Then bring it to life with a real launch plan.
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {[['🔐', 'SHA-256 fingerprint'], ['🕐', 'Recorded timestamp'], ['📄', 'Downloadable certificate']].map(([icon, label]) => (
+              {[['🔐', 'SHA-256 fingerprint'], ['🕐', 'Recorded timestamp'], ['🚀', 'Launch plan']].map(([icon, label]) => (
                 <div key={label as string} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(26,26,46,.6)', background: 'rgba(255,255,255,.5)', border: '0.5px solid rgba(255,255,255,.9)', borderRadius: 100, padding: '4px 12px' }}>
                   <span>{icon}</span><span>{label}</span>
                 </div>
@@ -328,7 +332,7 @@ export default function IdeasVaultPage() {
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'rgba(26,26,46,.35)', fontSize: 14 }}>No {filter} ideas yet.</div>
         ) : displayed.map((idea, i) => (
           <div key={idea.id} style={{ animation: `fadeUp .3s ease ${i * .04}s both` }}>
-            <IdeaCard idea={idea} onSeal={setSealTarget} onDownload={downloadCert} />
+            <IdeaCard idea={idea} onSeal={setSealTarget} onDownload={downloadCert} onLaunch={launchIdea} />
           </div>
         ))}
 
