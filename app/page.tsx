@@ -13,7 +13,7 @@ const BRANCHES = [
     hook: "You have a problem. Let's figure it out.",
     desc: 'Business and technology guidance for how you build, operate, and grow \u2014 websites, systems, automation, and AI.',
     cta: 'Start a conversation \u2192' },
-  { n: '02', id: 'intelligence', name: 'Intelligence', icon: '\u{1F4E1}', color: '#0a84ff', ink: '#185FA5', live: false, href: '/intelligence',
+  { n: '02', id: 'intelligence', name: 'Intelligence', icon: '\u{1F4E1}', color: '#0a84ff', ink: '#185FA5', live: true, href: '/intelligence',
     hook: "Know what's changing before it becomes your problem.",
     desc: 'Regulatory, market, industry, and policy intelligence \u2014 filtered to your sector, in plain language.',
     cta: 'Explore Intelligence \u2192' },
