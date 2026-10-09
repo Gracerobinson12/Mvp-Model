@@ -146,14 +146,6 @@ function SealModal({ idea, onClose, onSealed }) {
               </div>
               <div style={{ fontSize: 10, color: '#1a7a35', fontWeight: 700, alignSelf: 'center' }}>Active</div>
             </div>
-            <div style={{ display: 'flex', gap: 12, padding: '11px 14px', background: 'rgba(26,26,46,.03)', borderRadius: 12, border: '0.5px solid rgba(26,26,46,.08)', opacity: 0.7 }}>
-              <div style={{ fontSize: 20 }}>🏦</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>Third-party notarization</div>
-                <div style={{ fontSize: 11, color: 'rgba(26,26,46,.5)', lineHeight: 1.5 }}>Accredited timestamp authority (RFC 3161). Strengthens legal weight.</div>
-              </div>
-              <div style={{ fontSize: 10, color: 'rgba(26,26,46,.4)', fontWeight: 700, alignSelf: 'center' }}>Coming</div>
-            </div>
           </div>
 
           {error && <div style={{ background: 'rgba(255,59,48,.08)', border: '1px solid rgba(255,59,48,.2)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#cc2018', marginBottom: 12 }}>{error}</div>}

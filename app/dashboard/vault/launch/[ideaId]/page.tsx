@@ -14,8 +14,8 @@ function GCIcon({ size = 26 }) {
 }
 
 const QUESTIONS = [
-  { key: 'kind', label: 'What kind of thing is it?', opts: ['Website', 'App', 'Physical product', 'Service', 'Other'] },
-  { key: 'money', label: 'Will you charge money?', opts: ['Subscriptions', 'One-time purchases', 'Free for now'] },
+  { key: 'kind', label: 'What kind of thing is it?', hint: 'Pick all that apply', multi: true, opts: ['Website', 'App', 'Physical product', 'Service', 'Other'] },
+  { key: 'money', label: 'How will you charge?', hint: 'Pick all that apply', multi: true, opts: ['Subscriptions', 'One-time purchases', 'Free for now'] },
   { key: 'location', label: 'Where are you / your customers?', opts: ['United States', 'US + International', 'Other'] },
   { key: 'entity', label: 'Are you a registered business yet?', opts: ['Not yet', 'Sole proprietor', 'LLC', 'Corporation'] },
   { key: 'timeline', label: 'Timeline goal?', opts: ['ASAP', '2–3 months', 'No rush'] },
@@ -62,10 +62,26 @@ export default function LaunchHQPage() {
     })();
   }, [ideaId, router]);
 
-  const allAnswered = QUESTIONS.every(q => intake[q.key]);
+  const isAnswered = (q) => {
+    const v = intake[q.key];
+    return q.multi ? Array.isArray(v) && v.length > 0 : !!v;
+  };
+  const toggleOpt = (q, o) => {
+    setIntake(p => {
+      if (!q.multi) return { ...p, [q.key]: o };
+      const cur = Array.isArray(p[q.key]) ? p[q.key] : [];
+      return { ...p, [q.key]: cur.includes(o) ? cur.filter(x => x !== o) : [...cur, o] };
+    });
+  };
+  const answeredCount = QUESTIONS.filter(isAnswered).length;
+  const allAnswered = answeredCount === QUESTIONS.length;
 
   const generate = async () => {
     setError(''); setStep('generating');
+    // Flatten multi-select arrays into readable strings for storage + the AI prompt.
+    const flatIntake = Object.fromEntries(
+      Object.entries(intake).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : v])
+    );
     try {
       const { data: { user, session } } = await supabase.auth.getUser().then(async r => ({ data: { user: r.data.user, session: (await supabase.auth.getSession()).data.session } }));
       // create (or reuse) the project
@@ -74,18 +90,18 @@ export default function LaunchHQPage() {
         const { data: created, error: ce } = await supabase.from('launch_projects').insert({
           user_id: user.id, idea_id: ideaId, name: idea.title,
           idea_summary: [idea.title, idea.description].filter(Boolean).join(' — '),
-          intake,
+          intake: flatIntake,
         }).select().single();
         if (ce) throw ce;
         proj = created; setProject(created);
       } else {
-        await supabase.from('launch_projects').update({ intake }).eq('id', proj.id);
+        await supabase.from('launch_projects').update({ intake: flatIntake }).eq('id', proj.id);
       }
       const ideaText = [idea.title, idea.description, idea.expanded_doc].filter(Boolean).join('\n\n');
       const res = await fetch('/api/launch/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
-        body: JSON.stringify({ projectId: proj.id, idea: ideaText, intake }),
+        body: JSON.stringify({ projectId: proj.id, idea: ideaText, intake: flatIntake }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Generation failed');
@@ -139,11 +155,13 @@ export default function LaunchHQPage() {
 
               {QUESTIONS.map(q => (
                 <div key={q.key} style={{ marginBottom:18 }}>
-                  <label style={{fontSize:14,fontWeight:650,color:ink,display:'block',marginBottom:8}}>{q.label}</label>
+                  <label style={{fontSize:14,fontWeight:650,color:ink,display:'block',marginBottom:q.hint?3:8}}>{q.label}</label>
+                  {q.hint && <p style={{fontSize:11.5,color:ink3,marginBottom:8}}>{q.hint}</p>}
                   <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
                     {q.opts.map(o => {
-                      const on = intake[q.key] === o;
-                      return <button key={o} onClick={()=>setIntake(p=>({...p,[q.key]:o}))} style={{padding:'8px 14px',borderRadius:100,fontSize:13,fontWeight:on?700:500,cursor:'pointer',fontFamily:'inherit',border:`1px solid ${on?accent:cardBdr}`,background:on?accent:card,color:on?'#fff':ink2}}>{o}</button>;
+                      const v = intake[q.key];
+                      const on = q.multi ? (Array.isArray(v) && v.includes(o)) : v === o;
+                      return <button key={o} onClick={()=>toggleOpt(q,o)} style={{padding:'8px 14px',borderRadius:100,fontSize:13,fontWeight:on?700:500,cursor:'pointer',fontFamily:'inherit',border:`1px solid ${on?accent:cardBdr}`,background:on?accent:card,color:on?'#fff':ink2}}>{on && q.multi ? '✓ ' : ''}{o}</button>;
                     })}
                   </div>
                 </div>
@@ -151,7 +169,7 @@ export default function LaunchHQPage() {
 
               {error && <p style={{fontSize:13,color:'#ae2a21',marginTop:12}}>{error}</p>}
               <button onClick={generate} disabled={!allAnswered} style={{ width:'100%', marginTop:16, padding:15, borderRadius:10, border:'none', cursor:allAnswered?'pointer':'not-allowed', fontFamily:'inherit', fontSize:15, fontWeight:700, color:'#fff', background:allAnswered?accent:'rgba(0,0,0,0.12)', opacity:allAnswered?1:0.6 }}>
-                {allAnswered ? '✨ Generate my launch plan' : `Answer all 5 (${Object.keys(intake).filter(k=>intake[k]).length}/5)`}
+                {allAnswered ? '✨ Generate my launch plan' : `Answer all 5 (${answeredCount}/5)`}
               </button>
               <p style={{fontSize:11,color:ink3,textAlign:'center',marginTop:12,lineHeight:1.6}}>Your plan is general guidance to help you organize — not legal, financial, or tax advice. Confirm anything official with a licensed professional.</p>
             </div>
