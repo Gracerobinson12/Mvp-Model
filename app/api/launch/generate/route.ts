@@ -84,6 +84,11 @@ Return ONLY valid JSON, no markdown, in this exact shape:
     return NextResponse.json({ ok: true, count: rows.length });
   } catch (e: any) {
     console.error('launch generate error:', e);
-    return NextResponse.json({ error: 'Something went wrong generating the plan.' }, { status: 500 });
+    // TEMP: surface the real cause so we can diagnose. Remove `detail`/`where` once fixed.
+    return NextResponse.json({
+      error: 'Something went wrong generating the plan.',
+      detail: e?.message || String(e),
+      where: e?.status ? `api_status_${e.status}` : (e?.code ? `db_${e.code}` : 'unknown'),
+    }, { status: 500 });
   }
 }
