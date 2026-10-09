@@ -57,7 +57,8 @@ Return ONLY valid JSON, no markdown, in this exact shape:
 {"tasks":[{"phase":"foundation","title":"...","why":"..."},...]}`;
 
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      // Override anytime by setting ANTHROPIC_MODEL in Vercel — no code change needed.
+      model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     });
