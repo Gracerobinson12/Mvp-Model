@@ -56,6 +56,30 @@ export async function POST(req: NextRequest) {
       text: `${SUBJECTS[kind]}\n\n` + Object.entries(d).map(([k, v]) => `${k}: ${v}`).join('\n') + `\n\n${when}`,
     });
 
+    // On signup, also send the NEW USER a branded welcome/confirmation email (non-fatal).
+    if (kind === 'signup' && d.email) {
+      try {
+        const first = (d.name || '').split(' ')[0] || 'there';
+        const welcomeHtml = `
+<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#14202e">
+  <div style="height:4px;background:linear-gradient(90deg,#ff3b30,#ff9f0a,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff3b30);border-radius:12px 12px 0 0"></div>
+  <div style="border:1px solid #e3e7ee;border-top:none;border-radius:0 0 14px 14px;padding:24px 22px">
+    <p style="font-size:18px;font-weight:800;margin:0 0 10px">Welcome to Gratia Core, ${esc(first)} 👋</p>
+    <p style="font-size:15px;line-height:1.7;color:#3a4656;margin:0 0 14px">Your account is confirmed and ready. You can seal ideas in the Ideas Vault, track trade agreements in Barter, and bring a project to life with Launch HQ.</p>
+    <a href="https://www.gratiacore.com/dashboard/solutions" style="display:inline-block;background:#1f45c7;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:10px">Go to your dashboard →</a>
+    <p style="font-size:12px;color:#8a97a6;line-height:1.6;margin:18px 0 0">Questions? Just reply to this email or reach us at intel@gratiacore.com.</p>
+  </div>
+</div>`;
+        await resend.emails.send({
+          from: process.env.EMAIL_FROM!,
+          to: d.email,
+          subject: 'Welcome to Gratia Core — your account is confirmed',
+          html: welcomeHtml,
+          text: `Welcome to Gratia Core, ${first}!\n\nYour account is confirmed and ready. Seal ideas in the Ideas Vault, track trades in Barter, and plan with Launch HQ.\n\nDashboard: https://www.gratiacore.com/dashboard/solutions\n\nQuestions? Reply here or email intel@gratiacore.com.`,
+        });
+      } catch (e) { console.error('welcome email failed:', e); }
+    }
+
     return NextResponse.json({ ok: true, emailed: true });
   } catch (e: any) {
     console.error('notify error:', e);

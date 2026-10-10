@@ -227,6 +227,7 @@ export default function IdeasVaultPage() {
   const [showNew, setShowNew] = useState(false);
   const [sealTarget, setSealTarget] = useState<Idea | null>(null);
   const [filter, setFilter] = useState<'all' | 'sealed' | 'draft'>('all');
+  const [owner, setOwner] = useState<{ name: string; email: string }>({ name: '', email: '' });
 
   useEffect(() => { fetchIdeas(); }, []);
   const fetchIdeas = async () => {
@@ -234,6 +235,9 @@ export default function IdeasVaultPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
+      const { data: prof } = await supabase.from('profiles').select('full_name,first_name,last_name,email').eq('id', user.id).single();
+      const nm = (prof?.full_name || [prof?.first_name, prof?.last_name].filter(Boolean).join(' ') || '').trim();
+      setOwner({ name: nm || (user.email || ''), email: user.email || '' });
       const { data } = await supabase.from('vault_ideas').select('*').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false });
       setIdeas((data || []) as Idea[]);
     } catch (e) {}
@@ -244,20 +248,60 @@ export default function IdeasVaultPage() {
 
   const downloadCert = (idea: Idea) => {
     const body = idea.expanded_doc || idea.description || '';
-    const divider = '='.repeat(64);
-    const text = `GRATIA CORE — IDEAS VAULT · SEAL CERTIFICATE\n\n` +
-      `Title: ${idea.title}\nSeal ID: ${idea.seal_id}\n` +
-      `Sealed: ${idea.sealed_at ? new Date(idea.sealed_at).toUTCString() : ''}\n` +
-      `SHA-256: ${idea.seal_hash}\n\n` +
-      `${divider}\nSEALED DOCUMENT (the exact content this fingerprint covers)\n${divider}\n\n` +
-      `${body}\n\n` +
-      `${divider}\n\n` +
-      `This certificate records a SHA-256 fingerprint of the sealed record — the document\n` +
-      `shown above together with its title and the timestamp it was recorded in Gratia Core.\n` +
-      `Any change to the document above would change the fingerprint, which proves the\n` +
-      `content is unaltered since sealing and existed on the recorded date.\n\n` +
-      `This is a record of prior existence, not a patent, and not legal advice.\n` +
-      `Gratia Core is not a law firm. Consult a licensed attorney for IP protection.`;
+    const sealedUtc = idea.sealed_at ? new Date(idea.sealed_at).toUTCString() : '';
+    const ownerName = owner.name || 'the account holder';
+    const div = '═'.repeat(60);
+    const thin = '─'.repeat(60);
+    const text =
+`${div}
+        GRATIA CORE — IDEAS VAULT
+        CERTIFICATE OF SEALED RECORD
+${div}
+
+This certifies that the idea and details below were recorded and
+cryptographically sealed in Gratia Core on the date and time shown.
+
+Certified to:   ${ownerName}
+Account email:  ${owner.email || '—'}
+Title:          ${idea.title}
+Seal ID:        ${idea.seal_id}
+Sealed (UTC):   ${sealedUtc}
+SHA-256:        ${idea.seal_hash}
+
+${thin}
+SEALED DETAILS — the exact content this certificate covers
+${thin}
+
+${body}
+
+${thin}
+WHAT THIS PROVES
+${thin}
+
+The SHA-256 value above is a unique fingerprint of the sealed record
+(the details above, the title, and the sealing timestamp). Any change
+to a single character of the details would produce a different
+fingerprint. Because the fingerprint matches, this document proves the
+details existed in exactly this form, under this account, on the date
+and time recorded above.
+
+${thin}
+ATTESTATION
+${thin}
+
+Sealed by:  ${ownerName}
+
+Signature:  __________________________________    Date: ____________
+
+Issued by Gratia Core — gratiacore.com
+Verification reference: ${idea.seal_id}
+
+${thin}
+This is a record of prior existence and authorship on the recorded date.
+It is NOT a patent, copyright, trademark, or government registration, and
+it is not legal advice. Gratia Core is not a law firm. For legal protection
+of an idea, consult a licensed attorney.
+${div}`;
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `GC-${idea.seal_id}-certificate.txt`; a.click();

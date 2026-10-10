@@ -60,13 +60,29 @@ Return ONLY valid JSON, no markdown, in this exact shape:
       // Override anytime by setting ANTHROPIC_MODEL in Vercel. Default is a model your account has.
       model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
       max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: '{' },   // prefill: forces the reply to be JSON
+      ],
     });
 
-    const text = msg.content.find(b => b.type === 'text')?.text || '{}';
-    const clean = text.replace(/```json|```/g, '').trim();
+    const raw = msg.content.find(b => b.type === 'text')?.text || '';
+    const text = '{' + raw;   // re-attach the prefilled opening brace
+    // Robust JSON extraction: strip code fences, then grab the first {...} block even if the
+    // model added any prose before/after it.
+    let clean = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const firstBrace = clean.indexOf('{');
+    const lastBrace = clean.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      clean = clean.slice(firstBrace, lastBrace + 1);
+    }
     let parsed;
-    try { parsed = JSON.parse(clean); } catch { return NextResponse.json({ error: 'Plan generation failed, try again.' }, { status: 500 }); }
+    try {
+      parsed = JSON.parse(clean);
+    } catch (parseErr) {
+      console.error('launch parse failed. raw model output:', text);
+      return NextResponse.json({ error: 'Plan generation failed, try again.' }, { status: 500 });
+    }
     const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
     if (!tasks.length) return NextResponse.json({ error: 'No tasks generated, try again.' }, { status: 500 });
 
