@@ -18,6 +18,14 @@ function GratiaLogo() {
   )
 }
 
+// Route a signed-in user to the right home based on what they actually have.
+function destFor(prof: any): string {
+  if (prof?.has_intelligence) return prof.onboarded ? '/dashboard/intelligence' : '/onboarding?tier=intelligence'
+  if (prof?.has_solutions) return '/dashboard/solutions'
+  // Signed up but no active entitlement yet (e.g. didn't finish checkout) → send to pricing.
+  return '/pricing'
+}
+
 export default function LoginPage() {
   const router  = useRouter()
   const [email,    setEmail]    = useState('')
@@ -33,7 +41,7 @@ export default function LoginPage() {
     try {
       // 1. Sign in
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
       })
       if (loginError) throw loginError
@@ -41,22 +49,20 @@ export default function LoginPage() {
       const userId = data.user?.id
       if (!userId) throw new Error('Login failed')
 
-      // 2. Check admin FIRST — using maybeSingle so no error if not found
+      // 2. Admin first (maybeSingle → no error if not an admin)
       const { data: adminData } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle()
+        .from('admins').select('id').eq('id', userId).maybeSingle()
+      if (adminData?.id) { router.push('/admin'); return }
 
-      if (adminData?.id) {
-        router.push('/admin')
-        return
-      }
+      // 3. Honor an intended destination from the signup/price-id flow, if it's a safe internal path.
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('gc_post_login') : null
+      if (stored) localStorage.removeItem('gc_post_login')
+      if (stored && stored.startsWith('/') && !stored.startsWith('//')) { router.push(stored); return }
 
-      // 3. Not admin — go to dashboard
-      const redirect = localStorage.getItem('gc_post_login') || '/dashboard';
-      localStorage.removeItem('gc_post_login');
-      router.push(redirect);
+      // 4. Otherwise route by entitlement — Solutions users land on their Solutions dashboard.
+      const { data: prof } = await supabase
+        .from('profiles').select('has_solutions,has_intelligence,onboarded').eq('id', userId).maybeSingle()
+      router.push(destFor(prof))
     } catch (e: any) {
       setError(e?.message || 'Invalid email or password.')
       setLoading(false)
@@ -83,7 +89,7 @@ export default function LoginPage() {
           <Link href="/" style={{textDecoration:'none'}}><GratiaLogo/></Link>
           <div style={{fontSize:13,color:'rgba(26,26,46,.45)'}}>
             No account?{' '}
-            <Link href="/" style={{color:'#ff3b30',fontWeight:600,textDecoration:'none'}}>
+            <Link href="/pricing" style={{color:'#ff3b30',fontWeight:600,textDecoration:'none'}}>
               Start free trial →
             </Link>
           </div>
@@ -114,7 +120,7 @@ export default function LoginPage() {
                 Sign in to<br/>Gratia Core
               </h1>
               <p style={{fontSize:14,color:'rgba(26,26,46,.5)'}}>
-                Business Intelligence Agency
+                Welcome back — log in to your account.
               </p>
             </div>
 
@@ -192,7 +198,7 @@ export default function LoginPage() {
 
             <div style={{textAlign:'center',fontSize:13,color:'rgba(26,26,46,.5)'}}>
               New here?{' '}
-              <Link href="/" style={{color:'#ff3b30',fontWeight:600,
+              <Link href="/pricing" style={{color:'#ff3b30',fontWeight:600,
                 textDecoration:'none'}}>
                 Start free trial →
               </Link>
@@ -203,12 +209,9 @@ export default function LoginPage() {
         {/* Footer */}
         <div style={{padding:'20px 32px',display:'flex',
           justifyContent:'center',gap:24,flexWrap:'wrap'}}>
-          {['Privacy Policy','Terms of Service','Contact'].map(l=>(
-            <a key={l} href={`/${l.toLowerCase().replace(/ /g,'-')}`}
-              style={{fontSize:12,color:'rgba(26,26,46,.35)',textDecoration:'none'}}>
-              {l}
-            </a>
-          ))}
+          <a href="/privacy" style={{fontSize:12,color:'rgba(26,26,46,.35)',textDecoration:'none'}}>Privacy Policy</a>
+          <a href="/terms" style={{fontSize:12,color:'rgba(26,26,46,.35)',textDecoration:'none'}}>Terms of Service</a>
+          <a href="/contact" style={{fontSize:12,color:'rgba(26,26,46,.35)',textDecoration:'none'}}>Contact</a>
         </div>
       </div>
     </>
