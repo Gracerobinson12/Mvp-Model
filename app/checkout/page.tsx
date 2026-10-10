@@ -45,6 +45,7 @@ function CheckoutInner() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [agree, setAgree] = useState(false);
 
   const showWaitlist = tier === 'solutions';
   const [wlEmail, setWlEmail] = useState('');
@@ -69,6 +70,7 @@ function CheckoutInner() {
 
   const startTrial = async () => {
     if (!user) return;
+    if (!agree) { setError('Please agree to the Terms and Privacy Policy to place your order.'); return; }
     setLoading(true); setError('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -127,9 +129,16 @@ function CheckoutInner() {
               </div>
             ))}
 
-            {error && <p style={{ fontSize: 12, color: '#ff3b30', margin: '14px 0 0' }}>{error}</p>}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, margin: '16px 0 2px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={agree} onChange={e => { setAgree(e.target.checked); setError(''); }} style={{ marginTop: 2, width: 16, height: 16, accentColor: accent, flexShrink: 0, cursor: 'pointer' }} />
+              <span style={{ fontSize: 12, color: 'rgba(26,26,46,0.62)', lineHeight: 1.5 }}>
+                By submitting my order I agree to the <Link href="/terms" target="_blank" style={{ color: accent2, fontWeight: 600, textDecoration: 'none' }}>Terms of Service</Link> and <Link href="/privacy" target="_blank" style={{ color: accent2, fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</Link> (including arbitration and class-action waiver), authorize the recurring charge after the {TRIAL_DAYS}-day trial unless I cancel, and consent to service emails.
+              </span>
+            </label>
 
-            <button onClick={startTrial} disabled={loading || !user} style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${accent},${accent2})`, boxShadow: `0 6px 20px ${accent}55`, marginTop: 16 }}>
+            {error && <p style={{ fontSize: 12, color: '#ff3b30', margin: '10px 0 0' }}>{error}</p>}
+
+            <button onClick={startTrial} disabled={loading || !user || !agree} style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: (loading || !agree) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${accent},${accent2})`, boxShadow: `0 6px 20px ${accent}55`, marginTop: 12, opacity: agree ? 1 : 0.55 }}>
               {loading ? 'Opening secure checkout…' : `Start free trial — ${cycle === 'annual' ? `$${t.annual}/yr` : `$${t.monthly}/mo`} after ${TRIAL_DAYS} days →`}
             </button>
             <p style={{ fontSize: 11, color: 'rgba(26,26,46,0.4)', textAlign: 'center', marginTop: 12 }}>Secure checkout by Stripe · cancel anytime</p>

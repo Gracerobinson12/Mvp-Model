@@ -234,7 +234,7 @@ export default function BarterPage() {
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
             <div>
-              <Link href="/dashboard" style={{ fontSize: 11, color: 'rgba(26,26,46,.4)', textDecoration: 'none', display: 'block', marginBottom: 6 }}>← Dashboard</Link>
+              <Link href="/dashboard/solutions" style={{ fontSize: 11, color: 'rgba(26,26,46,.4)', textDecoration: 'none', display: 'block', marginBottom: 6 }}>← Dashboard</Link>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '2.5px', color: '#1a7a35', textTransform: 'uppercase', marginBottom: 4 }}>🤝 Barter</div>
               <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 28, fontWeight: 900, letterSpacing: -1.5, lineHeight: 1 }}>Trade agreements</div>
             </div>

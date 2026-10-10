@@ -36,6 +36,7 @@ function SignupPageInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [exists, setExists] = useState(false);
+  const [agree, setAgree] = useState(false);
 
 
   const submit = async () => {
@@ -43,6 +44,7 @@ function SignupPageInner() {
     if (!email.includes('@')) { setError('Enter a valid email.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (password !== confirm) { setError('Passwords don\u2019t match.'); return; }
+    if (!agree) { setError('Please agree to the Terms and Privacy Policy to continue.'); return; }
     setLoading(true); setError('');
     try {
       const { data, error: e } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
@@ -68,6 +70,8 @@ function SignupPageInner() {
           plan: tier === 'bundle' ? 'bundle' : tier,
           plan_status: 'incomplete',
           onboarded: false,
+          terms_accepted_at: new Date().toISOString(),
+          terms_version: '2026-10-10',
         }, { onConflict: 'id' });
       }
       router.replace(`/checkout?tier=${tier}&cycle=${cycle}`);
@@ -114,9 +118,16 @@ function SignupPageInner() {
                 <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.6)' }}><Link href="/login" style={{ color: '#0a84ff', fontWeight: 600, textDecoration: 'none' }}>Log in instead →</Link></p>
               </div>
             )}
-            {error && <p style={{ fontSize: 12, color: '#ff3b30', marginBottom: 12 }}>{error}</p>}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, margin: '4px 0 2px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={agree} onChange={e => { setAgree(e.target.checked); setError(''); }} style={{ marginTop: 2, width: 16, height: 16, accentColor: accent, flexShrink: 0, cursor: 'pointer' }} />
+              <span style={{ fontSize: 12, color: 'rgba(26,26,46,0.62)', lineHeight: 1.5 }}>
+                I agree to the <Link href="/terms" target="_blank" style={{ color: accent2, fontWeight: 600, textDecoration: 'none' }}>Terms of Service</Link> and <Link href="/privacy" target="_blank" style={{ color: accent2, fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</Link>, including the arbitration and class-action-waiver terms. I consent to receive account and service emails.
+              </span>
+            </label>
 
-            <button onClick={submit} disabled={loading} style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${accent},${accent2})`, boxShadow: `0 6px 20px ${accent}55`, marginTop: 4 }}>
+            {error && <p style={{ fontSize: 12, color: '#ff3b30', margin: '10px 0 12px' }}>{error}</p>}
+
+            <button onClick={submit} disabled={loading || !agree} style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: (loading || !agree) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${accent},${accent2})`, boxShadow: `0 6px 20px ${accent}55`, marginTop: 10, opacity: agree ? 1 : 0.55 }}>
               {loading ? 'Creating account…' : 'Continue →'}
             </button>
             <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.5)', textAlign: 'center', marginTop: 14 }}>Already have an account? <Link href="/login" style={{ color: accent2, fontWeight: 600, textDecoration: 'none' }}>Log in</Link></p>
