@@ -24,8 +24,9 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await admin.auth.getUser(token);
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const { projectId, idea, intake } = await req.json();
+    const { projectId, idea, intake: rawIntake } = await req.json();
     if (!projectId || !idea) return NextResponse.json({ error: 'Missing project info' }, { status: 400 });
+    const intake = rawIntake && typeof rawIntake === 'object' ? rawIntake : {};
 
     // verify the project belongs to this user
     const { data: proj } = await admin.from('launch_projects').select('id').eq('id', projectId).eq('user_id', user.id).single();
@@ -57,42 +58,48 @@ Return ONLY valid JSON, no markdown, in this exact shape:
 {"tasks":[{"phase":"foundation","title":"...","why":"..."},...]}`;
 
     const msg = await anthropic.messages.create({
-      // Override anytime by setting ANTHROPIC_MODEL in Vercel. Default is a model your account has.
       model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
-      max_tokens: 2000,
-      messages: [
-        { role: 'user', content: prompt },
-        { role: 'assistant', content: '{' },   // prefill: forces the reply to be JSON
-      ],
+      max_tokens: 4000,
+      system: 'You are a JSON API. You reply with one raw JSON object and nothing else — no prose, no markdown, no code fences.',
+      messages: [{ role: 'user', content: prompt }],
     });
 
-    const raw = msg.content.find(b => b.type === 'text')?.text || '';
-    const text = '{' + raw;   // re-attach the prefilled opening brace
-    // Robust JSON extraction: strip code fences, then grab the first {...} block even if the
-    // model added any prose before/after it.
-    let clean = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const firstBrace = clean.indexOf('{');
-    const lastBrace = clean.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      clean = clean.slice(firstBrace, lastBrace + 1);
+    const raw = (msg.content || []).map((b: any) => (b.type === 'text' ? b.text : '')).join('').trim();
+
+    // Tolerant extraction: strip fences, then slice the outermost {...} (or [...]) block.
+    const extractJson = (s: string): string => {
+      let c = s.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const o = c.indexOf('{'), cb = c.lastIndexOf('}');
+      const ob = c.indexOf('['), cab = c.lastIndexOf(']');
+      // Prefer object braces; fall back to array brackets.
+      if (o !== -1 && cb > o) return c.slice(o, cb + 1);
+      if (ob !== -1 && cab > ob) return c.slice(ob, cab + 1);
+      return c;
+    };
+
+    let parsed: any = null;
+    try { parsed = JSON.parse(extractJson(raw)); } catch {}
+
+    // Accept {tasks:[...]}, a bare [...], or {phases:{...}} shapes.
+    let tasks: any[] = [];
+    if (parsed) {
+      if (Array.isArray(parsed)) tasks = parsed;
+      else if (Array.isArray(parsed.tasks)) tasks = parsed.tasks;
+      else if (Array.isArray(parsed.plan)) tasks = parsed.plan;
     }
-    let parsed;
-    try {
-      parsed = JSON.parse(clean);
-    } catch (parseErr) {
-      console.error('launch parse failed. raw model output:', text);
-      return NextResponse.json({ error: 'Plan generation failed, try again.' }, { status: 500 });
+
+    if (!tasks.length) {
+      console.error('launch generate: could not parse tasks. raw:', raw.slice(0, 1000));
+      return NextResponse.json({ error: 'Plan generation failed, try again.', detail: parsed ? 'NO_TASKS' : 'PARSE_FAIL', raw: raw.slice(0, 800) }, { status: 500 });
     }
-    const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
-    if (!tasks.length) return NextResponse.json({ error: 'No tasks generated, try again.' }, { status: 500 });
 
     // save tasks (replace any existing for this project)
     await admin.from('launch_tasks').delete().eq('project_id', projectId);
     const rows = tasks.map((t, i) => ({
       project_id: projectId, user_id: user.id,
       phase: ['foundation','build','legal','launch'].includes(t.phase) ? t.phase : 'build',
-      title: String(t.title || '').slice(0, 300),
-      why: String(t.why || '').slice(0, 500),
+      title: String(t.title || t.task || t.name || '').slice(0, 300),
+      why: String(t.why || t.reason || t.description || '').slice(0, 500),
       sort: i, done: false,
     })).filter(t => t.title);
     const { error: insErr } = await admin.from('launch_tasks').insert(rows);
@@ -100,8 +107,12 @@ Return ONLY valid JSON, no markdown, in this exact shape:
 
     return NextResponse.json({ ok: true, count: rows.length });
   } catch (e: any) {
-    // Full error stays in server logs only — never sent to the browser.
     console.error('launch generate error:', e);
-    return NextResponse.json({ error: 'Something went wrong generating the plan. Please try again.' }, { status: 500 });
+    // TEMP: surface the real cause so we can diagnose. Remove detail/where once fixed.
+    return NextResponse.json({
+      error: 'Something went wrong generating the plan. Please try again.',
+      detail: e?.message || String(e),
+      where: e?.status ? `api_status_${e.status}` : (e?.code ? `db_${e.code}` : 'unknown'),
+    }, { status: 500 });
   }
 }
