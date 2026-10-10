@@ -17,12 +17,12 @@ const BRANCHES = [
     hook: "Know what's changing before it becomes your problem.",
     desc: 'Regulatory, market, industry, and policy intelligence \u2014 filtered to your sector, in plain language.',
     cta: 'Explore Intelligence \u2192' },
-  { n: '03', id: 'solutions', name: 'Solutions', icon: '\u{1F9F0}', color: '#30d158', ink: '#0F6E56', live: true, href: '/solutions',
+  { n: '03', id: 'solutions', name: 'Solutions', icon: '\u{1F9F0}', color: '#30d158', ink: '#0F6E56', live: false, href: '/solutions',
     hook: 'Find a tool for the job.',
-    desc: 'Ideas Vault and Barter \u2014 live now. Document and seal ideas, track trade agreements.',
-    cta: 'See what we offer \u2192' },
+    desc: 'Products built to solve specific business problems. GC Protect is live now \u2014 Ideas Vault and Barter are on the way.',
+    cta: "See what's live \u2192" },
 ];
- 
+
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
   return (
     <span style={{ display: 'inline-flex' }}>
@@ -296,13 +296,12 @@ function LandingPage() {
             <Link href="/advisory" className="gc-footer-link">Advisory</Link>
             <Link href="/intelligence" className="gc-footer-link">Intelligence</Link>
             <Link href="/solutions" className="gc-footer-link">Solutions</Link>
-            <Link href="/pricing" className="gc-footer-link">Pricing</Link>
             <a href={GC_PROTECT_URL} target="_blank" rel="noopener noreferrer" className="gc-footer-link">GC Protect &#8599;</a>
           </div>
           <div>
             <p className="gc-footer-col-label">Company</p>
             <Link href="/about" className="gc-footer-link">About</Link>
-            <Link href="/advisory" className="gc-footer-link">Contact</Link>
+            <Link href="/contact" className="gc-footer-link">Contact</Link>
           </div>
           <div>
             <p className="gc-footer-col-label">Legal</p>
@@ -325,7 +324,6 @@ function LandingPage() {
           <Link href="/advisory" className="nav-item">Advisory</Link>
           <Link href="/intelligence" className="nav-item">Intelligence</Link>
           <Link href="/solutions" className="nav-item">Solutions</Link>
-          <Link href="/pricing" className="nav-item">Pricing</Link> 
           <Link href="/about" className="nav-item">About</Link>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -470,10 +468,7 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
 }
 
 export default function RootPage() {
-  const [status, setStatus] = React.useState<'checking' | 'locked' | 'unlocked'>('checking');
-  useEffect(() => { setStatus(getCookie() === 'granted' ? 'unlocked' : 'locked'); }, []);
-  const handleUnlock = useCallback(() => setStatus('unlocked'), []);
-  if (status === 'checking') return <div style={{ position: 'fixed', inset: 0, background: '#f2f2f7' }} />;
-  if (status === 'unlocked') return <LandingPage />;
-  return <GatePage onUnlock={handleUnlock} />;
+  // Public launch: the landing page is open to everyone. The waitlist/access-code
+  // gate (GatePage) is kept in the file but no longer blocks entry.
+  return <LandingPage />;
 }

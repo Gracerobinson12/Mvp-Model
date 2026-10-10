@@ -6,7 +6,7 @@
 import React from 'react';
 import Link from 'next/link';
 
-const GC_PROTECT_URL = 'https://gcprotect.com';
+const GC_PROTECT_URL = 'https://gcprotect.tech';
 
 function GCIcon({ size = 24 }) {
   return (

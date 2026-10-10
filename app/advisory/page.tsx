@@ -77,7 +77,7 @@ export default function AdvisoryPage() {
       }
       setSent(true);
     } catch {
-      setError('Something went wrong. Email us at hello@gratiacore.com');
+      setError('Something went wrong. Email us at intel@gratiacore.com');
     } finally {
       setLoading(false);
     }

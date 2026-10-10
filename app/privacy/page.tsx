@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 30, fontWeight: 900, color: '#14202e', letterSpacing: '-0.5px', marginBottom: 6 }}>Privacy Policy</h1>
           <p style={{ fontSize: 13, color: '#8a97a6', marginBottom: 20 }}>Last updated: {UPDATED}</p>
 
-          <P>{COMPANY} (&quot;Gratia Core Enterprise LLC,&quot; &quot;we,&quot; &quot;us&quot;) respects your privacy. This policy explains what we collect, how we use it, who we share it with, and the choices you have. It applies to gratiacore.com and our Services.</P>
+          <P>{COMPANY} respects your privacy. This policy explains what we collect, how we use it, who we share it with, and the choices you have. It applies to gratiacore.com and our Services.</P>
 
           <H>Information we collect</H>
           <ul style={{ paddingLeft: 20, margin: '0 0 12px' }}>

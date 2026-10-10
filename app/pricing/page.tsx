@@ -1,10 +1,8 @@
 'use client';
 // @ts-nocheck
-// app/pricing/page.tsx — REPLACES your old pricing page.
-// Reads live from lib/pricing.ts (single source of truth) so numbers never drift.
-// Three tiers: Solutions $15 / Intelligence $49 / Bundle $59. Monthly/annual toggle.
-// Each CTA routes into the onboarding flow: /signup?tier=...&cycle=...
-// Advisory stays a separate "let's talk" link (consulting, no self-serve plan).
+// app/pricing/page.tsx — Solutions is buyable now; Intelligence + Bundle show "Coming soon".
+// Reads live from lib/pricing.ts. Only the Solutions CTA starts a trial; the others link to the
+// Intelligence waitlist instead of checkout.
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -20,12 +18,14 @@ function GCIcon({ size = 26 }: { size?: number }) {
   );
 }
 
-// What each tier includes — display only (mapped to what's real today).
 const INCLUDES: Record<string, string[]> = {
   solutions: ['Ideas Vault — document & seal ideas', 'Barter — logged, confirmed trade agreements'],
-  intelligence: ['Regulatory updates for your industries', 'Market signals (coming soon)', 'Filtered to your sector, plain-language'],
+  intelligence: ['Regulatory updates for your industries', 'Market signals', 'Filtered to your sector, plain-language'],
   bundle: ['Everything in Intelligence', 'Everything in Solutions', 'One login, one bill'],
 };
+
+// Which tiers are live for self-serve purchase right now.
+const LIVE: Record<string, boolean> = { solutions: true, intelligence: false, bundle: false };
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(true);
@@ -55,7 +55,7 @@ export default function PricingPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.75)', borderRadius: 100, padding: '5px 14px', marginBottom: 16 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#30d158' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(28,28,30,0.55)' }}>7-day free trial · every plan</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(28,28,30,0.55)' }}>7-day free trial · Solutions</span>
           </div>
           <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 'clamp(32px,5vw,52px)', fontWeight: 900, letterSpacing: '-2px', lineHeight: 1.1, color: '#1c1c1e', marginBottom: 10 }}>Simple, honest pricing.</h1>
           <p style={{ fontSize: 16, color: 'rgba(28,28,30,0.5)', marginBottom: 24 }}>Card saved, not charged until day 8. Cancel anytime.</p>
@@ -71,13 +71,15 @@ export default function PricingPage() {
           {(['solutions', 'intelligence', 'bundle'] as const).map((key, i) => {
             const t = TIERS[key];
             const featured = key === 'bundle';
+            const live = LIVE[key];
             const price = annual ? t.annual : t.monthly;
             const unit = annual ? '/yr' : '/mo';
             return (
               <motion.div key={key} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, type: 'spring', stiffness: 180, damping: 22 }}
-                style={{ position: 'relative', background: featured ? 'rgba(255,255,255,0.66)' : 'rgba(255,255,255,0.52)', backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)', border: featured ? `2px solid ${t.accent}66` : '1px solid rgba(255,255,255,0.78)', borderRadius: 22, padding: '28px 26px', boxShadow: featured ? `0 20px 60px ${t.accent}22, 0 8px 24px rgba(0,0,0,0.09)` : '0 8px 32px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column' }}>
-                {featured && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: `linear-gradient(135deg,${t.accent},#ff6b35)`, color: '#fff', padding: '4px 14px', borderRadius: 100, whiteSpace: 'nowrap', boxShadow: `0 4px 12px ${t.accent}44` }}>Best value</div>}
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.accent, background: `${t.accent}14`, border: `0.5px solid ${t.accent}30`, padding: '3px 10px', borderRadius: 100, width: 'fit-content', marginBottom: 16, marginTop: featured ? 8 : 0 }}>{t.name}</div>
+                style={{ position: 'relative', background: featured ? 'rgba(255,255,255,0.66)' : 'rgba(255,255,255,0.52)', backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)', border: featured ? `2px solid ${t.accent}66` : '1px solid rgba(255,255,255,0.78)', borderRadius: 22, padding: '28px 26px', boxShadow: featured ? `0 20px 60px ${t.accent}22, 0 8px 24px rgba(0,0,0,0.09)` : '0 8px 32px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column', opacity: live ? 1 : 0.92 }}>
+                {!live && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'rgba(28,28,30,0.82)', color: '#fff', padding: '4px 14px', borderRadius: 100, whiteSpace: 'nowrap' }}>Coming soon</div>}
+                {live && featured && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: `linear-gradient(135deg,${t.accent},#ff6b35)`, color: '#fff', padding: '4px 14px', borderRadius: 100, whiteSpace: 'nowrap', boxShadow: `0 4px 12px ${t.accent}44` }}>Best value</div>}
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.accent, background: `${t.accent}14`, border: `0.5px solid ${t.accent}30`, padding: '3px 10px', borderRadius: 100, width: 'fit-content', marginBottom: 16, marginTop: 8 }}>{t.name}</div>
                 <p style={{ fontSize: 12, color: 'rgba(28,28,30,0.5)', lineHeight: 1.5, marginBottom: 16, minHeight: 34 }}>{t.tagline}</p>
                 <div key={String(annual)} className="price-animate" style={{ marginBottom: 4 }}>
                   <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 48, fontWeight: 900, letterSpacing: '-3px', color: '#1c1c1e', lineHeight: 1 }}>${price}</span>
@@ -91,8 +93,17 @@ export default function PricingPage() {
                     </div>
                   ))}
                 </div>
-                <a href={`/signup?tier=${key}&cycle=${annual ? 'annual' : 'monthly'}`} style={{ display: 'block', textAlign: 'center', padding: 13, borderRadius: 100, textDecoration: 'none', fontSize: 14, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", background: featured ? `linear-gradient(135deg,${t.accent},#ff6b35)` : 'rgba(255,255,255,0.85)', color: featured ? '#fff' : '#1c1c1e', border: featured ? 'none' : '0.5px solid rgba(0,0,0,0.12)', boxShadow: featured ? `0 4px 16px ${t.accent}55` : 'none' }}>Start 7-day trial →</a>
-                <p style={{ fontSize: 11, color: 'rgba(28,28,30,0.3)', textAlign: 'center', marginTop: 8 }}>Card saved · not charged until day 8</p>
+                {live ? (
+                  <>
+                    <a href={`/signup?tier=${key}&cycle=${annual ? 'annual' : 'monthly'}`} style={{ display: 'block', textAlign: 'center', padding: 13, borderRadius: 100, textDecoration: 'none', fontSize: 14, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", background: featured ? `linear-gradient(135deg,${t.accent},#ff6b35)` : 'rgba(255,255,255,0.85)', color: featured ? '#fff' : '#1c1c1e', border: featured ? 'none' : '0.5px solid rgba(0,0,0,0.12)', boxShadow: featured ? `0 4px 16px ${t.accent}55` : 'none' }}>Start 7-day trial →</a>
+                    <p style={{ fontSize: 11, color: 'rgba(28,28,30,0.3)', textAlign: 'center', marginTop: 8 }}>Card saved · not charged until day 8</p>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/intelligence" style={{ display: 'block', textAlign: 'center', padding: 13, borderRadius: 100, textDecoration: 'none', fontSize: 14, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", background: 'rgba(28,28,30,0.06)', color: 'rgba(28,28,30,0.6)', border: '0.5px solid rgba(0,0,0,0.1)' }}>Join the waitlist →</Link>
+                    <p style={{ fontSize: 11, color: 'rgba(28,28,30,0.3)', textAlign: 'center', marginTop: 8 }}>We&apos;ll email you when it opens</p>
+                  </>
+                )}
               </motion.div>
             );
           })}
