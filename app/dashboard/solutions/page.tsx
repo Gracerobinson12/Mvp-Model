@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-const GC_PROTECT_URL = 'https://gcprotect.com';
+const GC_PROTECT_URL = 'https://gcprotect.tech';
 
 function GCIcon({ size = 26 }) {
   return (
@@ -37,6 +37,22 @@ export default function SolutionsHub() {
   const [mode, setMode] = useState('light');   // LIGHT default
   const [stats, setStats] = useState({ ideas: 0, sealed: 0, trades: 0 });
   const [activity, setActivity] = useState([]);
+  const [fbOpen, setFbOpen] = useState(false);
+  const [fbText, setFbText] = useState('');
+  const [fbDone, setFbDone] = useState(false);
+  const [fbSending, setFbSending] = useState(false);
+
+  const submitFeedback = async () => {
+    if (!fbText.trim()) return;
+    setFbSending(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('feedback').insert({ user_id: user?.id || null, email: user?.email || null, message: fbText.trim().slice(0, 4000), page: 'solutions dashboard' });
+      fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'feedback', data: { email: user?.email || 'unknown', message: fbText.trim().slice(0, 4000) } }) }).catch(() => {});
+      setFbDone(true); setFbText('');
+    } catch (e) { /* non-fatal */ }
+    finally { setFbSending(false); }
+  };
 
   useEffect(() => { const s = localStorage.getItem('gc_dash_mode'); if (s) setMode(s); }, []);
   useEffect(() => { localStorage.setItem('gc_dash_mode', mode); }, [mode]);
@@ -198,6 +214,34 @@ export default function SolutionsHub() {
               <span style={{ fontSize: 13, fontWeight: 700, color: '#cc2018', whiteSpace: 'nowrap' }}>Let\'s talk →</span>
             </div>
           </a>
+
+          {/* Feedback */}
+          <div style={{ background: card, border: `0.5px solid ${cardBdr}`, borderRadius: 16, padding: '16px 18px', marginTop: 6 }}>
+            {fbDone ? (
+              <div style={{ textAlign: 'center', padding: '6px 0' }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: ink }}>Thank you — got it. 💛</p>
+                <p style={{ fontSize: 12, color: ink2, marginTop: 2 }}>Your feedback went straight to the team.</p>
+              </div>
+            ) : !fbOpen ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => setFbOpen(true)}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg,#1f45c7,#3a6ff0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>💡</div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: ink, margin: 0 }}>Have feedback or an idea?</p>
+                  <p style={{ fontSize: 12, color: ink2, margin: '2px 0 0' }}>Tell us what would make Gratia Core better.</p>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#1f45c7', whiteSpace: 'nowrap' }}>Share →</span>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 8 }}>Share your feedback</p>
+                <textarea value={fbText} onChange={e => setFbText(e.target.value)} placeholder="What's working, what's not, what you'd love to see…" rows={4} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${cardBdr}`, background: D ? '#0e151e' : '#fff', color: ink, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button onClick={submitFeedback} disabled={fbSending || !fbText.trim()} style={{ flex: 1, padding: '11px', borderRadius: 100, border: 'none', cursor: (fbSending || !fbText.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: '#fff', background: '#1f45c7', opacity: fbText.trim() ? 1 : 0.5 }}>{fbSending ? 'Sending…' : 'Send feedback'}</button>
+                  <button onClick={() => { setFbOpen(false); setFbText(''); }} style={{ padding: '11px 16px', borderRadius: 100, border: `1px solid ${cardBdr}`, background: 'transparent', color: ink2, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <p style={{ fontSize: 10, color: ink3, textAlign: 'center', marginTop: 28, lineHeight: 1.7 }}>
             Records created here establish existence and integrity — not legal advice.<br />

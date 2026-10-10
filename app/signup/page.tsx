@@ -73,6 +73,12 @@ function SignupPageInner() {
           terms_accepted_at: new Date().toISOString(),
           terms_version: '2026-10-10',
         }, { onConflict: 'id' });
+        // Notify admin of the new signup (fire-and-forget — never blocks).
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: 'signup', data: { email: user.email, name: (firstName.trim() + ' ' + lastName.trim()).trim(), plan: tier } }),
+        }).catch(() => {});
       }
       router.replace(`/checkout?tier=${tier}&cycle=${cycle}`);
     } catch (e) {

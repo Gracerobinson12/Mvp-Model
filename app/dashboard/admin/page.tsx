@@ -1,94 +1,126 @@
-// @ts-nocheck
 'use client';
+// @ts-nocheck
+// app/admin/page.tsx — private admin dashboard. Only emails in ADMIN_EMAILS can see data.
+// Shows signups, trials, entitlements, Intelligence waitlist, Advisory leads, and feedback.
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-export default function AdminDashboard() {
+function GCIcon({ size = 26 }) {
+  return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={size} height={size} style={{display:'block'}}><rect width="512" height="512" rx="114" fill="#ff3b30"/><text x="256" y="350" fontFamily="'Arial Black',Arial,sans-serif" fontSize="220" fontWeight="900" fill="white" textAnchor="middle" letterSpacing="-14">GC</text></svg>);
+}
+
+const fmt = (s) => { try { return new Date(s).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return s || '—'; } };
+
+export default function AdminPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState([]);
-  const [tickets, setTickets] = useState([]);
-  const [tab, setTab] = useState('tickets');
+  const [state, setState] = useState('loading'); // loading | denied | ready | error
+  const [d, setD] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const { data:{ user } } = await supabase.auth.getUser();
-      if (!user) { router.replace('/login'); return; }
-      // must be owner
-      const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (me?.role !== 'owner') { router.replace('/dashboard/personal'); return; }
-
-      const [{ data: u }, { data: t }] = await Promise.all([
-        supabase.from('profiles').select('email, plan, plan_status, onboarded, created_at').order('created_at',{ascending:false}),
-        supabase.from('support_tickets').select('*').order('created_at',{ascending:false}),
-      ]);
-      setUsers(u || []); setTickets(t || []);
-      setLoading(false);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace('/login'); return; }
+      try {
+        const res = await fetch('/api/admin/summary', { headers: { Authorization: `Bearer ${session.access_token}` } });
+        if (res.status === 403) { setState('denied'); return; }
+        if (!res.ok) { setState('error'); return; }
+        setD(await res.json()); setState('ready');
+      } catch { setState('error'); }
     })();
   }, [router]);
 
-  const openTickets = tickets.filter(t => t.status === 'open').length;
-  const box = { background:'rgba(255,255,255,0.7)', border:'1px solid rgba(255,255,255,0.9)', borderRadius:16, padding:'16px 18px', marginBottom:10, boxShadow:'0 4px 16px rgba(0,0,0,0.05)' };
+  const ink = '#14202e', ink2 = '#566475', ink3 = '#8a97a6', card = '#fff', bdr = '#e3e7ee', accent = '#1f45c7';
+  const wrap = { minHeight: '100vh', background: '#f4f6f9', fontFamily: "'DM Sans',sans-serif", padding: '24px 18px 80px', color: ink };
 
-  if (loading) return <div style={{minHeight:'100vh',background:'#e8eef5',display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(28,28,30,0.4)'}}>Loading…</div>;
+  if (state === 'loading') return <div style={{ ...wrap, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ink3 }}>Loading…</div>;
+  if (state === 'denied') return <div style={{ ...wrap, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}><p style={{ fontWeight: 700 }}>Not authorized</p><p style={{ fontSize: 13, color: ink2 }}>This page is for admins only.</p><Link href="/" style={{ color: accent, fontWeight: 600, textDecoration: 'none' }}>← Home</Link></div>;
+  if (state === 'error') return <div style={{ ...wrap, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ink3 }}>Couldn't load admin data.</div>;
+
+  const S = d.stats;
+  const Stat = ({ label, value }) => (
+    <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 14, padding: '14px 16px', flex: 1, minWidth: 120 }}>
+      <p style={{ fontSize: 26, fontWeight: 900, fontFamily: "'Sora',sans-serif", color: ink, lineHeight: 1 }}>{value}</p>
+      <p style={{ fontSize: 11.5, color: ink2, marginTop: 4 }}>{label}</p>
+    </div>
+  );
+  const Section = ({ title, count, children }) => (
+    <div style={{ marginTop: 26 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 17, fontWeight: 800, color: ink }}>{title}</h2>
+        {count != null && <span style={{ fontSize: 12, color: ink3 }}>{count} total</span>}
+      </div>
+      <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 14, overflow: 'hidden' }}>{children}</div>
+    </div>
+  );
+  const Row = ({ cols }) => (
+    <div style={{ display: 'flex', gap: 10, padding: '10px 14px', borderTop: `1px solid ${bdr}`, fontSize: 13 }}>
+      {cols.map((c, i) => <div key={i} style={{ flex: c.flex || 1, color: c.dim ? ink3 : ink, fontWeight: c.bold ? 600 : 400, whiteSpace: c.nowrap ? 'nowrap' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.v}</div>)}
+    </div>
+  );
 
   return (
     <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');*{box-sizing:border-box;margin:0;padding:0}`}</style>
-      <div style={{minHeight:'100vh',background:'#e8eef5',fontFamily:"'DM Sans',sans-serif",padding:'28px 24px 80px'}}>
-        <div style={{maxWidth:820,margin:'0 auto'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-            <span style={{fontSize:26}}>🛠️</span>
-            <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:26,fontWeight:900,letterSpacing:'-1px',color:'#1c1c1e'}}>Owner Dashboard</h1>
-          </div>
-          <p style={{fontSize:14,color:'rgba(28,28,30,0.55)',marginBottom:20}}>{users.length} users · {openTickets} open support tickets</p>
-
-          {/* stat cards */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
-            {[['Users',users.length,'#0a84ff'],['Open tickets',openTickets,'#ff9500'],['Active subs',users.filter(u=>u.plan_status==='active').length,'#30d158']].map(([l,v,c])=>(
-              <div key={l} style={{...box,textAlign:'center',marginBottom:0}}>
-                <p style={{fontFamily:"'Sora',sans-serif",fontSize:28,fontWeight:900,color:c}}>{v}</p>
-                <p style={{fontSize:12,color:'rgba(28,28,30,0.5)'}}>{l}</p>
-              </div>
-            ))}
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}`}</style>
+      <div style={wrap}>
+        <div style={{ maxWidth: 820, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><GCIcon size={28} /><div><p style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 800 }}>Admin</p><p style={{ fontSize: 11, color: ink3 }}>Gratia Core · live</p></div></div>
+            <Link href="/dashboard/solutions" style={{ fontSize: 13, color: ink2, textDecoration: 'none' }}>← Dashboard</Link>
           </div>
 
-          <div style={{display:'flex',gap:8,marginBottom:16}}>
-            {['tickets','users'].map(t=>(
-              <button key={t} onClick={()=>setTab(t)} style={{padding:'8px 18px',borderRadius:100,border:'none',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,background:tab===t?'#1c1c1e':'rgba(255,255,255,0.6)',color:tab===t?'#fff':'rgba(28,28,30,0.55)'}}>
-                {t==='tickets'?`Support (${tickets.length})`:`Users (${users.length})`}
-              </button>
-            ))}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <Stat label="Total users" value={S.totalUsers} />
+            <Stat label="New (7 days)" value={S.signups7d} />
+            <Stat label="On trial" value={S.trialing} />
+            <Stat label="Solutions" value={S.solUsers} />
+            <Stat label="Intelligence" value={S.intelUsers} />
           </div>
 
-          {tab==='tickets' ? (
-            tickets.length===0 ? <p style={{color:'rgba(28,28,30,0.4)',padding:'20px 0'}}>No support tickets yet.</p> :
-            tickets.map(t=>(
-              <div key={t.id} style={box}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-                  <span style={{fontSize:12,fontWeight:700,padding:'2px 8px',borderRadius:100,background:t.status==='open'?'rgba(255,149,0,0.12)':'rgba(48,209,88,0.12)',color:t.status==='open'?'#b45309':'#1a7a35'}}>{t.status}</span>
-                  <span style={{fontSize:14,fontWeight:700,color:'#1c1c1e'}}>{t.subject}</span>
-                  <span style={{marginLeft:'auto',fontSize:12,color:'rgba(28,28,30,0.4)'}}>{new Date(t.created_at).toLocaleDateString()}</span>
-                </div>
-                <p style={{fontSize:13,color:'rgba(28,28,30,0.6)',marginBottom:6,lineHeight:1.5}}>{t.message}</p>
-                <p style={{fontSize:12,color:'#0a84ff'}}>{t.email}</p>
-              </div>
-            ))
-          ) : (
-            users.map(u=>(
-              <div key={u.email} style={{...box,display:'flex',alignItems:'center',gap:12}}>
-                <div style={{flex:1}}>
-                  <p style={{fontSize:14,fontWeight:600,color:'#1c1c1e'}}>{u.email}</p>
-                  <p style={{fontSize:12,color:'rgba(28,28,30,0.45)'}}>{u.plan||'—'} · joined {new Date(u.created_at).toLocaleDateString()}</p>
-                </div>
-                <span style={{fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:100,background:u.plan_status==='active'?'rgba(48,209,88,0.12)':u.plan_status==='trialing'?'rgba(255,149,0,0.12)':'rgba(0,0,0,0.06)',color:u.plan_status==='active'?'#1a7a35':u.plan_status==='trialing'?'#b45309':'rgba(28,28,30,0.5)'}}>{u.plan_status||'none'}</span>
-                <span style={{fontSize:11,color:u.onboarded?'#30d158':'rgba(28,28,30,0.35)'}}>{u.onboarded?'✓ onboarded':'not onboarded'}</span>
-              </div>
-            ))
-          )}
+          <Section title="Recent signups" count={S.totalUsers}>
+            {d.recentSignups.length === 0 ? <div style={{ padding: 16, color: ink3, fontSize: 13 }}>No signups yet.</div> :
+              d.recentSignups.map((r, i) => <Row key={i} cols={[{ v: r.email, bold: true, flex: 2 }, { v: r.plan || '—', dim: true }, { v: r.plan_status || '—', dim: true }, { v: fmt(r.created_at), dim: true, nowrap: true, flex: 1.4 }]} />)}
+          </Section>
+
+          <Section title="Intelligence waitlist" count={d.waitlist.count}>
+            {d.waitlist.recent.length === 0 ? <div style={{ padding: 16, color: ink3, fontSize: 13 }}>No one on the waitlist yet.</div> :
+              d.waitlist.recent.map((r, i) => <Row key={i} cols={[{ v: r.email, bold: true, flex: 2 }, { v: fmt(r.created_at), dim: true, nowrap: true }]} />)}
+          </Section>
+
+          <Section title="Advisory leads" count={d.advisory.count}>
+            {d.advisory.recent.length === 0 ? <div style={{ padding: 16, color: ink3, fontSize: 13 }}>No leads yet.</div> :
+              d.advisory.recent.map((r, i) => <Row key={i} cols={[{ v: r.first_name || '—', bold: true }, { v: r.email, flex: 2 }, { v: r.stage || '—', dim: true }, { v: fmt(r.created_at), dim: true, nowrap: true, flex: 1.4 }]} />)}
+          </Section>
+
+          <Section title="Feedback" count={d.feedback.count}>
+            {d.feedback.recent.length === 0 ? <div style={{ padding: 16, color: ink3, fontSize: 13 }}>No feedback yet.</div> :
+              d.feedback.recent.map((r, i) => <Row key={i} cols={[{ v: r.email || 'anon', dim: true, nowrap: true }, { v: r.message, flex: 3 }, { v: fmt(r.created_at), dim: true, nowrap: true, flex: 1.2 }]} />)}
+          </Section>
+
+          <Section title="Modules (internal testing)">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: 14 }}>
+              {[
+                ['Solutions dashboard', '/dashboard/solutions'],
+                ['Ideas Vault', '/dashboard/vault'],
+                ['Barter', '/dashboard/barter'],
+                ['Intelligence hub', '/dashboard/intelligence'],
+                ['Regulatory', '/dashboard/regulatory'],
+                ['Tariff', '/dashboard/tariff'],
+                ['Expense Intelligence', '/dashboard/expense'],
+                ['Advisory (public)', '/advisory'],
+                ['Settings', '/dashboard/settings'],
+              ].map(([label, href]) => (
+                <Link key={href} href={href} style={{ fontSize: 13, fontWeight: 600, color: accent, textDecoration: 'none', background: '#eef2fe', border: `1px solid #d8e0fb`, borderRadius: 100, padding: '8px 14px' }}>{label} ↗</Link>
+              ))}
+            </div>
+          </Section>
+
+          <p style={{ fontSize: 11, color: ink3, textAlign: 'center', marginTop: 28, lineHeight: 1.7 }}>
+            Private admin view · visible only to allow-listed emails.<br />
+            For page-view traffic analytics, enable Vercel Analytics (see notes).
+          </p>
         </div>
       </div>
     </>

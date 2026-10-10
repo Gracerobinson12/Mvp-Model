@@ -30,6 +30,7 @@ export default function IntelligencePage() {
     try {
       const { error: e } = await supabase.from('product_waitlist').insert({ email: email.trim().toLowerCase(), product: 'intelligence' });
       if (e && !(e.message||'').includes('duplicate')) throw e;
+      fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'waitlist', data: { email: email.trim().toLowerCase(), product: 'intelligence', source: 'intelligence page' } }) }).catch(() => {});
       setDone(true);
     } catch { setError('Something went wrong. Try again.'); }
     finally { setLoading(false); }

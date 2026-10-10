@@ -65,6 +65,7 @@ function CheckoutInner() {
   const joinWaitlist = async () => {
     if (!wlEmail.includes('@')) return;
     try { await supabase.from('product_waitlist').insert({ email: wlEmail.trim().toLowerCase(), product: 'intelligence' }); } catch {}
+    fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'waitlist', data: { email: wlEmail.trim().toLowerCase(), product: 'intelligence', source: 'checkout' } }) }).catch(() => {});
     setWlDone(true);
   };
 

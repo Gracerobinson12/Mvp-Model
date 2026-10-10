@@ -7,9 +7,9 @@
 import Link from 'next/link';
 
 const UPDATED = 'October 10, 2026';
-const COMPANY = 'Gratia Core LLC';          // ← your exact registered entity
-const STATE = 'New York';                   // ← your governing state
-const CONTACT = 'support@gratiacore.com';   // ← your support email
+const COMPANY = 'Gratia Core Enterprise LLC';          // ← your exact registered entity
+const STATE = 'Georgia';                   // ← your governing state
+const CONTACT = 'intel@gratiacore.com';   // ← your support email
 
 function GCIcon({ size = 26 }) {
   return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={size} height={size} style={{display:'block'}}><rect width="512" height="512" rx="114" fill="#ff3b30"/><text x="256" y="350" fontFamily="'Arial Black',Arial,sans-serif" fontSize="220" fontWeight="900" fill="white" textAnchor="middle" letterSpacing="-14">GC</text></svg>);
@@ -24,11 +24,11 @@ export default function TermsPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:#f4f6f9}`}</style>
       <div style={{ minHeight: '100vh', padding: '28px 18px 80px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 24 }}><GCIcon size={28} /><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 800, color: '#14202e' }}>Gratia Core</span></Link>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 24 }}><GCIcon size={28} /><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 800, color: '#14202e' }}>Gratia Core Enterprise LLC</span></Link>
           <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 30, fontWeight: 900, color: '#14202e', letterSpacing: '-0.5px', marginBottom: 6 }}>Terms of Service</h1>
           <p style={{ fontSize: 13, color: '#8a97a6', marginBottom: 20 }}>Last updated: {UPDATED}</p>
 
-          <P>These Terms of Service (&quot;Terms&quot;) are a binding agreement between you and {COMPANY} (&quot;Gratia Core,&quot; &quot;we,&quot; &quot;us&quot;). They govern your use of gratiacore.com and our products and services (the &quot;Services&quot;). By creating an account, submitting an order, or using the Services, you agree to these Terms and to our <Link href="/privacy" style={{ color: '#1f45c7', fontWeight: 600 }}>Privacy Policy</Link>. If you do not agree, do not use the Services.</P>
+          <P>These Terms of Service (&quot;Terms&quot;) are a binding agreement between you and {COMPANY} (&quot;Gratia Core Enterprise LLC,&quot; &quot;we,&quot; &quot;us&quot;). They govern your use of gratiacore.com and our products and services (the &quot;Services&quot;). By creating an account, submitting an order, or using the Services, you agree to these Terms and to our <Link href="/privacy" style={{ color: '#1f45c7', fontWeight: 600 }}>Privacy Policy</Link>. If you do not agree, do not use the Services.</P>
 
           <H>1. Who may use the Services</H>
           <P>You must be at least 18 years old and able to form a binding contract. If you use the Services for an organization, you represent that you are authorized to accept these Terms on its behalf.</P>

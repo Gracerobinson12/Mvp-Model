@@ -7,8 +7,8 @@
 import Link from 'next/link';
 
 const UPDATED = 'October 10, 2026';
-const COMPANY = 'Gratia Core LLC';
-const CONTACT = 'support@gratiacore.com';
+const COMPANY = 'Gratia Core Enterprise LLC';
+const CONTACT = 'intel@gratiacore.com';
 
 function GCIcon({ size = 26 }) {
   return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={size} height={size} style={{display:'block'}}><rect width="512" height="512" rx="114" fill="#ff3b30"/><text x="256" y="350" fontFamily="'Arial Black',Arial,sans-serif" fontSize="220" fontWeight="900" fill="white" textAnchor="middle" letterSpacing="-14">GC</text></svg>);
@@ -24,11 +24,11 @@ export default function PrivacyPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:#f4f6f9}`}</style>
       <div style={{ minHeight: '100vh', padding: '28px 18px 80px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 24 }}><GCIcon size={28} /><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 800, color: '#14202e' }}>Gratia Core</span></Link>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 24 }}><GCIcon size={28} /><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 800, color: '#14202e' }}>Gratia Core Enterprise LLC</span></Link>
           <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 30, fontWeight: 900, color: '#14202e', letterSpacing: '-0.5px', marginBottom: 6 }}>Privacy Policy</h1>
           <p style={{ fontSize: 13, color: '#8a97a6', marginBottom: 20 }}>Last updated: {UPDATED}</p>
 
-          <P>{COMPANY} (&quot;Gratia Core,&quot; &quot;we,&quot; &quot;us&quot;) respects your privacy. This policy explains what we collect, how we use it, who we share it with, and the choices you have. It applies to gratiacore.com and our Services.</P>
+          <P>{COMPANY} (&quot;Gratia Core Enterprise LLC,&quot; &quot;we,&quot; &quot;us&quot;) respects your privacy. This policy explains what we collect, how we use it, who we share it with, and the choices you have. It applies to gratiacore.com and our Services.</P>
 
           <H>Information we collect</H>
           <ul style={{ paddingLeft: 20, margin: '0 0 12px' }}>
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             <p style={{ fontSize: 12.5, color: '#9a3412', lineHeight: 1.6 }}><strong>Note:</strong> This is a general template, not legal advice. Confirm the subprocessor list matches what you actually use, and have counsel review before launch if you serve EU/UK or large numbers of California users.</p>
           </div>
 
-          <p style={{ marginTop: 28, fontSize: 13 }}><Link href="/" style={{ color: '#1f45c7', fontWeight: 600, textDecoration: 'none' }}>← Back to Gratia Core</Link></p>
+          <p style={{ marginTop: 28, fontSize: 13 }}><Link href="/" style={{ color: '#1f45c7', fontWeight: 600, textDecoration: 'none' }}>← Back to Gratia Core Enterprise LLC</Link></p>
         </div>
       </div>
     </>

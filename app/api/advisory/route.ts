@@ -1,29 +1,19 @@
 // app/api/advisory/route.ts
-// Saves an Advisory lead to Supabase and (once Resend is set up) emails you.
+// Saves an Advisory lead to Supabase and emails YOU (the admin) the new lead.
 //
-// SETUP WHEN READY:
-//   1. npm install resend
-//   2. In .env.local add:
-//        RESEND_API_KEY=re_xxxxxxxx
-//        ADVISORY_NOTIFY_TO=you@gratiacore.com
-//        ADVISORY_FROM="Gratia Core <noreply@gratiacore.com>"   (domain must be verified in Resend)
-//   3. Uncomment the two marked blocks below.
-//
-// Until then this route just saves the lead — fully working, no email.
+// Env: SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL, RESEND_API_KEY, EMAIL_FROM, ADMIN_EMAIL
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
-// Server-side Supabase client (service role bypasses RLS for the insert).
-// Add SUPABASE_SERVICE_ROLE_KEY to .env.local (never expose it to the browser).
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ---- Resend (leave commented until your domain is verified) ----
-// import { Resend } from 'resend';
-// const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const ADMIN = process.env.ADMIN_EMAIL || 'gracer@gratiacore.com';
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,25 +37,24 @@ export async function POST(req: NextRequest) {
     const { error: dbErr } = await supabaseAdmin.from('advisory_leads').insert(lead);
     if (dbErr) throw dbErr;
 
-    // ---- Email notification (uncomment when Resend is ready) ----
-    // try {
-    //   await resend.emails.send({
-    //     from: process.env.ADVISORY_FROM!,
-    //     to: process.env.ADVISORY_NOTIFY_TO!,
-    //     replyTo: lead.email,
-    //     subject: `New Advisory lead: ${lead.first_name} (${lead.stage})`,
-    //     text:
-    //       `Name: ${lead.first_name} ${lead.last_name || ''}\n` +
-    //       `Email: ${lead.email}\n` +
-    //       `Business: ${lead.business || '\u2014'}\n` +
-    //       `Stage: ${lead.stage}\n` +
-    //       `Reach via: ${lead.contact_pref}${lead.phone ? ' (' + lead.phone + ')' : ''}\n\n` +
-    //       `What they want:\n${lead.details}\n`,
-    //   });
-    // } catch (e) {
-    //   // Don't fail the request if email hiccups — the lead is already saved.
-    //   console.error('Advisory email failed:', e);
-    // }
+    // Email YOU the new lead (non-fatal — the lead is already saved).
+    if (resend && process.env.EMAIL_FROM) {
+      try {
+        await resend.emails.send({
+          from: process.env.EMAIL_FROM!,
+          to: ADMIN,
+          replyTo: lead.email,
+          subject: `New Advisory lead: ${lead.first_name} (${lead.stage})`,
+          text:
+            `Name: ${lead.first_name} ${lead.last_name || ''}\n` +
+            `Email: ${lead.email}\n` +
+            `Business: ${lead.business || '-'}\n` +
+            `Stage: ${lead.stage}\n` +
+            `Reach via: ${lead.contact_pref}${lead.phone ? ' (' + lead.phone + ')' : ''}\n\n` +
+            `What they want:\n${lead.details}\n`,
+        });
+      } catch (e) { console.error('Advisory email failed:', e); }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
