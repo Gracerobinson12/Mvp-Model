@@ -6,7 +6,7 @@ import { motion, AnimatePresence, Transition } from 'motion/react';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const GC_PROTECT_URL = 'https://gcprotect.tech';
+const GC_PROTECT_URL = 'https://gcprotect.com';
 
 const BRANCHES = [
   { n: '01', id: 'advisory', name: 'Advisory', icon: '\u{1F4AC}', color: '#ff3b30', ink: '#cc2018', live: true, href: '/advisory',
@@ -17,10 +17,10 @@ const BRANCHES = [
     hook: "Know what's changing before it becomes your problem.",
     desc: 'Regulatory, market, industry, and policy intelligence \u2014 filtered to your sector, in plain language.',
     cta: 'Explore Intelligence \u2192' },
-  { n: '03', id: 'solutions', name: 'Solutions', icon: '\u{1F9F0}', color: '#30d158', ink: '#0F6E56', live: false, href: '/solutions',
+  { n: '03', id: 'solutions', name: 'Solutions', icon: '\u{1F9F0}', color: '#30d158', ink: '#0F6E56', live: true, href: '/solutions',
     hook: 'Find a tool for the job.',
-    desc: 'Products built to solve specific business problems. GC Protect is live now \u2014 Ideas Vault and Barter are on the way.',
-    cta: "See what's live \u2192" },
+    desc: 'Products built to solve specific business problems. Ideas Vault and Barter are live now, with Launch HQ to bring ideas to life.',
+    cta: 'Explore Solutions \u2192' },
 ];
 
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
@@ -301,7 +301,7 @@ function LandingPage() {
           <div>
             <p className="gc-footer-col-label">Company</p>
             <Link href="/about" className="gc-footer-link">About</Link>
-            <Link href="/contact" className="gc-footer-link">Contact</Link>
+            <Link href="/advisory" className="gc-footer-link">Contact</Link>
           </div>
           <div>
             <p className="gc-footer-col-label">Legal</p>

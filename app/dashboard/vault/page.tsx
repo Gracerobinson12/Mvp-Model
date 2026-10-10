@@ -243,13 +243,19 @@ export default function IdeasVaultPage() {
   const launchIdea = (idea: Idea) => { router.push(`/dashboard/vault/launch/${idea.id}`); };
 
   const downloadCert = (idea: Idea) => {
+    const body = idea.expanded_doc || idea.description || '';
+    const divider = '='.repeat(64);
     const text = `GRATIA CORE — IDEAS VAULT · SEAL CERTIFICATE\n\n` +
       `Title: ${idea.title}\nSeal ID: ${idea.seal_id}\n` +
       `Sealed: ${idea.sealed_at ? new Date(idea.sealed_at).toUTCString() : ''}\n` +
       `SHA-256: ${idea.seal_hash}\n\n` +
-      `This certificate records a SHA-256 fingerprint of the sealed document and the\n` +
-      `timestamp it was recorded in Gratia Core. It proves the content is unaltered since\n` +
-      `sealing and existed on the recorded date.\n\n` +
+      `${divider}\nSEALED DOCUMENT (the exact content this fingerprint covers)\n${divider}\n\n` +
+      `${body}\n\n` +
+      `${divider}\n\n` +
+      `This certificate records a SHA-256 fingerprint of the sealed record — the document\n` +
+      `shown above together with its title and the timestamp it was recorded in Gratia Core.\n` +
+      `Any change to the document above would change the fingerprint, which proves the\n` +
+      `content is unaltered since sealing and existed on the recorded date.\n\n` +
       `This is a record of prior existence, not a patent, and not legal advice.\n` +
       `Gratia Core is not a law firm. Consult a licensed attorney for IP protection.`;
     const blob = new Blob([text], { type: 'text/plain' });
