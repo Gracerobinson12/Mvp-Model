@@ -16,11 +16,17 @@ const STATUS = {
   declined:  { label: '✕ Declined',           color: '#cc2018', bg: 'rgba(255,59,48,.1)',   bd: 'rgba(255,59,48,.25)' },
 };
 
-function NewAgreementModal({ onClose, onCreated }) {
+function NewAgreementModal({ onClose, onCreated, existing }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [f, setF] = useState({ title: '', counterparty_name: '', counterparty_email: '', you_deliver: '', you_deliver_value: '', they_deliver: '', they_deliver_value: '', due_date: '', notes: '' });
+  const isEdit = !!existing;
+  const [f, setF] = useState({
+    title: existing?.title || '', counterparty_name: existing?.counterparty_name || '', counterparty_email: existing?.counterparty_email || '',
+    you_deliver: existing?.you_deliver || '', you_deliver_value: existing?.you_deliver_value ? String(existing.you_deliver_value) : '',
+    they_deliver: existing?.they_deliver || '', they_deliver_value: existing?.they_deliver_value ? String(existing.they_deliver_value) : '',
+    due_date: existing?.due_date || '', notes: existing?.notes || '',
+  });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const inp = { width: '100%', padding: '11px 14px', borderRadius: 12, border: '1px solid rgba(28,28,46,.12)', background: 'rgba(28,28,46,.03)', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1a1a2e', boxSizing: 'border-box' };
   const lbl = { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'rgba(28,28,30,.5)', marginBottom: 6 };
@@ -31,16 +37,25 @@ function NewAgreementModal({ onClose, onCreated }) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not signed in');
-      const { data, error: dbErr } = await supabase.from('barter_agreements').insert({
-        user_id: user.id,
+      const fields = {
         title: f.title, counterparty_name: f.counterparty_name,
         counterparty_email: f.counterparty_email || null,
         you_deliver: f.you_deliver, they_deliver: f.they_deliver,
         you_deliver_value: parseFloat(f.you_deliver_value) || 0,
         they_deliver_value: parseFloat(f.they_deliver_value) || 0,
         due_date: f.due_date || null, notes: f.notes || null,
-        status: 'draft', you_delivered: false, they_delivered: false,
-      }).select().single();
+      };
+      let data, dbErr;
+      if (isEdit) {
+        // Editing reverts the agreement to draft so it can be re-sent with the new terms.
+        ({ data, error: dbErr } = await supabase.from('barter_agreements')
+          .update({ ...fields, status: 'draft', confirm_token: null, token_expires_at: null })
+          .eq('id', existing.id).select().single());
+      } else {
+        ({ data, error: dbErr } = await supabase.from('barter_agreements')
+          .insert({ user_id: user.id, ...fields, status: 'draft', you_delivered: false, they_delivered: false })
+          .select().single());
+      }
       if (dbErr) throw dbErr;
       onCreated(data); onClose();
     } catch (e) { setError(e.message); setLoading(false); }
@@ -53,8 +68,8 @@ function NewAgreementModal({ onClose, onCreated }) {
         <div style={{ padding: '20px 22px 28px', position: 'relative' }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', fontSize: 12 }}>✕</button>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,.1)', margin: '0 auto 16px' }} />
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#1a7a35', marginBottom: 4 }}>New agreement</p>
-          <p style={{ fontFamily: "'Sora',sans-serif", fontSize: 19, fontWeight: 900, color: '#1a1a2e', marginBottom: 4, letterSpacing: '-.5px' }}>Log a trade</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#1a7a35', marginBottom: 4 }}>{isEdit ? 'Edit agreement' : 'New agreement'}</p>
+          <p style={{ fontFamily: "'Sora',sans-serif", fontSize: 19, fontWeight: 900, color: '#1a1a2e', marginBottom: 4, letterSpacing: '-.5px' }}>{isEdit ? 'Update the trade' : 'Log a trade'}</p>
           <p style={{ fontSize: 12, color: 'rgba(28,28,30,.5)', lineHeight: 1.6, marginBottom: 20 }}>Record the deal before work starts. Both sides, clear terms, timestamped.</p>
 
           <div style={{ display: 'flex', gap: 5, marginBottom: 22 }}>
@@ -108,9 +123,10 @@ function NewAgreementModal({ onClose, onCreated }) {
   );
 }
 
-function AgreementCard({ ag, onUpdate }) {
+function AgreementCard({ ag, onUpdate, onEdit }) {
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emailNote, setEmailNote] = useState('');
   const cfg = STATUS[ag.status] || STATUS.draft;
   const isConfirmed = ag.status === 'confirmed' || ag.status === 'completed';
   const daysLeft = ag.due_date ? Math.ceil((new Date(ag.due_date).getTime() - Date.now()) / 86400000) : null;
@@ -128,7 +144,13 @@ function AgreementCard({ ag, onUpdate }) {
       if (!data.ok) throw new Error(data.error || 'Failed');
       onUpdate(data.agreement);
       if (data.confirm_url) { await navigator.clipboard?.writeText(data.confirm_url).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2500); }
-    } catch (e) { alert(e.message); }
+      // Tell the user whether the email actually went out, and give them the link either way.
+      if (data.emailed === false) {
+        setEmailNote(`Email didn't send${data.email_error ? ` (${data.email_error})` : ''} — the confirm link is copied to your clipboard, paste it to them directly.`);
+      } else {
+        setEmailNote(`Email sent to ${ag.counterparty_email}. Link also copied to your clipboard.`);
+      }
+    } catch (e) { setEmailNote(e.message || 'Something went wrong.'); }
     setSending(false);
   };
 
@@ -154,6 +176,7 @@ function AgreementCard({ ag, onUpdate }) {
             With {ag.counterparty_name} · {new Date(ag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             {daysLeft !== null && !isConfirmed && <span style={{ marginLeft: 6, color: daysLeft < 3 ? '#ff3b30' : 'rgba(28,28,30,.4)' }}>· {daysLeft > 0 ? `${daysLeft}d left` : 'overdue'}</span>}
           </p>
+          {ag.counterparty_email && <p style={{ fontSize: 11, color: 'rgba(28,28,30,.4)', margin: '2px 0 0' }}>✉️ Sent to {ag.counterparty_email}</p>}
         </div>
         {ag.confirmed_at && <span style={{ fontSize: 10, color: '#1a7a35', fontWeight: 700, flexShrink: 0 }}>✓ {new Date(ag.confirmed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
       </div>
@@ -177,13 +200,25 @@ function AgreementCard({ ag, onUpdate }) {
       {ag.notes && <p style={{ fontSize: 12, color: 'rgba(28,28,30,.5)', background: 'rgba(28,28,46,.03)', borderRadius: 10, padding: '8px 12px', marginBottom: 12, lineHeight: 1.5 }}>📝 {ag.notes}</p>}
 
       {ag.status === 'draft' && (
-        <button onClick={sendForConfirm} disabled={sending || !ag.counterparty_email} style={{ width: '100%', padding: '10px', borderRadius: 100, border: 'none', background: ag.counterparty_email ? 'linear-gradient(135deg,#0a84ff,#34aadc)' : 'rgba(28,28,46,.08)', color: ag.counterparty_email ? '#fff' : 'rgba(28,28,30,.35)', fontSize: 12, fontWeight: 700, cursor: ag.counterparty_email ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
-          {sending ? 'Sending…' : copied ? '✓ Link copied' : ag.counterparty_email ? '📤 Send for confirmation' : 'Add their email to send'}
-        </button>
+        <div style={{ display: 'flex', gap: 7 }}>
+          <button onClick={() => onEdit(ag)} style={{ padding: '10px 14px', borderRadius: 100, border: '.5px solid rgba(28,28,46,.15)', background: 'transparent', color: 'rgba(28,28,30,.6)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>✎ Edit</button>
+          <button onClick={sendForConfirm} disabled={sending || !ag.counterparty_email} style={{ flex: 1, padding: '10px', borderRadius: 100, border: 'none', background: ag.counterparty_email ? 'linear-gradient(135deg,#0a84ff,#34aadc)' : 'rgba(28,28,46,.08)', color: ag.counterparty_email ? '#fff' : 'rgba(28,28,30,.35)', fontSize: 12, fontWeight: 700, cursor: ag.counterparty_email ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
+            {sending ? 'Sending…' : copied ? '✓ Link copied' : ag.counterparty_email ? '📤 Send for confirmation' : 'Add their email to send'}
+          </button>
+        </div>
       )}
       {ag.status === 'sent' && (
-        <div style={{ textAlign: 'center', fontSize: 12, color: '#0a84ff', fontWeight: 600, padding: '4px 0' }}>Waiting for {ag.counterparty_name} to confirm…</div>
+        <div>
+          <div style={{ textAlign: 'center', fontSize: 12, color: '#0a84ff', fontWeight: 600, padding: '0 0 8px' }}>Waiting for {ag.counterparty_name} to confirm…</div>
+          <div style={{ display: 'flex', gap: 7 }}>
+            <button onClick={() => onEdit(ag)} style={{ padding: '9px 14px', borderRadius: 100, border: '.5px solid rgba(28,28,46,.15)', background: 'transparent', color: 'rgba(28,28,30,.6)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>✎ Edit</button>
+            <button onClick={sendForConfirm} disabled={sending || !ag.counterparty_email} style={{ flex: 1, padding: '9px', borderRadius: 100, border: 'none', background: 'linear-gradient(135deg,#0a84ff,#34aadc)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {sending ? 'Sending…' : copied ? '✓ Link copied' : '📤 Resend email'}
+            </button>
+          </div>
+        </div>
       )}
+      {emailNote && <p style={{ fontSize: 11, color: emailNote.includes("didn't") ? '#b45309' : '#1a7a35', margin: '8px 0 0', lineHeight: 1.5 }}>{emailNote}</p>}
       {isConfirmed && ag.status !== 'completed' && (
         <div style={{ display: 'flex', gap: 7 }}>
           {!ag.you_delivered && <button onClick={() => markDelivered('you')} style={{ flex: 1, padding: '9px', borderRadius: 100, border: 'none', background: 'linear-gradient(135deg,#30d158,#1a7a35)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>✓ Mark mine done</button>}
@@ -201,6 +236,7 @@ export default function BarterPage() {
   const [ags, setAgs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
+  const [editing, setEditing] = useState(null);   // agreement being edited, or null
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
@@ -229,6 +265,7 @@ export default function BarterPage() {
       `}</style>
 
       {showNew && <NewAgreementModal onClose={() => setShowNew(false)} onCreated={a => setAgs(p => [a, ...p])} />}
+      {editing && <NewAgreementModal existing={editing} onClose={() => setEditing(null)} onCreated={u => setAgs(p => p.map(x => x.id === u.id ? u : x))} />}
 
       <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse 80% 60% at 15% -10%,rgba(48,209,88,.14) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 85% 110%,rgba(10,132,255,.07) 0%,transparent 60%),#e8eef5', color: '#1a1a2e', fontFamily: "'DM Sans',sans-serif", padding: '20px 16px 80px' }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -268,7 +305,7 @@ export default function BarterPage() {
               <button onClick={() => setShowNew(true)} style={{ padding: '10px 22px', borderRadius: 100, background: 'linear-gradient(135deg,#30d158,#1a7a35)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Create first agreement →</button>
             </div>
           ) : (
-            shown.map((ag, i) => <div key={ag.id} style={{ animation: `fadeUp .3s ease ${i * .05}s both` }}><AgreementCard ag={ag} onUpdate={u => setAgs(p => p.map(x => x.id === u.id ? u : x))} /></div>)
+            shown.map((ag, i) => <div key={ag.id} style={{ animation: `fadeUp .3s ease ${i * .05}s both` }}><AgreementCard ag={ag} onUpdate={u => setAgs(p => p.map(x => x.id === u.id ? u : x))} onEdit={setEditing} /></div>)
           )}
 
           <p style={{ fontSize: 11, color: 'rgba(26,26,46,.35)', textAlign: 'center', marginTop: 28, lineHeight: 1.7 }}>
