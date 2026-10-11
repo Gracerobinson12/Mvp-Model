@@ -6,7 +6,7 @@ import { motion, AnimatePresence, Transition } from 'motion/react';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const GC_PROTECT_URL = 'https://gcprotect.com';
+const GC_PROTECT_URL = 'https://gcprotect.tech';
 
 const BRANCHES = [
   { n: '01', id: 'advisory', name: 'Advisory', icon: '\u{1F4AC}', color: '#ff3b30', ink: '#cc2018', live: true, href: '/advisory',
@@ -281,6 +281,9 @@ function LandingPage() {
               </div>
             ))}
           </div>
+          <div style={{ textAlign: 'center', marginTop: 18 }}>
+            <Link href="/pricing" style={{ display: 'inline-block', padding: '11px 24px', borderRadius: 100, background: 'linear-gradient(135deg,#ff3b30,#ff6b35)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(255,59,48,0.3)' }}>See full pricing &amp; start a trial →</Link>
+          </div>
         </div>
       </section>
 
@@ -296,12 +299,13 @@ function LandingPage() {
             <Link href="/advisory" className="gc-footer-link">Advisory</Link>
             <Link href="/intelligence" className="gc-footer-link">Intelligence</Link>
             <Link href="/solutions" className="gc-footer-link">Solutions</Link>
+            <Link href="/pricing" className="gc-footer-link">Pricing</Link>
             <a href={GC_PROTECT_URL} target="_blank" rel="noopener noreferrer" className="gc-footer-link">GC Protect &#8599;</a>
           </div>
           <div>
             <p className="gc-footer-col-label">Company</p>
             <Link href="/about" className="gc-footer-link">About</Link>
-            <Link href="/advisory" className="gc-footer-link">Contact</Link>
+            <Link href="/contact" className="gc-footer-link">Contact</Link>
           </div>
           <div>
             <p className="gc-footer-col-label">Legal</p>
@@ -324,6 +328,7 @@ function LandingPage() {
           <Link href="/advisory" className="nav-item">Advisory</Link>
           <Link href="/intelligence" className="nav-item">Intelligence</Link>
           <Link href="/solutions" className="nav-item">Solutions</Link>
+          <Link href="/pricing" className="nav-item">Pricing</Link>
           <Link href="/about" className="nav-item">About</Link>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
