@@ -11,11 +11,12 @@ import Anthropic from '@anthropic-ai/sdk';
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Order matters: validate and build a real version BEFORE spending money on legal/entity setup.
 const PHASES = [
-  { id: 'foundation', name: 'Foundation', scope: 'Making it a real, legal business: name availability, entity formation or confirming structure, EIN, business bank account, licenses/permits, sales tax registration if selling, bookkeeping, insurance, professional email.' },
-  { id: 'build', name: 'Build', scope: 'Designing and building the product: brand basics, the pages/screens it needs, the backend/database, authentication if accounts, payments if charging, core features.' },
-  { id: 'legal', name: 'Legal & Compliance', scope: 'Making it legally compliant: Privacy Policy, Terms of Service, and only the other policies that apply, plus naming any specific law/rule this project triggers (e.g. CAN-SPAM, GDPR, CCPA, PCI via processor). Say why it applies.' },
-  { id: 'launch', name: 'Launch', scope: 'Proving it works and going live: QA testing, switching payments to live, legal pages linked, beta testers, support process, launch announcement, post-launch review.' },
+  { id: 'validate', name: 'Shape & Validate', scope: 'Understand exactly what you are building and prove people want it BEFORE spending money: a one-sentence pitch, who it is for, the core problem, the simplest version that would deliver value, and cheap/free validation (landing page or waitlist, 5-10 conversations with target users, a pricing hypothesis, checking direct competitors).' },
+  { id: 'build', name: 'Build the Product', scope: 'Make the smallest real version that delivers the core value (an MVP or prototype): brand basics, the few screens/pages it truly needs, the backend/database, accounts only if required, and getting it in front of a handful of real users to confirm it works before going further.' },
+  { id: 'official', name: 'Make It Official', scope: 'ONLY once the product is validated and working: now make it a real, legal business — form the entity (LLC/etc.) or confirm structure, EIN, business bank account, any licenses/permits, sales-tax registration if selling, plus the policies that apply (Privacy Policy, Terms, and any specific law like CAN-SPAM/GDPR/CCPA/PCI-via-processor, with why it applies). Frame as "you likely need X, confirm with a professional."' },
+  { id: 'launch', name: 'Launch & Grow', scope: 'Go live and grow: final QA, switch payments to live, link the legal pages, recruit beta/early users, set up a support path and analytics, announce the launch, and review what is working after 30 days.' },
 ];
 
 export async function POST(req: NextRequest) {
@@ -33,9 +34,9 @@ export async function POST(req: NextRequest) {
     if (!proj) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
     const phaseList = PHASES.map(p => `- ${p.id} (${p.name}): ${p.scope}`).join('\n');
-    const prompt = `You are a practical startup operations planner. Create a concrete, actionable task list to take this idea from concept to launch.
+    const prompt = `You are an experienced founder and operator mentoring someone building the SPECIFIC idea below. Write a plan that feels like it was written by someone who has actually launched this exact kind of thing — not generic startup advice they could Google.
 
-THE IDEA:
+THE IDEA (read it closely and tailor everything to it):
 ${idea}
 
 CONTEXT (their answers):
@@ -49,13 +50,17 @@ Organize tasks under EXACTLY these four phases:
 ${phaseList}
 
 RULES:
-- 3 to 6 concrete tasks per phase. Specific and doable, not vague.
-- Tailor to their answers (e.g. if "Free for now", skip payment tasks; if "Not yet" a business, include formation).
-- For legal tasks, name the specific law/rule and why it applies — but frame as "you likely need X, confirm with a professional", never as definitive legal advice.
-- Each task: a short title and a one-sentence "why".
+- 3 to 6 tasks per phase.
+- CRITICAL ORDER: never tell them to spend money forming an entity, getting an EIN, or making purchases until AFTER they have validated the idea and built a working version. Money/legal setup belongs ONLY in the "official" phase. "validate" must be cheap or free.
+- BE SPECIFIC TO THIS IDEA, NOT GENERIC. Every task must reference the actual idea. Bad: "do market research." Good: name the exact subreddits, Facebook groups, directories, forums, or physical places where THIS idea's customers already are; name the real competitor(s) and how to differ; name the actual tool to use. If you cannot make a task specific to this idea, drop it.
+- "how" must be 3-4 concrete do-it-now actions — the literal steps, with real tools/sites/search terms named — not restatements of the title.
+- "tip" is one non-obvious insider insight tailored to THIS idea: a common mistake people make with this type of product, a shortcut, a cheaper alternative, or a gotcha. Not a platitude.
+- "resource" names ONE real tool, site, or template to use for that task (e.g. "Google Forms", "Stripe Payment Links", "Carrd", "USPTO TESS", "r/<subreddit>"). Use a real name.
+- "time" is a rough estimate like "~2 hours", "1 weekend", "2-3 days". "cost" is a dollar estimate like "$0", "~$15/mo", "$130 one-time".
+- For official/legal tasks, name the specific law/rule and why it applies, framed as "you likely need X — confirm with a professional." Never definitive legal advice.
 
-Return ONLY valid JSON, no markdown, in this exact shape:
-{"tasks":[{"phase":"foundation","title":"...","why":"..."},...]}`;
+Return ONLY valid JSON, no markdown, in EXACTLY this shape:
+{"tasks":[{"phase":"validate","title":"short imperative title","why":"one sentence on why it matters","how":["concrete action 1","concrete action 2","concrete action 3"],"tip":"one idea-specific insider tip","time":"~2 hours","cost":"$0","resource":"Real Tool Name"}]}`;
 
     const msg = await anthropic.messages.create({
       model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
@@ -95,11 +100,21 @@ Return ONLY valid JSON, no markdown, in this exact shape:
 
     // save tasks (replace any existing for this project)
     await admin.from('launch_tasks').delete().eq('project_id', projectId);
+    const asSteps = (v: any): string[] => {
+      if (Array.isArray(v)) return v.map(x => String(x).slice(0, 300)).filter(Boolean).slice(0, 6);
+      if (typeof v === 'string' && v.trim()) return [v.slice(0, 300)];
+      return [];
+    };
     const rows = tasks.map((t, i) => ({
       project_id: projectId, user_id: user.id,
-      phase: ['foundation','build','legal','launch'].includes(t.phase) ? t.phase : 'build',
+      phase: ['validate','build','official','launch'].includes(t.phase) ? t.phase : 'validate',
       title: String(t.title || t.task || t.name || '').slice(0, 300),
       why: String(t.why || t.reason || t.description || '').slice(0, 500),
+      steps: asSteps(t.how || t.steps || t.actions),
+      tip: String(t.tip || t.insight || '').slice(0, 500) || null,
+      est_time: String(t.time || t.est_time || '').slice(0, 40) || null,
+      est_cost: String(t.cost || t.est_cost || '').slice(0, 40) || null,
+      resource: String(t.resource || t.tool || '').slice(0, 120) || null,
       sort: i, done: false,
     })).filter(t => t.title);
     const { error: insErr } = await admin.from('launch_tasks').insert(rows);

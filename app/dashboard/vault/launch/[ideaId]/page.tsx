@@ -21,10 +21,10 @@ const QUESTIONS = [
   { key: 'timeline', label: 'Timeline goal?', opts: ['ASAP', '2–3 months', 'No rush'] },
 ];
 const PHASES = [
-  { id: 'foundation', name: 'Foundation', icon: '🏛️', sub: 'Make it a real, legal business' },
-  { id: 'build', name: 'Build', icon: '🔨', sub: 'Design & build the product' },
-  { id: 'legal', name: 'Legal & Compliance', icon: '⚖️', sub: 'Policies & what the law requires' },
-  { id: 'launch', name: 'Launch', icon: '🚀', sub: 'Test it & go live' },
+  { id: 'validate', name: 'Shape & Validate', icon: '🔍', sub: 'Understand it & prove it — before spending a dollar' },
+  { id: 'build', name: 'Build the Product', icon: '🔨', sub: 'Make the smallest real version that works' },
+  { id: 'official', name: 'Make It Official', icon: '🏛️', sub: 'Form the business — only once it’s working' },
+  { id: 'launch', name: 'Launch & Grow', icon: '🚀', sub: 'Go live and get your first users' },
 ];
 
 export default function LaunchHQPage() {
@@ -39,6 +39,7 @@ export default function LaunchHQPage() {
   const [intake, setIntake] = useState({});
   const [step, setStep] = useState('intake'); // intake | generating | plan
   const [error, setError] = useState('');
+  const [openId, setOpenId] = useState(null); // which task's details are expanded
 
   useEffect(() => { const s = localStorage.getItem('gc_dash_mode'); if (s) setMode(s); }, []);
   useEffect(() => { localStorage.setItem('gc_dash_mode', mode); }, [mode]);
@@ -151,7 +152,7 @@ export default function LaunchHQPage() {
                 <p style={{fontSize:13,color:ink2,lineHeight:1.55}}>{idea?.description}</p>
               </div>
               <p style={{fontFamily:"'Sora',sans-serif",fontSize:20,fontWeight:800,color:ink,marginBottom:4}}>Let's build your plan</p>
-              <p style={{fontSize:13,color:ink2,marginBottom:20,lineHeight:1.55}}>Answer 5 quick questions. We'll turn your idea into a real, step-by-step plan you can track.</p>
+              <p style={{fontSize:13,color:ink2,marginBottom:20,lineHeight:1.55}}>Answer 5 quick questions and we'll turn your idea into a real, phased plan you can track. We start by helping you understand and validate what you're building — so you don't spend money forming a business until it's actually working.</p>
 
               {QUESTIONS.map(q => (
                 <div key={q.key} style={{ marginBottom:18 }}>
@@ -206,15 +207,53 @@ export default function LaunchHQPage() {
                       <div style={{flex:1}}><p style={{fontFamily:"'Sora',sans-serif",fontSize:17,fontWeight:800,color:ink}}>{ph.name}</p><p style={{fontSize:12,color:ink3}}>{ph.sub}</p></div>
                       <span style={{fontSize:13,color:ink3}}>{phDone}/{phTasks.length}</span>
                     </div>
-                    {phTasks.map(t => (
-                      <div key={t.id} style={{ display:'flex', gap:12, padding:'11px 0', borderBottom:`1px solid ${cardBdr}`, cursor:'pointer' }} onClick={()=>toggleTask(t)}>
-                        <div style={{ width:20, height:20, borderRadius:5, border:`2px solid ${t.done?'#21744a':cardBdr}`, background:t.done?'#21744a':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>{t.done && <span style={{color:'#fff',fontSize:12,fontWeight:700}}>✓</span>}</div>
-                        <div style={{flex:1}}>
-                          <p style={{fontSize:14.5,fontWeight:560,color:t.done?ink3:ink,textDecoration:t.done?'line-through':'none',lineHeight:1.4}}>{t.title}</p>
-                          {t.why && <p style={{fontSize:12.5,color:ink3,marginTop:3,lineHeight:1.5}}>{t.why}</p>}
+                    {phTasks.map(t => {
+                      const steps = Array.isArray(t.steps) ? t.steps : [];
+                      const hasDetail = steps.length || t.tip || t.est_time || t.est_cost || t.resource;
+                      const open = openId === t.id;
+                      return (
+                      <div key={t.id} style={{ borderBottom:`1px solid ${cardBdr}`, padding:'11px 0' }}>
+                        <div style={{ display:'flex', gap:12 }}>
+                          <div onClick={(e)=>{ e.stopPropagation(); toggleTask(t); }} style={{ width:20, height:20, borderRadius:5, border:`2px solid ${t.done?'#21744a':cardBdr}`, background:t.done?'#21744a':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1, cursor:'pointer' }}>{t.done && <span style={{color:'#fff',fontSize:12,fontWeight:700}}>✓</span>}</div>
+                          <div style={{flex:1, cursor:hasDetail?'pointer':'default'}} onClick={()=>hasDetail && setOpenId(open?null:t.id)}>
+                            <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
+                              <p style={{fontSize:14.5,fontWeight:600,color:t.done?ink3:ink,textDecoration:t.done?'line-through':'none',lineHeight:1.4}}>{t.title}</p>
+                              {hasDetail && <span style={{fontSize:12,color:ink3,flexShrink:0,marginTop:2}}>{open?'▲':'▾'}</span>}
+                            </div>
+                            {t.why && <p style={{fontSize:12.5,color:ink3,marginTop:3,lineHeight:1.5}}>{t.why}</p>}
+                            {/* chips */}
+                            {(t.est_time||t.est_cost||t.resource) && (
+                              <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:7}}>
+                                {t.est_time && <span style={{fontSize:11,fontWeight:600,color:ink2,background:D?'#1f2a37':'#eef2f7',borderRadius:100,padding:'3px 9px'}}>⏱ {t.est_time}</span>}
+                                {t.est_cost && <span style={{fontSize:11,fontWeight:600,color:ink2,background:D?'#1f2a37':'#eef2f7',borderRadius:100,padding:'3px 9px'}}>💲 {t.est_cost}</span>}
+                                {t.resource && <span style={{fontSize:11,fontWeight:600,color:accent,background:D?'#17233f':'#eaeefc',borderRadius:100,padding:'3px 9px'}}>🔧 {t.resource}</span>}
+                              </div>
+                            )}
+                            {/* expanded detail */}
+                            {open && (
+                              <div style={{marginTop:11,animation:'fadeUp 0.2s ease both'}}>
+                                {steps.length > 0 && (
+                                  <div style={{marginBottom:t.tip?10:0}}>
+                                    <p style={{fontSize:11,fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase',color:ink3,marginBottom:6}}>How to do it</p>
+                                    {steps.map((s,si)=>(
+                                      <div key={si} style={{display:'flex',gap:8,marginBottom:5}}>
+                                        <span style={{color:accent,fontWeight:700,fontSize:12.5,flexShrink:0}}>{si+1}.</span>
+                                        <span style={{fontSize:12.5,color:ink2,lineHeight:1.5}}>{s}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {t.tip && (
+                                  <div style={{background:D?'#17233f':'#eaeefc',border:`1px solid ${D?'#2a3b5c':'#d4ddfb'}`,borderRadius:10,padding:'9px 12px'}}>
+                                    <span style={{fontSize:12.5,color:D?'#9db4ff':'#1f45c7',lineHeight:1.55}}><strong>💡 Insider tip:</strong> {t.tip}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    );})}
                   </div>
                 );
               })}
