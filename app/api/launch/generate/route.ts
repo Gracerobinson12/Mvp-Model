@@ -117,8 +117,15 @@ Return ONLY valid JSON, no markdown, in EXACTLY this shape:
       resource: String(t.resource || t.tool || '').slice(0, 120) || null,
       sort: i, done: false,
     })).filter(t => t.title);
-    const { error: insErr } = await admin.from('launch_tasks').insert(rows);
-    if (insErr) throw insErr;
+
+    let { error: insErr } = await admin.from('launch_tasks').insert(rows);
+    if (insErr) {
+      // If the detail columns aren't in the table yet, fall back to base fields so it still works.
+      console.error('launch insert failed, retrying with base fields:', insErr.message);
+      const baseRows = rows.map(({ steps, tip, est_time, est_cost, resource, ...base }) => base);
+      const retry = await admin.from('launch_tasks').insert(baseRows);
+      if (retry.error) throw retry.error;
+    }
 
     return NextResponse.json({ ok: true, count: rows.length });
   } catch (e: any) {
