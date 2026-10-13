@@ -50,6 +50,7 @@ async function run(req: NextRequest) {
         title: d.title,
         summary: d.abstract || null,
         agency: agencyName,
+        doc_type: d.type || null,
         impact: impactFrom(d.type),
         industries,
         source_url: d.html_url || null,
