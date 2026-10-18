@@ -28,14 +28,6 @@ const BRANCHES = [
     cta: 'Explore GC Protect \u2192' },
 ];
 
-const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
-const BUBBLES = [
-  { id: 'protect',  name: 'GC Protect', sub: 'Live \u00b7 $9/mo', href: '/signup?module=protect', pos: { left: '0%',    top: '0%',    width: '33.3%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
-  { id: 'vault',    name: 'Idea Vault', sub: 'Live \u00b7 $5/mo', href: '/signup?module=vault',   pos: { left: '40.3%', top: '6.4%',  width: '29.2%' }, svg: svgP('<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>') },
-  { id: 'barter',   name: 'Barter',     sub: 'Live \u00b7 $5/mo', href: '/signup?module=barter',  pos: { left: '9.7%',  top: '51.8%', width: '29.2%' }, svg: svgP('<path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/>') },
-  { id: 'advisory', name: 'Advisory',   sub: 'Free to ask',        href: '/advisory',              pos: { left: '45.8%', top: '53.6%', width: '30.5%' }, svg: svgP('<path d="M4 5h16v11H9l-5 4z"/>') },
-];
-
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
   return (
     <span style={{ display: 'inline-flex' }}>
@@ -184,19 +176,6 @@ function LandingPage() {
         .btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 15px 26px; background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #1c1c1e; border-radius: 100px; font-size: 15px; font-weight: 700; border: 1px solid rgba(255,255,255,0.95); box-shadow: 0 2px 12px rgba(0,0,0,0.07); cursor: pointer; text-decoration: none; font-family: 'DM Sans',sans-serif; transition: all 0.2s; }
         .btn-secondary:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); }
         .content-section { max-width: 860px; margin: 0 auto; padding: 60px 24px; position: relative; z-index: 1; }
-        .lp-stage { position: relative; width: 100%; max-width: 720px; aspect-ratio: 720 / 560; margin: 0 auto; }
-        .lp-orb { position: absolute; border-radius: 50%; filter: blur(28px); pointer-events: none; }
-        .lp-bubble { position: absolute; aspect-ratio: 1; border-radius: 50%; text-decoration: none; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4%; text-align: center; transition: transform .15s ease;
-          background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0) 48%), linear-gradient(160deg, rgba(240,72,78,0.95), rgba(200,10,18,0.92));
-          backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); border: 1px solid rgba(255,255,255,0.45);
-          box-shadow: inset 0 1px 1px rgba(255,255,255,0.55), inset 0 -10px 24px rgba(110,0,6,0.28), 0 18px 44px rgba(215,20,26,0.30); }
-        .lp-bubble:hover { transform: translateY(-3px) scale(1.015); }
-        .lp-bubble .n { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(12px, 2.6vw, 21px); letter-spacing: -0.5px; line-height: 1.15; padding: 0 10%; }
-        .lp-bubble .s { font-size: clamp(10px, 1.9vw, 13.5px); font-weight: 600; opacity: .92; }
-        .lp-bubble svg { width: clamp(20px, 5vw, 40px); height: auto; }
-        .lp-add { position: absolute; aspect-ratio: 1; border-radius: 50%; border: 2px dashed rgba(215,20,26,0.55); background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #D7141A; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: clamp(10px, 1.9vw, 13px); font-weight: 700; }
-        .lp-blurbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
-        @media (max-width: 720px) { .lp-blurbs { grid-template-columns: 1fr 1fr; } }
         .section-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(28,28,30,0.32); margin-bottom: 20px; text-align: center; }
         .gc-footer { max-width: 1100px; margin: 0 auto; padding: 40px 24px 140px; }
         .gc-footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
@@ -262,28 +241,8 @@ function LandingPage() {
 
       <section id="branches" className="content-section">
         <p className="section-eyebrow">Four ways we work &middot; add what you need</p>
-        <motion.nav aria-label="Modules" className="lp-stage" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 160, damping: 22 }}>
-          <div className="lp-orb" style={{ left: '12%', top: '7%', width: '58%', height: '75%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.30), rgba(215,20,26,0) 70%)' }} />
-          <div className="lp-orb" style={{ left: '50%', top: '45%', width: '50%', height: '64%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.34), rgba(255,120,126,0) 70%)' }} />
-          {BUBBLES.map(b => (
-            <Link key={b.id} href={b.href} className="lp-bubble" style={b.pos}>
-              {b.svg}
-              <span className="n">{b.name}</span>
-              <span className="s">{b.sub}</span>
-            </Link>
-          ))}
-          <Link href="/pricing" aria-label="Add what you need" className="lp-add" style={{ left: '77.8%', top: '19.6%', width: '15.3%' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-            Add
-          </Link>
-        </motion.nav>
-        <div className="lp-blurbs">
-          {BRANCHES.map(b => (
-            <div key={b.id}>
-              <p style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 800, color: '#1a1a2e', marginBottom: 4 }}>{b.name}</p>
-              <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.55)', lineHeight: 1.55 }}>{b.desc}</p>
-            </div>
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+          {BRANCHES.map((b, i) => <BranchCard key={b.id} b={b} i={i} />)}
         </div>
       </section>
 
