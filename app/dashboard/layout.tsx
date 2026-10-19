@@ -5,6 +5,7 @@
 // must be logged in, and must have an entitlement (no pay, no access) — fails OPEN
 // only for logged-in users with no plan (sent to pricing), never a blank screen.
 
+import './gc.css';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
