@@ -1,7 +1,7 @@
 'use client';
 // @ts-nocheck
 // app/dashboard/vault/page.tsx — Idea Vault in the bubble look. Same data (vault_ideas), same seal
-// route (/api/vault/seal), full detailed certificate. Launch HQ is gone.
+// route (/api/vault/seal), same certificate. Launch HQ is gone.
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -118,71 +118,14 @@ export default function VaultPage() {
       .then(({ data }) => { setIdeas(data || []); setLoading(false); });
   }, [m.user]);
 
-  // Full detailed certificate (same text as the original Ideas Vault version)
   const downloadCert = (idea) => {
     const body = idea.expanded_doc || idea.description || '';
     const sealedUtc = idea.sealed_at ? new Date(idea.sealed_at).toUTCString() : '';
     const ownerName = m.name || 'the account holder';
-    const ownerEmail = m.user?.email || '—';
-    const div = '═'.repeat(60);
-    const thin = '─'.repeat(60);
-    const text =
-`${div}
-        GRATIA CORE — IDEAS VAULT
-        CERTIFICATE OF SEALED RECORD
-${div}
-
-This certifies that the idea and details below were recorded and
-cryptographically sealed in Gratia Core on the date and time shown.
-
-Certified to:   ${ownerName}
-Account email:  ${ownerEmail}
-Title:          ${idea.title}
-Seal ID:        ${idea.seal_id}
-Sealed (UTC):   ${sealedUtc}
-SHA-256:        ${idea.seal_hash}
-
-${thin}
-SEALED DETAILS — the exact content this certificate covers
-${thin}
-
-${body}
-
-${thin}
-WHAT THIS PROVES
-${thin}
-
-The SHA-256 value above is a unique fingerprint of the sealed record
-(the details above, the title, and the sealing timestamp). Any change
-to a single character of the details would produce a different
-fingerprint. Because the fingerprint matches, this document proves the
-details existed in exactly this form, under this account, on the date
-and time recorded above.
-
-${thin}
-ATTESTATION
-${thin}
-
-Sealed by:  ${ownerName}
-
-Signature:  __________________________________    Date: ____________
-
-Issued by Gratia Core — gratiacore.com
-Verification reference: ${idea.seal_id}
-
-${thin}
-This is a record of prior existence and authorship on the recorded date.
-It is NOT a patent, copyright, trademark, or government registration, and
-it is not legal advice. Gratia Core is not a law firm. For legal protection
-of an idea, consult a licensed attorney.
-${div}`;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `GC-${idea.seal_id}-certificate.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const div = '═'.repeat(60), thin = '─'.repeat(60);
+    const text = `${div}\n        GRATIA CORE — IDEA VAULT\n        CERTIFICATE OF SEALED RECORD\n${div}\n\nThis certifies that the idea and details below were recorded and\ncryptographically sealed in Gratia Core on the date and time shown.\n\nCertified to:   ${ownerName}\nAccount email:  ${m.user?.email || '—'}\nTitle:          ${idea.title}\nSeal ID:        ${idea.seal_id}\nSealed (UTC):   ${sealedUtc}\nSHA-256:        ${idea.seal_hash}\n\n${thin}\nSEALED DETAILS — the exact content this certificate covers\n${thin}\n\n${body}\n\n${thin}\nWHAT THIS PROVES\n${thin}\n\nThe SHA-256 value above is a unique fingerprint of the sealed record.\nAny change to a single character of the details would produce a\ndifferent fingerprint. Because the fingerprint matches, this document\nproves the details existed in exactly this form, under this account,\non the date and time recorded above.\n\n${thin}\nATTESTATION\n${thin}\n\nSealed by:  ${ownerName}\n\nSignature:  __________________________________    Date: ____________\n\nIssued by Gratia Core — gratiacore.com\nVerification reference: ${idea.seal_id}\n\n${thin}\nThis is a record of prior existence and authorship on the recorded date.\nIt is NOT a patent, copyright, trademark, or government registration, and\nit is not legal advice. Gratia Core is not a law firm. For legal protection\nof an idea, consult a licensed attorney.\n${div}`;
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = document.createElement('a'); a.href = url; a.download = `GC-${idea.seal_id}-certificate.txt`; a.click(); URL.revokeObjectURL(url);
   };
 
   const sealedCount = ideas.filter(i => i.status === 'sealed').length;

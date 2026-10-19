@@ -20,10 +20,8 @@ function GratiaLogo() {
 
 // Route a signed-in user to the right home based on what they actually have.
 function destFor(prof: any): string {
-  if (prof?.has_intelligence) return prof.onboarded ? '/dashboard/intelligence' : '/onboarding?tier=intelligence'
-  if (prof?.has_solutions) return '/dashboard/solutions'
-  // Signed up but no active entitlement yet (e.g. didn't finish checkout) → send to pricing.
-  return '/pricing'
+  // Bubble app: everyone lands on their bubbles. Modules that are off show their own "Turn on" card.
+  return '/dashboard'
 }
 
 export default function LoginPage() {

@@ -1,6 +1,7 @@
 // app/api/barter/send/route.ts
 // Owner sends an agreement for confirmation: generates a one-time token, sets status='sent',
 // emails the counterparty the confirm link, and also returns the URL (so it can be copied).
+// Pass { linkOnly: true } to get/refresh the link WITHOUT sending an email (the "Copy link" button).
 //
 // Security: token is a random UUID (unguessable), single-use, expires in 14 days.
 // The public confirm page reads the row ONLY via this token through the confirm route.
@@ -31,13 +32,13 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authErr } = await admin.auth.getUser(token);
     if (authErr || !user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
-    const { agreementId } = await req.json();
+    const { agreementId, linkOnly } = await req.json();
     if (!agreementId) return NextResponse.json({ ok: false, error: 'Missing agreementId' }, { status: 400 });
 
     const { data: ag, error: loadErr } = await admin
       .from('barter_agreements').select('*').eq('id', agreementId).eq('user_id', user.id).single();
     if (loadErr || !ag) return NextResponse.json({ ok: false, error: 'Agreement not found' }, { status: 404 });
-    if (!ag.counterparty_email) return NextResponse.json({ ok: false, error: 'No counterparty email' }, { status: 400 });
+    if (!ag.counterparty_email && !linkOnly) return NextResponse.json({ ok: false, error: 'No counterparty email' }, { status: 400 });
 
     const confirmToken = randomUUID();
     const expires = new Date(Date.now() + 14 * 864e5).toISOString();
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     // ---- Email the counterparty (non-fatal: if it fails, the link is still returned) ----
     let emailed = false;
     let emailError: string | null = null;
-    if (resend && process.env.EMAIL_FROM) {
+    if (!linkOnly && ag.counterparty_email && resend && process.env.EMAIL_FROM) {
       try {
         const title = escapeHtml(ag.title);
         const theyGet = escapeHtml(ag.you_deliver);     // what the counterparty receives = what the owner delivers

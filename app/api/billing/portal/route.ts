@@ -1,5 +1,5 @@
-// app/api/billing/portal/route.ts
-// Opens the Stripe Customer Portal so users manage/cancel their plan, update card, etc.
+// app/api/billing/portal/route.ts — Stripe Customer Portal: update card, see invoices.
+// (Turning modules on/off happens in the app, not here.)
 // Env: STRIPE_SECRET_KEY, NEXT_PUBLIC_SITE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,14 +15,11 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await admin.auth.getUser(token);
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const { data: prof } = await admin.from('profiles').select('stripe_customer_id').eq('id', user.id).single();
-    if (!prof?.stripe_customer_id) return NextResponse.json({ error: 'No billing account yet' }, { status: 400 });
+    const { data: prof } = await admin.from('profiles').select('stripe_customer_id').eq('id', user.id).maybeSingle();
+    if (!prof?.stripe_customer_id) return NextResponse.json({ error: 'No billing account yet — turn on a module first.' }, { status: 400 });
 
     const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.gratiacore.com';
-    const portal = await stripe.billingPortal.sessions.create({
-      customer: prof.stripe_customer_id,
-      return_url: `${base}/dashboard/settings`,
-    });
+    const portal = await stripe.billingPortal.sessions.create({ customer: prof.stripe_customer_id, return_url: `${base}/dashboard/account` });
     return NextResponse.json({ url: portal.url });
   } catch (e: any) {
     console.error('portal error:', e);

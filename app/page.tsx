@@ -6,7 +6,7 @@ import { motion, AnimatePresence, Transition } from 'motion/react';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect.tech';
+const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect.com';
 
 // The four bubbles. Everything below the hero reads from this list.
 const BRANCHES = [

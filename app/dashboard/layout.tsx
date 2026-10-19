@@ -1,9 +1,8 @@
-// @ts-nocheck
 'use client';
-// app/dashboard/layout.tsx — MINIMAL guard, NO visual nav rail.
-// Each dashboard page draws its own header. This only protects /dashboard/*:
-// you must be logged in. That's it. Free accounts (no modules on) are welcome — Advisory is free,
-// and each paid module gates itself with <ModuleGate>, so there is no "send to pricing" step anymore.
+// @ts-nocheck
+// app/dashboard/layout.tsx — guard + the app look.
+// Logged in → in. There is no "must have a plan" gate anymore: Advisory is free and every
+// paid module shows its own "Turn on" card when it's off (see ModuleGate).
 
 import './gc.css';
 import { useEffect, useState } from 'react';
@@ -16,18 +15,18 @@ export default function DashboardLayout({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const guard = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace('/login'); return; }
+    let alive = true;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!alive) return;
+      if (!user) {
+        try { localStorage.setItem('gc_post_login', pathname || '/dashboard'); } catch {}
+        router.replace('/login'); return;
+      }
       setReady(true);
-    };
-    guard();
+    });
+    return () => { alive = false; };
   }, [router, pathname]);
 
-  if (!ready) {
-    return <div style={{ minHeight: '100vh', background: '#f0eff4' }} />;
-  }
-
-  // No wrapper UI — pages render full-bleed with their own headers.
-  return <>{children}</>;
+  if (!ready) return <div className="gc" />;
+  return <div className="gc">{children}</div>;
 }
