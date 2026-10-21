@@ -155,6 +155,63 @@ function ProtectCard({ on, busy, toggle, loading }: { on: boolean; busy: boolean
   );
 }
 
+// ── Card-on-file confirm modal ───────────────────────────────────────────────
+function ConfirmModal({ pending, onConfirm, onCancel }: {
+  pending: { name: string; price: number; card_last4: string; card_brand: string } | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!pending) return null;
+  const brand = pending.card_brand
+    ? pending.card_brand.charAt(0).toUpperCase() + pending.card_brand.slice(1)
+    : 'Card';
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)', zIndex: 9900, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onCancel}
+    >
+      <div
+        style={{ width: 'min(400px,100%)', background: 'rgba(255,255,255,0.97)', borderRadius: 22, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.22)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ height: 3, background: 'linear-gradient(90deg,#D7141A,#ff6b35)' }} />
+        <div style={{ padding: '26px 26px 22px' }}>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 900, letterSpacing: '-0.4px', color: '#1a1a2e', marginBottom: 6 }}>
+            Add {pending.name}?
+          </h2>
+          <p style={{ fontSize: 14, color: 'rgba(26,26,46,0.65)', lineHeight: 1.6, marginBottom: 20 }}>
+            ${pending.price}/mo — charged today, then on the same date each month.
+          </p>
+
+          {/* Card display */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(215,20,26,0.05)', border: '1px solid rgba(215,20,26,0.12)', borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
+            <span style={{ fontSize: 22 }}>💳</span>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>{brand} ···{pending.card_last4}</p>
+              <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.5)', margin: '2px 0 0' }}>Card on file</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={onConfirm}
+              style={{ flex: 1, padding: '13px 0', borderRadius: 100, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#ff3b30,#D7141A)', boxShadow: '0 4px 16px rgba(215,20,26,0.35)' }}
+            >
+              Confirm · ${pending.price}/mo
+            </button>
+            <button
+              onClick={onCancel}
+              style={{ padding: '13px 18px', borderRadius: 100, border: '1px solid rgba(26,26,46,0.15)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: 'rgba(26,26,46,0.7)', background: 'transparent' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function Page() {
   return <Suspense fallback={<div className="gc-wrap" />}><ModulesPage /></Suspense>;
@@ -282,6 +339,9 @@ function ModulesPage() {
         You're charged today when you turn something on, then on the same date each month until you turn it off.
         Stripe handles billing; every change shows on your invoice. Taxes may apply.
       </p>
+
+      {/* Card-on-file confirm modal */}
+      <ConfirmModal pending={m.pending} onConfirm={m.confirmToggle} onCancel={m.cancelToggle} />
     </div>
   );
 }

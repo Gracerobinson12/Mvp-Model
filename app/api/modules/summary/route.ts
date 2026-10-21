@@ -37,7 +37,12 @@ export async function GET(req: NextRequest) {
       }
     }
     const pm: any = customer.invoice_settings?.default_payment_method;
-    if (pm && typeof pm === 'object' && pm.card) out.card = { brand: pm.card.brand, last4: pm.card.last4 };
+    if (pm && typeof pm === 'object' && pm.card) {
+      out.card = { brand: pm.card.brand, last4: pm.card.last4 };
+      // also expose flat so the hook can read them directly
+      out.card_last4 = pm.card.last4;
+      out.card_brand = pm.card.brand;
+    }
     out.invoices = invoices.data.map(inv => ({
       id: inv.id, date: new Date(inv.created * 1000).toISOString(), total: (inv.total || 0) / 100,
       status: inv.status, url: inv.hosted_invoice_url || inv.invoice_pdf || null,

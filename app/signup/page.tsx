@@ -133,11 +133,10 @@ function SignupPageInner() {
             <input type="password" value={confirm} onChange={e => { setConfirm(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="Re-enter your password" style={inp} />
 
             {exists && (
-              <div style={{ background: 'rgba(10,132,255,0.08)', border: '0.5px solid rgba(10,132,255,0.25)', borderRadius: 12, padding: '11px 14px', marginBottom: 12 }}>
-                <p style={{ fontSize: 13, color: '#1a1a2e', fontWeight: 600, marginBottom: 2 }}>That email already has an account.</p>
-                <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.6)' }}>
-                  <Link href="/login" style={{ color: '#0a84ff', fontWeight: 600, textDecoration: 'none' }}>Log in instead →</Link>
-                </p>
+              <div style={{ background: 'rgba(10,132,255,0.06)', border: '0.5px solid rgba(10,132,255,0.2)', borderRadius: 12, padding: '14px 16px', marginBottom: 12 }}>
+                <p style={{ fontSize: 13, color: '#1a1a2e', fontWeight: 700, marginBottom: 4 }}>That email already has an account.</p>
+                <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.65)', lineHeight: 1.6, marginBottom: 8 }}>Just log in — you're already set up.</p>
+                <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#0a84ff', textDecoration: 'none' }}>Log in →</Link>
               </div>
             )}
 
