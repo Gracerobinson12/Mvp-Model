@@ -54,7 +54,7 @@ function ProtectCard({ on, busy, toggle, loading }: { on: boolean; busy: boolean
             style={{ width: 48, height: 48, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: on ? undefined : 'inset 0 0 0 2px rgba(215,20,26,0.38)', cursor: 'pointer' }}
             onClick={() => setOpen(true)}
           >
-            <Icon.protect size={24} />
+            <Icon.shield size={24} />
           </span>
           <SlideToggle on={on} busy={busy || loading} onChange={v => toggle('protect', v)} />
         </div>
@@ -96,7 +96,7 @@ function ProtectCard({ on, busy, toggle, loading }: { on: boolean; busy: boolean
             <div style={{ padding: '28px 28px 24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
                 <span style={{ width: 52, height: 52, borderRadius: 26, background: 'rgba(215,20,26,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon.protect size={28} />
+                  <Icon.shield size={28} />
                 </span>
                 <div>
                   <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>GC Protect</h2>
