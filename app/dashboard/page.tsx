@@ -46,8 +46,24 @@ function HomePage() {
     })();
   }, [m.user]);
 
-  // came back from Stripe Checkout? refresh once so the bubble turns red
-  useEffect(() => { if (sp.get('on')) m.reload(); /* eslint-disable-line */ }, [sp]);
+  // came back from Stripe Checkout — activate the module immediately, don't wait for webhook
+  useEffect(() => {
+    const mod = sp.get('on');
+    if (!mod || m.loading) return;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        // Write access directly — Stripe already charged, webhook may lag
+        await fetch('/api/modules/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ module: mod, on: true }),
+        });
+      } catch {}
+      m.reload();
+    })();
+  }, [sp, m.loading]); // eslint-disable-line
 
   const sub = (id) => {
     const on = m.access[id];
@@ -116,7 +132,7 @@ function HomePage() {
               <div className="gc-divider" />
               <div className="gc-row" style={{ fontWeight: 700, fontSize: 17 }}><span>Total</span><span>{money(m.monthTotal)}</span></div>
             </div>
-            <p className="gc-note">Turn a module off any day and the rest of the month comes off your bill.</p>
+            <p className="gc-note">Turn a module on and you're charged today, then monthly until you turn it off.</p>
             <Link href="/dashboard/modules" className="gc-btn gc-btn--red gc-btn--block" style={{ minHeight: 48 }}>Add or change modules <Icon.arrow size={18} /></Link>
           </section>
 
