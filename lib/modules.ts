@@ -17,7 +17,7 @@ export type ModuleDef = {
 
 export const MODULES: Record<ModuleId, ModuleDef> = {
   protect: {
-    id: 'protect', name: 'GC Protect', price: 9, href: '/dashboard/protect',
+    id: 'protect', name: 'GC Protect', price: 5, href: '/dashboard/protect',
     tagline: 'Sensitive details become tokens before any AI sees them.',
     bullets: ['Names, SSNs, cards, keys caught', 'Works with any AI you use', 'Audit log you can export'],
     priceEnv: 'STRIPE_PRICE_PROTECT',

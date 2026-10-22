@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence, Transition } from 'motion/react';
 import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { MODULES } from '@/lib/modules';
 
 const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect.com';
 
@@ -14,15 +15,15 @@ const BRANCHES = [
     hook: "You have a problem. Let's figure it out.",
     desc: 'Websites, consulting, tech & automation, security & privacy. Free 20-minute scoping call, then one fixed quote.',
     cta: 'Start a conversation \u2192' },
-  { n: '02', id: 'vault', name: 'Idea Vault', icon: '\u{1F512}', color: '#D7141A', ink: '#9E0B10', live: true, href: '/pricing', badge: 'Live \u00b7 $5/mo',
+  { n: '02', id: 'vault', name: 'Idea Vault', icon: '\u{1F512}', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=vault', badge: 'Live \u00b7 $5/mo',
     hook: 'Prove your idea existed today.',
     desc: 'Seal it with a SHA-256 fingerprint and a UTC timestamp. Download a signed certificate you can show anyone.',
     cta: 'Seal an idea \u2192' },
-  { n: '03', id: 'barter', name: 'Barter', icon: '\u{1F91D}', color: '#30d158', ink: '#0F6E56', live: true, href: '/pricing', badge: 'Live \u00b7 $5/mo',
+  { n: '03', id: 'barter', name: 'Barter', icon: '\u{1F91D}', color: '#30d158', ink: '#0F6E56', live: true, href: '/signup?module=barter', badge: 'Live \u00b7 $5/mo',
     hook: 'Trade services. Both sign. No money changes hands.',
     desc: 'Write the deal down, send a one-time confirm link, and both of you get the agreement by email.',
     cta: 'Log a trade \u2192' },
-  { n: '04', id: 'protect', name: 'GC Protect', icon: '\u{1F6E1}\uFE0F', color: '#0a84ff', ink: '#185FA5', live: true, href: '/pricing', badge: 'Live \u00b7 $9/mo',
+  { n: '04', id: 'protect', name: 'GC Protect', icon: '\u{1F6E1}\uFE0F', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=protect', badge: 'Live \u00b7 $5/mo',
     hook: 'Sensitive details become tokens before any AI sees them.',
     desc: 'Names, SSNs, cards, API keys caught on every prompt. Works with any AI you use. Audit log you can export. Same login as everything else.',
     cta: 'Explore GC Protect \u2192' },
@@ -30,7 +31,7 @@ const BRANCHES = [
 
 const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
 const BUBBLES = [
-  { id: 'protect',  name: 'GC Protect', sub: 'Live \u00b7 $9/mo', href: '/signup?module=protect', pos: { left: '0%',    top: '0%',    width: '33.3%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
+  { id: 'protect',  name: 'GC Protect', sub: 'Live \u00b7 $5/mo', href: '/signup?module=protect', pos: { left: '0%',    top: '0%',    width: '33.3%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
   { id: 'vault',    name: 'Idea Vault', sub: 'Live \u00b7 $5/mo', href: '/signup?module=vault',   pos: { left: '40.3%', top: '6.4%',  width: '29.2%' }, svg: svgP('<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>') },
   { id: 'barter',   name: 'Barter',     sub: 'Live \u00b7 $5/mo', href: '/signup?module=barter',  pos: { left: '9.7%',  top: '51.8%', width: '29.2%' }, svg: svgP('<path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/>') },
   { id: 'advisory', name: 'Advisory',   sub: 'Free to ask',        href: '/advisory',              pos: { left: '45.8%', top: '53.6%', width: '30.5%' }, svg: svgP('<path d="M4 5h16v11H9l-5 4z"/>') },
@@ -117,6 +118,62 @@ function BranchCard({ b, i }: { b: typeof BRANCHES[number]; i: number }) {
   return b.live ? <Link href={b.href} style={{ textDecoration: 'none' }}>{inner}</Link> : <div>{inner}</div>;
 }
 
+// ── Flip bubble ─────────────────────────────────────────────────────────────
+type BubbleDef = typeof BUBBLES[number];
+
+function FlipBubble({ bubble }: { bubble: BubbleDef }) {
+  const [flipped, setFlipped] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const mod = MODULES[bubble.id as keyof typeof MODULES];
+
+  // Close when clicking outside
+  useEffect(() => {
+    if (!flipped) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setFlipped(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [flipped]);
+
+  const signupHref = bubble.id === 'advisory' ? '/advisory' : `/signup?module=${bubble.id}`;
+  const ctaLabel  = bubble.id === 'advisory' ? 'Start a conversation →' : 'Try today →';
+  const priceStr  = mod && mod.price > 0 ? `$${mod.price}/mo` : 'Free to ask';
+  const bullets   = mod?.bullets || [];
+
+  return (
+    <div
+      ref={ref}
+      className={`flip-root${flipped ? ' flipped' : ''}`}
+      style={bubble.pos}
+      onClick={() => setFlipped(f => !f)}
+    >
+      <div className="flip-inner">
+        {/* Front — red bubble */}
+        <div className="flip-front">
+          {bubble.svg}
+          <span className="n">{bubble.name}</span>
+          <span className="s">{bubble.sub}</span>
+        </div>
+        {/* Back — white info */}
+        <div className="flip-back" onClick={e => e.stopPropagation()}>
+          <button className="flip-close" onClick={e => { e.stopPropagation(); setFlipped(false); }} aria-label="Close">✕</button>
+          <div style={{ textAlign: 'center' }}>
+            <p className="flip-back-name">{bubble.name}</p>
+            <p className="flip-back-price">{priceStr}</p>
+          </div>
+          <ul className="flip-back-bullets">
+            {bullets.map(b => <li key={b}>{b}</li>)}
+          </ul>
+          <Link href={signupHref} className="flip-back-cta" onClick={e => e.stopPropagation()}>
+            {ctaLabel}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LandingPage() {
   const [checked, setChecked] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
@@ -194,7 +251,25 @@ function LandingPage() {
         .lp-bubble .n { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(12px, 2.6vw, 21px); letter-spacing: -0.5px; line-height: 1.15; padding: 0 10%; }
         .lp-bubble .s { font-size: clamp(10px, 1.9vw, 13.5px); font-weight: 600; opacity: .92; }
         .lp-bubble svg { width: clamp(20px, 5vw, 40px); height: auto; }
-        .lp-add { position: absolute; aspect-ratio: 1; border-radius: 50%; border: 2px dashed rgba(215,20,26,0.55); background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #D7141A; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: clamp(10px, 1.9vw, 13px); font-weight: 700; }
+        .lp-add { position: absolute; aspect-ratio: 1; border-radius: 50%; border: 2px dashed rgba(215,20,26,0.55); background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #D7141A; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: clamp(10px, 1.9vw, 13px); font-weight: 700; transition: background 0.2s, transform 0.15s; }
+        .lp-add:hover { background: rgba(255,255,255,0.75); transform: scale(1.04); }
+        /* Flip bubble */
+        .flip-root { position: absolute; aspect-ratio: 1; perspective: 900px; cursor: pointer; }
+        .flip-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.52s cubic-bezier(0.4,0,0.2,1); border-radius: 50%; }
+        .flip-root.flipped .flip-inner { transform: rotateY(180deg); }
+        .flip-front, .flip-back { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .flip-front { background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0) 48%), linear-gradient(160deg, rgba(240,72,78,0.95), rgba(200,10,18,0.92)); border: 1px solid rgba(255,255,255,0.45); box-shadow: inset 0 1px 1px rgba(255,255,255,0.55), inset 0 -10px 24px rgba(110,0,6,0.28), 0 18px 44px rgba(215,20,26,0.30); color: #fff; gap: 4%; text-align: center; }
+        .flip-back { background: rgba(255,255,255,0.96); transform: rotateY(180deg); box-shadow: 0 18px 44px rgba(215,20,26,0.22); border: 1px solid rgba(255,255,255,0.9); padding: 6% 8%; flex-direction: column; justify-content: space-between; gap: 0; }
+        .flip-front .n { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(12px, 2.6vw, 21px); letter-spacing: -0.5px; line-height: 1.15; padding: 0 10%; }
+        .flip-front .s { font-size: clamp(10px, 1.9vw, 13.5px); font-weight: 600; opacity: .92; }
+        .flip-front svg { width: clamp(20px, 5vw, 40px); height: auto; }
+        .flip-back-name { font-family: 'Sora', sans-serif; font-weight: 900; font-size: clamp(10px, 2.1vw, 17px); color: #1a1a2e; letter-spacing: -0.3px; line-height: 1.2; text-align: center; }
+        .flip-back-price { font-size: clamp(9px, 1.8vw, 14px); font-weight: 700; color: #D7141A; text-align: center; }
+        .flip-back-bullets { list-style: none; display: flex; flex-direction: column; gap: clamp(2px, 0.5vw, 5px); flex: 1; justify-content: center; }
+        .flip-back-bullets li { font-size: clamp(8px, 1.5vw, 12px); color: rgba(26,26,46,0.68); line-height: 1.35; display: flex; gap: 4px; }
+        .flip-back-bullets li::before { content: '✓'; color: #D7141A; font-weight: 700; flex-shrink: 0; }
+        .flip-back-cta { display: flex; align-items: center; justify-content: center; width: 100%; padding: clamp(5px,1vw,9px) 0; border-radius: 100px; background: linear-gradient(135deg,#ff3b30,#D7141A); color: #fff; font-weight: 800; font-size: clamp(8px, 1.6vw, 13px); text-decoration: none; box-shadow: 0 3px 10px rgba(215,20,26,0.35); }
+        .flip-close { position: absolute; top: 6%; right: 9%; background: none; border: none; cursor: pointer; color: rgba(26,26,46,0.35); font-size: clamp(10px, 2vw, 15px); line-height: 1; padding: 2px; }
         .lp-blurbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
         @media (max-width: 720px) { .lp-blurbs { grid-template-columns: 1fr 1fr; } }
         .section-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(28,28,30,0.32); margin-bottom: 20px; text-align: center; }
@@ -249,8 +324,7 @@ function LandingPage() {
             We help businesses navigate problems, understand change, and find solutions &mdash; through advisory, intelligence, and technology.
           </motion.p>
           <motion.div className="hero-actions" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, type: 'spring', stiffness: 120, damping: 22 }}>
-            <a href="#branches" className="btn-primary">Explore Gratia Core <ChevronRight size={16} strokeWidth={2.5} /></a>
-            <Link href="/advisory" className="btn-secondary">Let&apos;s talk</Link>
+            <Link href="/signup" className="btn-primary">Only pay for what you need <ChevronRight size={16} strokeWidth={2.5} /></Link>
           </motion.div>
         </div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 0.6 }}
@@ -261,30 +335,19 @@ function LandingPage() {
       </section>
 
       <section id="branches" className="content-section">
-        <p className="section-eyebrow">Four ways we work &middot; add what you need</p>
+        <p className="section-eyebrow">Four ways we work &middot; click any bubble to learn more</p>
         <motion.nav aria-label="Modules" className="lp-stage" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 160, damping: 22 }}>
           <div className="lp-orb" style={{ left: '12%', top: '7%', width: '58%', height: '75%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.30), rgba(215,20,26,0) 70%)' }} />
           <div className="lp-orb" style={{ left: '50%', top: '45%', width: '50%', height: '64%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.34), rgba(255,120,126,0) 70%)' }} />
           {BUBBLES.map(b => (
-            <Link key={b.id} href={b.href} className="lp-bubble" style={b.pos}>
-              {b.svg}
-              <span className="n">{b.name}</span>
-              <span className="s">{b.sub}</span>
-            </Link>
+            <FlipBubble key={b.id} bubble={b} />
           ))}
-          <Link href="/pricing" aria-label="Add what you need" className="lp-add" style={{ left: '77.8%', top: '19.6%', width: '15.3%' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-            Add
+          {/* CTA bubble — "try today" */}
+          <Link href="/signup" className="lp-add" style={{ left: '77.8%', top: '19.6%', width: '15.3%', flexDirection: 'column', gap: 3, padding: '0 4%' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            <span style={{ fontSize: 'clamp(9px,1.6vw,12px)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>Try today</span>
           </Link>
         </motion.nav>
-        <div className="lp-blurbs">
-          {BRANCHES.map(b => (
-            <div key={b.id}>
-              <p style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 800, color: '#1a1a2e', marginBottom: 4 }}>{b.name}</p>
-              <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.55)', lineHeight: 1.55 }}>{b.desc}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       {false && <section className="content-section" style={{ paddingTop: 0 }}>
@@ -314,26 +377,11 @@ function LandingPage() {
       </section>}
 
       <section className="content-section" style={{ paddingTop: 0 }}>
-        <div style={{ background: 'rgba(255,255,255,0.5)', border: '0.5px solid rgba(255,255,255,0.85)', borderRadius: 20, padding: '22px 26px', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(26,26,46,0.32)', marginBottom: 16, textAlign: 'center' }}>How it&apos;s priced &middot; one bill, only what&apos;s on</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
-            {[
-              { label: 'Advisory', val: 'Free to ask \u00b7 quoted per job' },
-              { label: 'Idea Vault', val: '$5 / month' },
-              { label: 'Barter', val: '$5 / month' },
-              { label: 'GC Protect', val: '$9 / month' },
-            ].map((p, i) => (
-              <div key={p.label} style={{ borderLeft: i > 0 ? '0.5px solid rgba(0,0,0,0.08)' : 'none', paddingLeft: i > 0 ? 16 : 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', marginBottom: 3 }}>{p.label}</p>
-                <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.5)' }}>{p.val}</p>
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.55)', textAlign: 'center', lineHeight: 1.6, marginTop: 16 }}>Turn a module on and it&apos;s prorated from today. Turn it off and you stop paying that day. Intelligence, GC Guardrail and Clone Watch are coming &mdash; <Link href="/contact?waitlist=1" style={{ color: '#ff3b30', fontWeight: 700, textDecoration: 'none' }}>join the waitlist</Link>.</p>
-          <div style={{ textAlign: 'center', marginTop: 18 }}>
-            <Link href="/pricing" style={{ display: 'inline-block', padding: '11px 24px', borderRadius: 100, background: 'linear-gradient(135deg,#ff3b30,#ff6b35)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(255,59,48,0.3)' }}>See pricing &amp; get started →</Link>
-          </div>
-        </div>
+        <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.48)', textAlign: 'center', lineHeight: 1.7 }}>
+          Turn a module on and you&apos;re charged today, then monthly — turn it off and you stop paying.{' '}
+          One bill, no bundles. Intelligence, GC Guardrail and Clone Watch are coming —{' '}
+          <Link href="/contact?waitlist=1" style={{ color: '#ff3b30', fontWeight: 700, textDecoration: 'none' }}>join the waitlist</Link>.
+        </p>
       </section>
 
       <footer className="gc-footer">
@@ -345,11 +393,11 @@ function LandingPage() {
           </div>
           <div>
             <p className="gc-footer-col-label">Modules</p>
-            <Link href="/advisory" className="gc-footer-link">Advisory</Link>
-            <Link href="/pricing" className="gc-footer-link">Idea Vault</Link>
-            <Link href="/pricing" className="gc-footer-link">Barter</Link>
-            <Link href="/pricing" className="gc-footer-link">Pricing</Link>
-            <a href={GC_PROTECT_URL} target="_blank" rel="noopener noreferrer" className="gc-footer-link">GC Protect &#8599;</a>
+            <Link href="/advisory" className="gc-footer-link">Advisory · free</Link>
+            <Link href="/signup?module=vault" className="gc-footer-link">Idea Vault · $5/mo</Link>
+            <Link href="/signup?module=barter" className="gc-footer-link">Barter · $5/mo</Link>
+            <Link href="/signup?module=protect" className="gc-footer-link">GC Protect · $5/mo</Link>
+            <Link href="/pricing" className="gc-footer-link">See all pricing →</Link>
           </div>
           <div>
             <p className="gc-footer-col-label">Company</p>
