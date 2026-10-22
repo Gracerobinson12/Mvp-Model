@@ -107,7 +107,13 @@ export async function POST(req: NextRequest) {
     await setAccess(user.id, module, false);
     return NextResponse.json({ ok: true, mode: 'removed' });
   } catch (e: any) {
-    console.error('modules/toggle error:', e);
-    return NextResponse.json({ ok: false, error: 'Could not update that module right now. Nothing was charged.' }, { status: 500 });
+    const msg = e?.message || String(e);
+    const hint =
+      !process.env.NEXT_PUBLIC_SUPABASE_URL     ? 'NEXT_PUBLIC_SUPABASE_URL missing' :
+      !process.env.SUPABASE_SERVICE_ROLE_KEY    ? 'SUPABASE_SERVICE_ROLE_KEY missing' :
+      !process.env.STRIPE_SECRET_KEY            ? 'STRIPE_SECRET_KEY missing' :
+      msg;
+    console.error('modules/toggle error:', hint, e);
+    return NextResponse.json({ ok: false, error: msg, hint }, { status: 500 });
   }
 }
