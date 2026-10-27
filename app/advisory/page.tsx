@@ -215,7 +215,7 @@ const SERVICES = [
     icon: '🧪',
     name: 'QA & User Testing',
     tag: 'Find issues before your customers do',
-    desc: 'We go through your product the way real users do — clicking every flow, pushing edge cases, and writing up what breaks, what\'s confusing, and what\'s silently failing. You get a prioritized report your developer can act on immediately.',
+    desc: 'We go through your product the way real users do; clicking every flow, pushing edge cases, and writing up what breaks, what\'s confusing, and what\'s silently failing. You get a prioritized report your developer can act on immediately.',
     proof: <QAProofCard />,
     proofLabel: 'Sample QA report — interactive',
   },
@@ -224,7 +224,7 @@ const SERVICES = [
     icon: '💡',
     name: 'Product Concept Lab',
     tag: 'Turn an idea into something buildable',
-    desc: 'You have an idea but don\'t know if it\'s viable, who it\'s for, or how to build it. We work through problem definition, user mapping, concept structure, and basic viability so you leave with a clear document — not just a conversation.',
+    desc: 'You have an idea but don\'t know if it\'s viable, who it\'s for, or how to build it. We work through problem definition, user mapping, concept structure, and basic viability so you leave with a clear document, not just a conversation.',
     proof: <ProductLabProofCard />,
     proofLabel: 'Sample concept document — interactive',
   },
@@ -233,7 +233,7 @@ const SERVICES = [
     icon: '🔍',
     name: 'Tech Due Diligence',
     tag: 'Know what you\'re buying or building on',
-    desc: 'Evaluating a product, considering an acquisition, or inheriting a codebase? We audit it for security risks, architectural decisions, dependency health, and hidden technical debt — and give you a clear risk memo you can share with investors or legal.',
+    desc: 'Evaluating a product, considering an acquisition, or inheriting a codebase? We audit it for security risks, architectural decisions, dependency health, and hidden technical debt, and give you a clear risk memo you can share with investors or legal.',
     proof: <TechDiligenceProofCard />,
     proofLabel: 'Sample risk audit — interactive',
   },
@@ -242,7 +242,7 @@ const SERVICES = [
     icon: '🔧',
     name: 'Solutions & Ongoing Support',
     tag: 'Retainer-style upkeep for your tech',
-    desc: 'Your tech stack works — until it doesn\'t. We stay close: handling integrations, chasing bugs, coordinating vendors, and making incremental improvements so problems stay small and your team stays focused on the work that matters.',
+    desc: 'Your tech stack works, until it doesn\'t. We stay close: handling integrations, chasing bugs, coordinating vendors, and making incremental improvements so problems stay small and your team stays focused on the work that matters.',
     proof: <SolutionsProofCard />,
     proofLabel: 'Sample retainer log — interactive',
   },
@@ -364,7 +364,7 @@ export default function ConsultingPage() {
             How can we<br />consult for you?
           </h1>
           <p style={{ fontSize: 17, color: 'rgba(28,28,30,0.55)', lineHeight: 1.7, maxWidth: 560 }}>
-            Pick the services that fit your situation. Each one has a visual example below so you know exactly what you&apos;re getting — then tell us about your project.
+            Pick the services that fit your situation. Each one has a visual example below so you know exactly what you&apos;re getting! Then tell us about your project.
           </p>
           <p style={{ marginTop: 10, fontSize: 12, color: 'rgba(28,28,30,0.35)' }}>
             Not legal, financial, or medical advice. Services are for informational and operational support only.
@@ -424,16 +424,16 @@ export default function ConsultingPage() {
                 <div className="two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(28,28,30,0.5)', letterSpacing: '0.04em' }}>Your name *</label>
-                    <input value={name} onChange={e => setName(e.target.value)} placeholder="Grace Robinson" style={inp} required />
+                    <input value={name} onChange={e => setName(e.target.value)} placeholder=" Jane Doe" style={inp} required />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(28,28,30,0.5)', letterSpacing: '0.04em' }}>Email address *</label>
-                    <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="grace@company.com" style={inp} required />
+                    <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="janedoe@company.com" style={inp} required />
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(28,28,30,0.5)', letterSpacing: '0.04em' }}>Company or project <span style={{ fontWeight: 400 }}>(optional)</span></label>
-                  <input value={company} onChange={e => setCompany(e.target.value)} placeholder="Acme Inc." style={inp} />
+                  <input value={company} onChange={e => setCompany(e.target.value)} placeholder="XYZ Inc." style={inp} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(28,28,30,0.5)', letterSpacing: '0.04em' }}>What&apos;s going on? <span style={{ fontWeight: 400 }}>(optional but helpful)</span></label>
