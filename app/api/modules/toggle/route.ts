@@ -25,13 +25,17 @@ async function setAccess(userId: string, module: string, active: boolean) {
 }
 
 export async function POST(req: NextRequest) {
+  let step = 'init';
   try {
+    step = 'auth';
     const token = (req.headers.get('authorization') || '').replace('Bearer ', '');
     const { data: { user } } = await admin.auth.getUser(token);
     if (!user) return NextResponse.json({ ok: false, error: 'Not signed in' }, { status: 401 });
 
+    step = 'parse';
     const { module, on } = await req.json();
     if (!isModuleId(module)) return NextResponse.json({ ok: false, error: 'Unknown module' }, { status: 400 });
+    step = `module=${module},on=${on}`;
     const def = MODULES[module];
 
     // Free modules: just record it.
@@ -42,6 +46,17 @@ export async function POST(req: NextRequest) {
 
     const { data: prof } = await admin.from('profiles').select('stripe_customer_id, stripe_subscription_id, email').eq('id', user.id).maybeSingle();
     let customerId = prof?.stripe_customer_id as string | null;
+    if (customerId) {
+      // Verify the customer exists in this Stripe mode (catches live-ID-with-test-key)
+      try {
+        const c = await stripe.customers.retrieve(customerId);
+        if ((c as any).deleted) throw new Error('deleted');
+      } catch {
+        // Stale — clear and fall through to create a fresh one
+        customerId = null;
+        await admin.from('profiles').update({ stripe_customer_id: null, stripe_subscription_id: null }).eq('id', user.id);
+      }
+    }
     if (!customerId) {
       const c = await stripe.customers.create({ email: user.email || prof?.email || undefined, metadata: { user_id: user.id } });
       customerId = c.id;

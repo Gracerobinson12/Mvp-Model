@@ -7,34 +7,25 @@ import { ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { MODULES } from '@/lib/modules';
 
-const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect.com';
+const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect.tech';
 
-// The four bubbles. Everything below the hero reads from this list.
+// Two active bubbles.
 const BRANCHES = [
-  { n: '01', id: 'advisory', name: 'Advisory', icon: '\u{1F4AC}', color: '#ff3b30', ink: '#cc2018', live: true, href: '/advisory', badge: 'Free to ask',
+  { n: '01', id: 'consulting', name: 'Consulting', icon: '🧭', color: '#ff3b30', ink: '#cc2018', live: true, href: '/advisory', badge: 'Free to ask',
     hook: "You have a problem. Let's figure it out.",
-    desc: 'Websites, consulting, tech & automation, security & privacy. Free 20-minute scoping call, then one fixed quote.',
-    cta: 'Start a conversation \u2192' },
-  { n: '02', id: 'vault', name: 'Idea Vault', icon: '\u{1F512}', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=vault', badge: 'Live \u00b7 $5/mo',
-    hook: 'Prove your idea existed today.',
-    desc: 'Seal it with a SHA-256 fingerprint and a UTC timestamp. Download a signed certificate you can show anyone.',
-    cta: 'Seal an idea \u2192' },
-  { n: '03', id: 'barter', name: 'Barter', icon: '\u{1F91D}', color: '#30d158', ink: '#0F6E56', live: true, href: '/signup?module=barter', badge: 'Live \u00b7 $5/mo',
-    hook: 'Trade services. Both sign. No money changes hands.',
-    desc: 'Write the deal down, send a one-time confirm link, and both of you get the agreement by email.',
-    cta: 'Log a trade \u2192' },
-  { n: '04', id: 'protect', name: 'GC Protect', icon: '\u{1F6E1}\uFE0F', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=protect', badge: 'Live \u00b7 $5/mo',
+    desc: 'Quality assurance, product concept, support & upkeep. Free scoping call, then one fixed quote.',
+    cta: 'Start a conversation →' },
+  { n: '02', id: 'protect', name: 'GC Protect', icon: '🛡️', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=protect', badge: 'Live · $5/mo',
     hook: 'Sensitive details become tokens before any AI sees them.',
-    desc: 'Names, SSNs, cards, API keys caught on every prompt. Works with any AI you use. Audit log you can export. Same login as everything else.',
-    cta: 'Explore GC Protect \u2192' },
+    desc: 'Names, SSNs, cards, API keys caught on every prompt. Works with any AI you use. Audit log you can export.',
+    cta: 'Explore GC Protect →' },
 ];
 
 const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
+
 const BUBBLES = [
-  { id: 'protect',  name: 'GC Protect', sub: 'Live \u00b7 $5/mo', href: '/signup?module=protect', pos: { left: '0%',    top: '0%',    width: '33.3%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
-  { id: 'vault',    name: 'Idea Vault', sub: 'Live \u00b7 $5/mo', href: '/signup?module=vault',   pos: { left: '40.3%', top: '6.4%',  width: '29.2%' }, svg: svgP('<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>') },
-  { id: 'barter',   name: 'Barter',     sub: 'Live \u00b7 $5/mo', href: '/signup?module=barter',  pos: { left: '9.7%',  top: '51.8%', width: '29.2%' }, svg: svgP('<path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/>') },
-  { id: 'advisory', name: 'Advisory',   sub: 'Free to ask',        href: '/advisory',              pos: { left: '45.8%', top: '53.6%', width: '30.5%' }, svg: svgP('<path d="M4 5h16v11H9l-5 4z"/>') },
+  { id: 'protect',    name: 'GC Protect',  sub: 'Live · $5/mo',  href: '/signup?module=protect', pos: { left: '5%',   top: '8%',   width: '38%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
+  { id: 'consulting', name: 'Consulting',   sub: 'Free to ask',   href: '/advisory',              pos: { left: '42%',  top: '38%',  width: '38%' }, svg: svgP('<path d="M4 5h16v11H9l-5 4z"/>') },
 ];
 
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
@@ -126,7 +117,6 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
   const ref = useRef<HTMLDivElement>(null);
   const mod = MODULES[bubble.id as keyof typeof MODULES];
 
-  // Close when clicking outside
   useEffect(() => {
     if (!flipped) return;
     const handler = (e: MouseEvent) => {
@@ -136,10 +126,13 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [flipped]);
 
-  const signupHref = bubble.id === 'advisory' ? '/advisory' : `/signup?module=${bubble.id}`;
-  const ctaLabel  = bubble.id === 'advisory' ? 'Start a conversation →' : 'Try today →';
-  const priceStr  = mod && mod.price > 0 ? `$${mod.price}/mo` : 'Free to ask';
-  const bullets   = mod?.bullets || [];
+  const isConsulting = bubble.id === 'consulting';
+  const signupHref = isConsulting ? '/advisory' : `/signup?module=${bubble.id}`;
+  const ctaLabel   = isConsulting ? 'Start a conversation →' : 'Try today →';
+  const priceStr   = isConsulting ? 'Free to ask' : (mod && mod.price > 0 ? `$${mod.price}/mo` : 'Free');
+  const bullets: string[]    = isConsulting
+    ? ['QA & user testing', 'Product concept lab', 'Tech due diligence', 'Ongoing support']
+    : (mod?.bullets || []);
 
   return (
     <div
@@ -149,13 +142,11 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
       onClick={() => setFlipped(f => !f)}
     >
       <div className="flip-inner">
-        {/* Front — red bubble */}
         <div className="flip-front">
           {bubble.svg}
           <span className="n">{bubble.name}</span>
           <span className="s">{bubble.sub}</span>
         </div>
-        {/* Back — white info */}
         <div className="flip-back" onClick={e => e.stopPropagation()}>
           <button className="flip-close" onClick={e => { e.stopPropagation(); setFlipped(false); }} aria-label="Close">✕</button>
           <div style={{ textAlign: 'center' }}>
@@ -187,11 +178,11 @@ function LandingPage() {
   const handleIntroComplete = useCallback(() => { localStorage.setItem('gc_intro_seen', '1'); setIntroComplete(true); }, []);
 
   const scatteredBadges = [
-    { text: 'Advisory', color: '#ff3b30', rotate: -6 },
-    { text: 'Idea Vault', color: '#D7141A', rotate: 8 },
-    { text: 'Barter', color: '#30d158', rotate: -4 },
-    { text: 'GC Protect', color: '#bf5af2', rotate: 12 },
-    { text: 'Add what you need', color: '#ff9500', rotate: -9 },
+    { text: 'Consulting', color: '#ff3b30', rotate: -6 },
+    { text: 'GC Protect', color: '#D7141A', rotate: 8 },
+    { text: 'Quality assurance', color: '#bf5af2', rotate: -4 },
+    { text: 'Product concept', color: '#ff9500', rotate: 12 },
+    { text: 'Add what you need', color: '#30d158', rotate: -9 },
   ];
   const driftPaths = [
     { x: ['-25vw','30vw','-10vw','25vw','-25vw'], y: ['-20vh','20vh','-10vh','30vh','-20vh'] },
@@ -241,7 +232,7 @@ function LandingPage() {
         .btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 15px 26px; background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #1c1c1e; border-radius: 100px; font-size: 15px; font-weight: 700; border: 1px solid rgba(255,255,255,0.95); box-shadow: 0 2px 12px rgba(0,0,0,0.07); cursor: pointer; text-decoration: none; font-family: 'DM Sans',sans-serif; transition: all 0.2s; }
         .btn-secondary:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); }
         .content-section { max-width: 860px; margin: 0 auto; padding: 60px 24px; position: relative; z-index: 1; }
-        .lp-stage { position: relative; width: 100%; max-width: 720px; aspect-ratio: 720 / 560; margin: 0 auto; }
+        .lp-stage { position: relative; width: 100%; max-width: 560px; aspect-ratio: 560 / 480; margin: 0 auto; }
         .lp-orb { position: absolute; border-radius: 50%; filter: blur(28px); pointer-events: none; }
         .lp-bubble { position: absolute; aspect-ratio: 1; border-radius: 50%; text-decoration: none; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4%; text-align: center; transition: transform .15s ease;
           background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0) 48%), linear-gradient(160deg, rgba(240,72,78,0.95), rgba(200,10,18,0.92));
@@ -270,8 +261,8 @@ function LandingPage() {
         .flip-back-bullets li::before { content: '✓'; color: #D7141A; font-weight: 700; flex-shrink: 0; }
         .flip-back-cta { display: flex; align-items: center; justify-content: center; width: 100%; padding: clamp(5px,1vw,9px) 0; border-radius: 100px; background: linear-gradient(135deg,#ff3b30,#D7141A); color: #fff; font-weight: 800; font-size: clamp(8px, 1.6vw, 13px); text-decoration: none; box-shadow: 0 3px 10px rgba(215,20,26,0.35); }
         .flip-close { position: absolute; top: 6%; right: 9%; background: none; border: none; cursor: pointer; color: rgba(26,26,46,0.35); font-size: clamp(10px, 2vw, 15px); line-height: 1; padding: 2px; }
-        .lp-blurbs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
-        @media (max-width: 720px) { .lp-blurbs { grid-template-columns: 1fr 1fr; } }
+        .lp-blurbs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
+        @media (max-width: 520px) { .lp-blurbs { grid-template-columns: 1fr; } }
         .section-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(28,28,30,0.32); margin-bottom: 20px; text-align: center; }
         .gc-footer { max-width: 1100px; margin: 0 auto; padding: 40px 24px 140px; }
         .gc-footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
@@ -293,10 +284,9 @@ function LandingPage() {
           <div className="gc-ticker-track">
             {[0, 1].map((dupe) => (
               <React.Fragment key={dupe}>
-                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Advisory is open &mdash; tell us the problem, we&apos;ll help you solve it</div>
-                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Idea Vault &mdash; seal an idea, keep the proof</div>
-                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Barter &mdash; trade services, both sign</div>
+                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Consulting is open &mdash; QA, product concept, support &amp; upkeep</div>
                 <div className="gc-ticker-item"><span className="gc-ticker-dot" /> GC Protect &mdash; tokens before any AI sees your data</div>
+                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Free scoping call &middot; one fixed quote</div>
                 <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Add what you need &middot; pay only for what&apos;s on</div>
               </React.Fragment>
             ))}
@@ -321,7 +311,7 @@ function LandingPage() {
             Solutions for businesses<br />moving forward.
           </motion.h1>
           <motion.p className="hero-subtitle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 0.5 }}>
-            We help businesses navigate problems, understand change, and find solutions &mdash; through advisory, intelligence, and technology.
+            We help businesses navigate problems, understand change, and find solutions &mdash; through consulting, intelligence, and technology.
           </motion.p>
           <motion.div className="hero-actions" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, type: 'spring', stiffness: 120, damping: 22 }}>
             <Link href="/signup" className="btn-primary">Only pay for what you need <ChevronRight size={16} strokeWidth={2.5} /></Link>
@@ -335,51 +325,29 @@ function LandingPage() {
       </section>
 
       <section id="branches" className="content-section">
-        <p className="section-eyebrow">Four ways we work &middot; click any bubble to learn more</p>
+        <p className="section-eyebrow">Two ways we work &middot; click any bubble to learn more</p>
         <motion.nav aria-label="Modules" className="lp-stage" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 160, damping: 22 }}>
-          <div className="lp-orb" style={{ left: '12%', top: '7%', width: '58%', height: '75%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.30), rgba(215,20,26,0) 70%)' }} />
-          <div className="lp-orb" style={{ left: '50%', top: '45%', width: '50%', height: '64%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.34), rgba(255,120,126,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '5%', top: '5%', width: '60%', height: '75%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.30), rgba(215,20,26,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '40%', top: '35%', width: '55%', height: '64%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.34), rgba(255,120,126,0) 70%)' }} />
           {BUBBLES.map(b => (
             <FlipBubble key={b.id} bubble={b} />
           ))}
-          {/* CTA bubble — "try today" */}
-          <Link href="/signup" className="lp-add" style={{ left: '77.8%', top: '19.6%', width: '15.3%', flexDirection: 'column', gap: 3, padding: '0 4%' }}>
+          {/* Dashed add bubble */}
+          <Link href="/signup" className="lp-add" style={{ left: '78%', top: '2%', width: '18%', flexDirection: 'column', gap: 3, padding: '0 4%' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
             <span style={{ fontSize: 'clamp(9px,1.6vw,12px)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>Try today</span>
           </Link>
         </motion.nav>
-      </section>
 
-      {false && <section className="content-section" style={{ paddingTop: 0 }}>
-        <p className="section-eyebrow">Our first product &mdash; live now</p>
-        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          transition={{ type: 'spring', stiffness: 160, damping: 22 }}
-          style={{ background: 'linear-gradient(135deg,rgba(10,132,255,0.09),rgba(191,90,242,0.07))', border: '1px solid rgba(10,132,255,0.2)', borderRadius: 24, padding: '28px 30px', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(191,90,242,0.08)', pointerEvents: 'none' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, position: 'relative' }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#0a84ff,#bf5af2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, boxShadow: '0 4px 16px rgba(10,132,255,0.32)' }}>&#128737;&#65039;</div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 900, letterSpacing: '-0.6px', color: '#1a1a2e' }}>GC Protect</span>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#1a7a35', background: 'rgba(48,209,88,0.12)', padding: '4px 9px', borderRadius: 100 }}>&#9679; Live</span>
-              </div>
-              <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.5)', marginTop: 2 }}>From the Gratia Core ecosystem</p>
-            </div>
-          </div>
-          <p style={{ fontSize: 15, color: 'rgba(26,26,46,0.62)', lineHeight: 1.65, marginBottom: 18, maxWidth: 560, position: 'relative' }}>
-            AI data protection for the modern workplace. GC Protect redacts sensitive client data before it ever reaches an AI tool &mdash; client names, account numbers, and custom terms your team defines, with a full audit trail.
-          </p>
-          <a href={GC_PROTECT_URL} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#0a84ff,#3a6ff0)', padding: '12px 24px', borderRadius: 100, textDecoration: 'none', boxShadow: '0 4px 16px rgba(10,132,255,0.32)', position: 'relative' }}>
-            Visit GC Protect &#8599;
-          </a>
-        </motion.div>
-      </section>}
+        {/* Branch cards */}
+        <div className="lp-blurbs" style={{ marginTop: 48 }}>
+          {BRANCHES.map((b, i) => <BranchCard key={b.id} b={b} i={i} />)}
+        </div>
+      </section>
 
       <section className="content-section" style={{ paddingTop: 0 }}>
         <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.48)', textAlign: 'center', lineHeight: 1.7 }}>
-          Turn a module on and you&apos;re charged today, then monthly — turn it off and you stop paying.{' '}
-          One bill, no bundles. Intelligence, GC Guardrail and Clone Watch are coming —{' '}
+          Idea Vault, Barter, and more modules are coming &mdash;{' '}
           <Link href="/contact?waitlist=1" style={{ color: '#ff3b30', fontWeight: 700, textDecoration: 'none' }}>join the waitlist</Link>.
         </p>
       </section>
@@ -389,13 +357,11 @@ function LandingPage() {
         <div className="gc-footer-grid">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}><GCIcon size={28} /><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: -0.5, color: '#1c1c1e' }}>Gratia Core</span></div>
-            <p style={{ fontSize: 13, color: 'rgba(28,28,30,0.5)', lineHeight: 1.65, maxWidth: 240 }}>Solutions for businesses moving forward &mdash; advisory, proof, and the tools to act. Add what you need; pay only for what&apos;s on.</p>
+            <p style={{ fontSize: 13, color: 'rgba(28,28,30,0.5)', lineHeight: 1.65, maxWidth: 240 }}>Solutions for businesses moving forward &mdash; consulting, protection, and the tools to act.</p>
           </div>
           <div>
-            <p className="gc-footer-col-label">Modules</p>
-            <Link href="/advisory" className="gc-footer-link">Advisory · free</Link>
-            <Link href="/signup?module=vault" className="gc-footer-link">Idea Vault · $5/mo</Link>
-            <Link href="/signup?module=barter" className="gc-footer-link">Barter · $5/mo</Link>
+            <p className="gc-footer-col-label">Services</p>
+            <Link href="/advisory" className="gc-footer-link">Consulting · free to ask</Link>
             <Link href="/signup?module=protect" className="gc-footer-link">GC Protect · $5/mo</Link>
             <Link href="/pricing" className="gc-footer-link">See all pricing →</Link>
           </div>
@@ -422,7 +388,7 @@ function LandingPage() {
 
       <header className="navbar">
         <nav className="nav-pill">
-          <Link href="/advisory" className="nav-item">Advisory</Link>
+          <Link href="/advisory" className="nav-item">Consulting</Link>
           <a href="#branches" className="nav-item">Modules</a>
           <Link href="/pricing" className="nav-item">Pricing</Link>
           <Link href="/about" className="nav-item">About</Link>
@@ -444,7 +410,7 @@ function setCookie(val: string) {
 }
 function getCookie(): string | null {
   if (typeof document === 'undefined') return null;
-  const m = document.cookie.match(new RegExp('(?:^|;\\\\s*)' + COOKIE_KEY + '=([^;]*)'));
+  const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + COOKIE_KEY + '=([^;]*)'));
   return m ? m[1] : null;
 }
 
@@ -483,11 +449,11 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
   const inp: React.CSSProperties = { width: '100%', padding: '13px 16px', borderRadius: 12, fontSize: 15, fontFamily: 'inherit', outline: 'none', background: 'rgba(120,120,128,0.08)', border: '1px solid ' + (error ? '#ff3b30' : 'rgba(0,0,0,0.1)'), color: '#1c1c1e', boxSizing: 'border-box', transition: 'border-color 0.2s' };
 
   const scatteredBadges = [
-    { text: 'Advisory', color: '#ff3b30', rotate: -6 },
-    { text: 'Idea Vault', color: '#D7141A', rotate: 8 },
-    { text: 'Barter', color: '#30d158', rotate: -4 },
-    { text: 'GC Protect', color: '#bf5af2', rotate: 12 },
-    { text: 'Moving forward', color: '#ff9500', rotate: -9 },
+    { text: 'Consulting', color: '#ff3b30', rotate: -6 },
+    { text: 'GC Protect', color: '#D7141A', rotate: 8 },
+    { text: 'Quality assurance', color: '#bf5af2', rotate: -4 },
+    { text: 'Product concept', color: '#ff9500', rotate: 12 },
+    { text: 'Moving forward', color: '#30d158', rotate: -9 },
   ];
   const driftPaths = [
     { x: ['-25vw','30vw','-10vw','25vw','-25vw'], y: ['-20vh','20vh','-10vh','30vh','-20vh'] },
@@ -528,7 +494,7 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
                 <input type="email" placeholder="your@email.com" value={email} autoFocus onChange={e => { setEmail(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && handleWaitlist()} style={{ ...inp, marginBottom: error ? 6 : 12 }} />
                 {error && <p style={{ fontSize: 12, color: '#ff3b30', marginBottom: 10 }}>{error}</p>}
                 <button onClick={handleWaitlist} disabled={loading} style={{ width: '100%', padding: 14, borderRadius: 100, fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', background: email.trim() ? 'linear-gradient(135deg,#ff3b30,#ff6b35)' : 'rgba(0,0,0,0.07)', color: email.trim() ? '#fff' : 'rgba(28,28,30,0.28)', boxShadow: email.trim() ? '0 4px 16px rgba(255,59,48,0.35)' : 'none', marginBottom: 16 }}>
-                  {loading ? 'Joining\u2026' : 'Join the waitlist \u2192'}
+                  {loading ? 'Joining…' : 'Join the waitlist →'}
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                   <div style={{ flex: 1, height: '0.5px', background: 'rgba(0,0,0,0.08)' }} />
@@ -543,7 +509,7 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
                 <div style={{ fontSize: 40, marginBottom: 14 }}>&#127881;</div>
                 <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 900, color: '#1c1c1e', marginBottom: 8 }}>You&apos;re on the list.</h2>
                 <p style={{ fontSize: 14, color: 'rgba(28,28,30,0.52)', lineHeight: 1.65, marginBottom: 20 }}>We&apos;ll email <strong style={{ color: '#1c1c1e' }}>{email}</strong> the moment Gratia Core opens.</p>
-                <button onClick={() => { setView('code'); setError(''); }} style={{ padding: '10px 22px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: 'rgba(120,120,128,0.08)', border: '1px solid rgba(0,0,0,0.08)', color: 'rgba(28,28,30,0.6)' }}>I have an access code \u2192</button>
+                <button onClick={() => { setView('code'); setError(''); }} style={{ padding: '10px 22px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: 'rgba(120,120,128,0.08)', border: '1px solid rgba(0,0,0,0.08)', color: 'rgba(28,28,30,0.6)' }}>I have an access code →</button>
               </motion.div>
             )}
             {view === 'code' && (
@@ -553,7 +519,7 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
                 <input type="text" placeholder="XXXXXXXX" value={code} autoFocus onChange={e => { setCode(e.target.value.toUpperCase()); setError(''); }} onKeyDown={e => e.key === 'Enter' && handleCode()} style={{ ...inp, fontSize: 18, fontWeight: 700, letterSpacing: '0.12em', textAlign: 'center' as const, marginBottom: error ? 6 : 14 }} />
                 {error && <p style={{ fontSize: 12, color: '#ff3b30', marginBottom: 10 }}>{error}</p>}
                 <button onClick={handleCode} disabled={loading || !code.trim()} style={{ width: '100%', padding: 14, borderRadius: 100, fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', background: code.trim() ? 'linear-gradient(135deg,#ff3b30,#ff6b35)' : 'rgba(0,0,0,0.07)', color: code.trim() ? '#fff' : 'rgba(28,28,30,0.28)', boxShadow: code.trim() ? '0 4px 16px rgba(255,59,48,0.35)' : 'none', marginBottom: 14 }}>
-                  {loading ? 'Checking\u2026' : 'Unlock access \u2192'}
+                  {loading ? 'Checking…' : 'Unlock access →'}
                 </button>
                 <button onClick={() => { setView('main'); setError(''); setCode(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'rgba(28,28,30,0.42)', fontFamily: 'inherit', width: '100%', textAlign: 'center' as const }}>&larr; Back</button>
               </motion.div>
@@ -571,9 +537,6 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-// PRIVATE MODE: the public sees the Coming-soon gate (waitlist + access code).
-// You get through with: an access code (GatePage), ?access=CODE in the URL, or by being logged in.
-// To open to everyone later: set GATE_OPEN = true.
 const GATE_OPEN = false;
 
 export default function RootPage() {

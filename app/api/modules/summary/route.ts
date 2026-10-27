@@ -20,9 +20,20 @@ export async function GET(req: NextRequest) {
     if (!prof?.stripe_customer_id) return NextResponse.json(out);
 
     const cid = prof.stripe_customer_id;
-    const [subs, customer, invoices] = await Promise.all([
+
+    // Verify the customer exists in this mode (live vs test). If not, clear it and return empty.
+    let customer: Stripe.Customer;
+    try {
+      customer = await stripe.customers.retrieve(cid, { expand: ['invoice_settings.default_payment_method'] }) as Stripe.Customer;
+      if ((customer as any).deleted) throw new Error('deleted');
+    } catch {
+      // Stale customer ID (e.g. live ID used with test key) — clear it so next toggle creates a fresh one
+      await admin.from('profiles').update({ stripe_customer_id: null, stripe_subscription_id: null }).eq('id', user.id);
+      return NextResponse.json(out);
+    }
+
+    const [subs, invoicesRes] = await Promise.all([
       stripe.subscriptions.list({ customer: cid, status: 'all', limit: 10 }),
-      stripe.customers.retrieve(cid, { expand: ['invoice_settings.default_payment_method'] }) as Promise<Stripe.Customer>,
       stripe.invoices.list({ customer: cid, limit: 6 }),
     ]);
     const live = subs.data.find(s => ['active', 'trialing', 'past_due'].includes(s.status));
@@ -43,7 +54,7 @@ export async function GET(req: NextRequest) {
       out.card_last4 = pm.card.last4;
       out.card_brand = pm.card.brand;
     }
-    out.invoices = invoices.data.map(inv => ({
+    out.invoices = invoicesRes.data.map(inv => ({
       id: inv.id, date: new Date(inv.created * 1000).toISOString(), total: (inv.total || 0) / 100,
       status: inv.status, url: inv.hosted_invoice_url || inv.invoice_pdf || null,
       lines: inv.lines.data.map(l => l.description).filter(Boolean).slice(0, 4),
