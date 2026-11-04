@@ -35,6 +35,18 @@ type GithubData = {
   items: AccessItem[];
 };
 
+type SiteData = {
+  domain: string;
+  finalUrl?: string;
+  https?: boolean;
+  httpRedirects?: boolean | null;
+  headers?: { key: string; label: string; why: string; present: boolean }[];
+  checkedAt?: string;
+  items: AccessItem[];
+  error?: string;
+  loading?: boolean;
+};
+
 type NetData = {
   ip: string | null;
   provider: string | null;
@@ -70,7 +82,8 @@ const NOT_CONNECTED = [
   { name: "Stripe", sub: "Team members and connected apps on your payments" },
 ];
 
-const KEYS = { status: "gcshield.status", findings: "gcshield.findings", wifi: "gcshield.wifi" };
+const KEYS = { status: "gcshield.status", findings: "gcshield.findings", wifi: "gcshield.wifi", sites: "gcshield.sites" };
+const SITE = "Website · ";
 const EMPTY_WIFI: WifiAnswers = { protectedOn: false };
 
 function load<T>(key: string, fallback: T): T {
@@ -79,6 +92,15 @@ function load<T>(key: string, fallback: T): T {
     return raw ? { ...fallback, ...(JSON.parse(raw) as T) } : fallback;
   } catch {
     return fallback;
+  }
+}
+function loadList(key: string): string[] {
+  try {
+    const raw = window.localStorage.getItem(key);
+    const v: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
   }
 }
 function save(key: string, value: unknown) {
@@ -119,6 +141,11 @@ export default function ShieldPage() {
   const [stored, setStored] = useState<Record<string, StoredFinding>>({});
   const [wifi, setWifi] = useState<WifiAnswers>(EMPTY_WIFI);
   const [meridian, setMeridian] = useState<MeridianState>({ state: "off", message: "Not synced yet" });
+  const [sites, setSites] = useState<string[]>([]);
+  const [siteData, setSiteData] = useState<Record<string, SiteData>>({});
+  const [adding, setAdding] = useState(false);
+  const [newSite, setNewSite] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
     setStatus(load(KEYS.status, {}));
@@ -182,12 +209,62 @@ export default function ShieldPage() {
     }
   }, []);
 
+  const scanSite = useCallback(
+    async (domain: string): Promise<SiteData> => {
+      setSiteData((d) => ({ ...d, [domain]: { ...(d[domain] ?? { domain, items: [] }), loading: true } }));
+      let data: SiteData;
+      try {
+        const res = await fetch(`/api/shield/website?domain=${encodeURIComponent(domain)}`, { cache: "no-store" });
+        const body = await res.json();
+        data = res.ok ? { ...(body as SiteData), loading: false } : { domain, items: [], error: body.error ?? "Couldn't check this website.", loading: false };
+      } catch {
+        data = { domain, items: [], error: "Couldn't reach the Shield server.", loading: false };
+      }
+      setSiteData((d) => ({ ...d, [domain]: data }));
+      if (!data.error && data.items.length) {
+        const saved = load<Record<string, Review>>(KEYS.status, {});
+        void callMeridian({ action: "syncItems", items: data.items.map((it) => toMeridian(it, saved[it.id] ?? "Needs review")) });
+      }
+      return data;
+    },
+    [callMeridian]
+  );
+
   useEffect(() => {
     scan();
     checkNetwork();
-  }, [scan, checkNetwork]);
+    const saved = loadList(KEYS.sites);
+    setSites(saved);
+    saved.forEach((d) => void scanSite(d));
+  }, [scan, checkNetwork, scanSite]);
 
-  const items = gh?.items ?? [];
+  async function addSite() {
+    const d = newSite.trim().toLowerCase().replace(/^https?:\/\//, "").split(/[/?#]/)[0];
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(d)) {
+      setAddError("Enter a website address like gratiacore.com.");
+      return;
+    }
+    setAdding(false);
+    setNewSite("");
+    setAddError(null);
+    setTab("reach-you");
+    setOpenService(SITE + d);
+    if (!sites.includes(d)) {
+      const next = [...sites, d];
+      setSites(next);
+      save(KEYS.sites, next);
+    }
+    await scanSite(d);
+  }
+
+  function removeSite(d: string) {
+    const next = sites.filter((x) => x !== d);
+    setSites(next);
+    save(KEYS.sites, next);
+    setOpenService(null);
+  }
+
+  const items = [...(gh?.items ?? []), ...sites.flatMap((d) => siteData[d]?.items ?? [])];
   const reviewOf = (id: string): Review => status[id] ?? "Needs review";
 
   function setReview(item: AccessItem, value: Review) {
@@ -211,16 +288,17 @@ export default function ShieldPage() {
 
   // "Check again": rescan GitHub and confirm removals for real.
   async function checkAgain() {
-    const fresh = await scan();
-    if (!fresh) return;
-    const ids = new Set(fresh.items.map((i) => i.id));
+    const [fresh, siteResults] = await Promise.all([scan(), Promise.all(sites.map((d) => scanSite(d)))]);
+    const ids = new Set([...(fresh?.items ?? []), ...siteResults.flatMap((r) => r.items)].map((i) => i.id));
+    const checkedAt = fresh?.checkedAt ?? new Date().toISOString();
     const next = { ...stored };
     for (const [fid, f] of Object.entries(stored)) {
       if (f.state !== "Fixing") continue;
       const itemId = fid.slice(2);
+      if (!fresh && !itemId.startsWith("site:")) continue; // GitHub didn't answer: don't guess
       next[fid] = ids.has(itemId)
-        ? { ...f, state: "Open", note: "Still on GitHub at the last check." }
-        : { ...f, state: "Confirmed", note: `Confirmed gone from GitHub at ${time(fresh.checkedAt)}.`, at: fresh.checkedAt };
+        ? { ...f, state: "Open", note: "Still there at the last check." }
+        : { ...f, state: "Confirmed", note: `Confirmed gone at ${time(checkedAt)}.`, at: checkedAt };
     }
     setStored(next);
     save(KEYS.findings, next);
@@ -266,6 +344,35 @@ export default function ShieldPage() {
         list.push({ id: fid, severity: "High", source: "Access Shield", title: s.title, detail: s.detail, state: "Confirmed", note: s.note, canFix: false });
       }
     }
+    for (const d of sites) {
+      const sd = siteData[d];
+      if (!sd?.headers) continue;
+      const missing = sd.headers.filter((h) => !h.present);
+      if (missing.length) {
+        list.push({
+          id: `site-headers:${d}`,
+          severity: missing.length >= 3 ? "Medium" : "Low",
+          source: "Access Shield",
+          title: `${d} is missing ${missing.length} security ${missing.length === 1 ? "protection" : "protections"}`,
+          detail: missing.map((h) => `${h.label}: ${h.why}`).join(" "),
+          state: "Open",
+          link: sd.finalUrl,
+          canFix: false,
+        });
+      }
+      if (sd.httpRedirects === false) {
+        list.push({
+          id: `site-http:${d}`,
+          severity: "Medium",
+          source: "Access Shield",
+          title: `${d} doesn't force HTTPS`,
+          detail: "Visitors who type the address without https can land on an unencrypted page. Turn on HTTPS redirects in your hosting settings.",
+          state: "Open",
+          link: sd.finalUrl,
+          canFix: false,
+        });
+      }
+    }
     if (net && !netLoading) {
       const where = net.provider ? `${net.provider} Wi-Fi` : "this Wi-Fi";
       if (!isProtected) {
@@ -294,7 +401,7 @@ export default function ShieldPage() {
       (a, b) => (a.state === "Confirmed" ? 1 : 0) - (b.state === "Confirmed" ? 1 : 0) || RANK[a.severity] - RANK[b.severity]
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, status, stored, wifi, isProtected, net, netLoading, location]);
+  }, [items, status, stored, wifi, isProtected, net, netLoading, location, sites, siteData]);
 
   const counts = useMemo(() => {
     const c = { Authorized: 0, Unauthorized: 0, "Needs review": 0 } as Record<Review, number>;
@@ -474,6 +581,94 @@ export default function ShieldPage() {
               ›
             </span>
           </button>
+          {sites.map((d) => {
+            const sd = siteData[d];
+            const svc = SITE + d;
+            const its = shown.filter((i) => i.service === svc);
+            const rev = its.filter((i) => reviewOf(i.id) === "Needs review").length;
+            const hi = its.filter((i) => i.risk === "High").length;
+            return (
+              <button key={d} type="button" className="gcs-service" onClick={() => setOpenService(svc)}>
+                <span className="gcs-service-mark" aria-hidden="true">
+                  WEB
+                </span>
+                <span className="gcs-service-text">
+                  <strong>{d}</strong>
+                  <span>
+                    {sd?.loading
+                      ? "Checking the website…"
+                      : sd?.error ??
+                        `Website · ${its.length} outside ${its.length === 1 ? "service" : "services"} found${sd?.checkedAt ? ` · ${time(sd.checkedAt)}` : ""}`}
+                  </span>
+                </span>
+                <span className="gcs-chips">
+                  {hi > 0 && <span className="gcs-chip gcs-risk-high">{hi} high risk</span>}
+                  {rev > 0 && <span className="gcs-chip gcs-risk-medium">{rev} need review</span>}
+                  <span className="gcs-chip gcs-chip-evidence">Verified · live</span>
+                </span>
+                <span className="gcs-chevron" aria-hidden="true">
+                  ›
+                </span>
+              </button>
+            );
+          })}
+
+          {!adding ? (
+            <button
+              type="button"
+              className="gcs-add"
+              onClick={() => {
+                setAdding(true);
+                setAddError(null);
+              }}
+            >
+              + Add a service
+            </button>
+          ) : (
+            <form
+              className="gcs-addform"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void addSite();
+              }}
+            >
+              <h3>Add a service</h3>
+              <div className="gcs-addopts">
+                <div className="gcs-addopt is-on">
+                  <strong>Website</strong>
+                  <span>Any site you run. No key needed.</span>
+                </div>
+                <div className="gcs-addopt">
+                  <strong>GitHub</strong>
+                  <span>{gh ? "Already connected" : "Uses your read-only key"}</span>
+                </div>
+                <div className="gcs-addopt is-off">
+                  <strong>Google, Vercel, Stripe</strong>
+                  <span>Coming next</span>
+                </div>
+              </div>
+              <label htmlFor="gcs-new-site">Website address</label>
+              <div className="gcs-addrow">
+                <input
+                  id="gcs-new-site"
+                  type="text"
+                  inputMode="url"
+                  autoComplete="off"
+                  placeholder="gratiacore.com"
+                  value={newSite}
+                  onChange={(e) => setNewSite(e.target.value)}
+                />
+                <button type="submit" className="gcs-btn">
+                  Add and check
+                </button>
+                <button type="button" className="gcs-btn gcs-btn-quiet" onClick={() => setAdding(false)}>
+                  Cancel
+                </button>
+              </div>
+              {addError && <p className="gcs-note">{addError}</p>}
+            </form>
+          )}
+
           {NOT_CONNECTED.map((s) => (
             <div key={s.name} className="gcs-service gcs-service-off">
               <span className="gcs-service-mark" aria-hidden="true">
@@ -499,6 +694,40 @@ export default function ShieldPage() {
           <h2 className="gcs-h2">
             {openService} · {direction}
           </h2>
+          {openService.startsWith(SITE) &&
+            (() => {
+              const d = openService.slice(SITE.length);
+              const sd = siteData[d];
+              return (
+                <div className="gcs-sitecheck">
+                  {sd?.loading && <p>Checking {d}…</p>}
+                  {sd?.error && <p className="gcs-note">{sd.error}</p>}
+                  {sd?.headers && (
+                    <>
+                      <p className="gcs-eyebrow">Site protections · checked {time(sd.checkedAt)}</p>
+                      <ul>
+                        <li className={sd.https ? "is-ok" : "is-bad"}>
+                          <strong>{sd.https ? "On" : "Missing"}</strong> Encrypted connection (HTTPS)
+                        </li>
+                        {sd.httpRedirects !== null && sd.httpRedirects !== undefined && (
+                          <li className={sd.httpRedirects ? "is-ok" : "is-bad"}>
+                            <strong>{sd.httpRedirects ? "On" : "Missing"}</strong> Sends http visitors to https
+                          </li>
+                        )}
+                        {sd.headers.map((h) => (
+                          <li key={h.key} className={h.present ? "is-ok" : "is-bad"}>
+                            <strong>{h.present ? "On" : "Missing"}</strong> {h.label}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  <button type="button" className="gcs-link" onClick={() => removeSite(d)}>
+                    Remove this website
+                  </button>
+                </div>
+              );
+            })()}
           {!loading && groups.length === 0 && (
             <p className="gcs-empty">
               Nothing found here.{" "}
@@ -541,7 +770,7 @@ export default function ShieldPage() {
                           <div className="gcs-chips">
                             <span className="gcs-chip">{it.type}</span>
                             <span className={`gcs-chip gcs-risk-${it.risk.toLowerCase()}`}>{it.risk} risk</span>
-                            <span className="gcs-chip gcs-chip-evidence">Verified · GitHub</span>
+                            <span className="gcs-chip gcs-chip-evidence">{it.service === "GitHub" ? "Verified · GitHub" : "Verified · live check"}</span>
                           </div>
                         </div>
                         <div className="gcs-seg" role="group" aria-label={`Review ${it.name}`}>
@@ -556,7 +785,7 @@ export default function ShieldPage() {
                             <strong>Shield won&apos;t change this. To remove it yourself:</strong>
                             <span>{it.howToRemove}</span>
                             <a href={it.link} target="_blank" rel="noreferrer">
-                              Open on GitHub ↗
+                              {it.service === "GitHub" ? "Open on GitHub ↗" : "Open ↗"}
                             </a>
                           </div>
                         )}
@@ -595,7 +824,7 @@ export default function ShieldPage() {
               <div className="gcs-finding-actions">
                 {f.link && f.state !== "Confirmed" && (
                   <a className="gcs-btn gcs-btn-quiet" href={f.link} target="_blank" rel="noreferrer">
-                    Open on GitHub ↗
+                    {f.link.includes("github.com") ? "Open on GitHub ↗" : "Open ↗"}
                   </a>
                 )}
                 {f.canFix && f.state === "Open" && (
@@ -807,6 +1036,25 @@ const CSS = `
 .gcs-means>div.is-now{border-color:var(--red);background:var(--tint)}
 .gcs-means strong{color:var(--red)}
 @media (max-width:520px){.gcs-means{grid-template-columns:1fr}.gcs-protect-head{flex-direction:column;align-items:flex-start}}
+.gcs-add{box-sizing:border-box;width:100%;min-height:64px;border-radius:22px;border:2px dashed var(--red);background:var(--paper);color:var(--red);font:inherit;font-size:1.05rem;font-weight:800;cursor:pointer}
+.gcs-addform{border:2px solid var(--red);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.gcs-addform label{font-weight:700;color:var(--red)}
+.gcs-addopts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.gcs-addopt{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:16px;border:2px solid var(--line);font-size:.88rem}
+.gcs-addopt strong{color:var(--red)}
+.gcs-addopt.is-on{border-color:var(--red);background:var(--tint)}
+.gcs-addopt.is-off{opacity:.65}
+.gcs-addrow{display:flex;gap:8px;flex-wrap:wrap}
+.gcs-addrow input{flex:1 1 220px;min-width:0;min-height:44px;border-radius:22px;border:2px solid var(--line);padding:0 16px;font:inherit;color:var(--ink);background:var(--paper)}
+.gcs-sitecheck{border:2px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.gcs-sitecheck ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.gcs-sitecheck li{display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:14px;border:2px solid var(--line);font-size:.92rem}
+.gcs-sitecheck li strong{min-width:64px;text-align:center;padding:2px 8px;border-radius:999px;font-size:.78rem}
+.gcs-sitecheck li.is-ok strong{background:var(--tint);color:var(--red2)}
+.gcs-sitecheck li.is-bad{border-color:var(--red)}
+.gcs-sitecheck li.is-bad strong{background:var(--red);color:#fff}
+.gcs-sitecheck .gcs-link{align-self:flex-start}
+@media (max-width:520px){.gcs-addopts,.gcs-sitecheck ul{grid-template-columns:1fr}}
 .gcs-foot{font-size:.8rem;color:var(--red2);text-align:center;padding-top:8px}
 @media (max-width:520px){.gcs-score{width:110px;height:110px}.gcs-exposed dl{grid-template-columns:1fr}.gcs-group .gcs-item{margin-left:0}}
 `;

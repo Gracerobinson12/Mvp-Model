@@ -117,7 +117,8 @@ const ITEM_TYPES = new Set(["Browser extension", "AI tool", "App", "Bot", "Perso
 function meridianType(t: string) {
   if (ITEM_TYPES.has(t)) return t;
   if (t === "Deploy key" || t === "SSH key") return "Token";
-  if (t === "Webhook") return "App";
+  if (t === "Webhook" || t === "Website script") return "App";
+  if (t === "Exposed file") return "Token";
   if (t === "Repository" || t === "Organization") return "Role";
   return "App";
 }
@@ -191,5 +192,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown action." }, { status: 400 });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Meridian sync failed." }, { status: 502 });
+  }
+}
+
+// Open /api/shield/meridian in a browser to test the connection.
+export async function GET() {
+  if (!process.env.MERIDIAN_API_KEY) {
+    return NextResponse.json({ ok: false, error: "MERIDIAN_API_KEY is missing on this deployment. Add it in Vercel, then redeploy." }, { status: 500 });
+  }
+  try {
+    const out: Record<string, number | string> = {};
+    for (const o of ["accessItem", "wiFiNetwork", "wiFiSession", "finding"]) {
+      try {
+        out[o] = (await list(o)).length;
+      } catch (e) {
+        out[o] = e instanceof Error ? e.message : "error";
+      }
+    }
+    return NextResponse.json({ ok: true, server: BASE, records: out });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Meridian test failed." }, { status: 502 });
   }
 }
