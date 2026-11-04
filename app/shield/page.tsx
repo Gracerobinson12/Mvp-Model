@@ -60,20 +60,9 @@ type Finding = {
   canFix: boolean;
 };
 
-type WifiAnswers = {
-  name: string;
-  password: "Yes" | "No" | "Not sure" | null;
-  place: string;
-  protectedOn: boolean;
-  checks: Record<string, boolean>;
-};
+type WifiAnswers = { protectedOn: boolean };
 
-const CHECKS = [
-  "AirDrop or nearby sharing limited to contacts",
-  "File sharing turned off",
-  "Auto-join turned off for public Wi-Fi",
-  "Phone and laptop software up to date",
-];
+type MeridianState = { state: "off" | "syncing" | "ok" | "error"; message: string; at?: string };
 
 const NOT_CONNECTED = [
   { name: "Google", sub: "Apps and AI tools connected to Gmail, Drive and Calendar" },
@@ -82,7 +71,7 @@ const NOT_CONNECTED = [
 ];
 
 const KEYS = { status: "gcshield.status", findings: "gcshield.findings", wifi: "gcshield.wifi" };
-const EMPTY_WIFI: WifiAnswers = { name: "", password: null, place: "Coffee shop", protectedOn: false, checks: {} };
+const EMPTY_WIFI: WifiAnswers = { protectedOn: false };
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -98,6 +87,18 @@ function save(key: string, value: unknown) {
   } catch {
     /* storage unavailable: state stays in memory */
   }
+}
+
+function toMeridian(it: AccessItem, review: Review) {
+  return {
+    name: it.name,
+    direction: it.direction,
+    type: it.type,
+    description: `${it.description} (${it.service} · ${it.group})`,
+    risk: it.risk,
+    howToRemove: it.howToRemove,
+    reviewStatus: review,
+  };
 }
 
 const WEIGHT: Record<Risk, number> = { High: 15, Medium: 8, Low: 3 };
@@ -117,6 +118,7 @@ export default function ShieldPage() {
   const [status, setStatus] = useState<Record<string, Review>>({});
   const [stored, setStored] = useState<Record<string, StoredFinding>>({});
   const [wifi, setWifi] = useState<WifiAnswers>(EMPTY_WIFI);
+  const [meridian, setMeridian] = useState<MeridianState>({ state: "off", message: "Not synced yet" });
 
   useEffect(() => {
     setStatus(load(KEYS.status, {}));
@@ -124,6 +126,23 @@ export default function ShieldPage() {
     setWifi(load(KEYS.wifi, EMPTY_WIFI));
     const c = (navigator as Navigator & { connection?: { type?: string } }).connection;
     if (c?.type) setConnType(c.type);
+  }, []);
+
+  // Meridian back office: every call goes through /api/shield/meridian (the key stays on the server).
+  const callMeridian = useCallback(async (payload: Record<string, unknown>) => {
+    setMeridian((m) => ({ ...m, state: "syncing", message: "Syncing to Meridian…" }));
+    try {
+      const res = await fetch("/api/shield/meridian", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "Meridian sync failed.");
+      setMeridian({ state: "ok", message: body.message, at: new Date().toISOString() });
+    } catch (e) {
+      setMeridian({ state: "error", message: e instanceof Error ? e.message : "Meridian sync failed." });
+    }
   }, []);
 
   const scan = useCallback(async (): Promise<GithubData | null> => {
@@ -137,6 +156,11 @@ export default function ShieldPage() {
       }
       setGh(body as GithubData);
       setGhError(null);
+      const saved = load<Record<string, Review>>(KEYS.status, {});
+      void callMeridian({
+        action: "syncItems",
+        items: (body as GithubData).items.map((it) => toMeridian(it, saved[it.id] ?? "Needs review")),
+      });
       return body as GithubData;
     } catch {
       setGhError("Couldn't reach the Shield server. Check your connection and try again.");
@@ -144,7 +168,7 @@ export default function ShieldPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [callMeridian]);
 
   const checkNetwork = useCallback(async () => {
     setNetLoading(true);
@@ -170,6 +194,7 @@ export default function ShieldPage() {
     const next = { ...status, [item.id]: value };
     setStatus(next);
     save(KEYS.status, next);
+    void callMeridian({ action: "setReview", item: toMeridian(item, value), reviewStatus: value });
   }
 
   function updateWifi(patch: Partial<WifiAnswers>) {
@@ -202,6 +227,7 @@ export default function ShieldPage() {
   }
 
   const isProtected = wifi.protectedOn || net?.relayLikely === true;
+  const location = net && (net.city || net.region || net.country) ? [net.city, net.region, net.country].filter(Boolean).join(", ") : null;
 
   const findings: Finding[] = useMemo(() => {
     const list: Finding[] = [];
@@ -240,27 +266,25 @@ export default function ShieldPage() {
         list.push({ id: fid, severity: "High", source: "Access Shield", title: s.title, detail: s.detail, state: "Confirmed", note: s.note, canFix: false });
       }
     }
-    if (wifi.password) {
-      const label = wifi.name.trim() || "this Wi-Fi";
-      const open = wifi.password === "No";
-      const unsure = wifi.password === "Not sure";
-      if ((open || unsure) && !isProtected) {
+    if (net && !netLoading) {
+      const where = net.provider ? `${net.provider} Wi-Fi` : "this Wi-Fi";
+      if (!isProtected) {
         list.push({
           id: "wifi",
-          severity: open ? "High" : "Medium",
+          severity: "Medium",
           source: "Wi-Fi Shield",
-          title: `Risky Wi-Fi: ${label} (${open ? "no password" : "password unknown"}, ${wifi.place.toLowerCase()}, no protection)`,
-          detail: "Turn on a VPN, iCloud Private Relay or private DNS before signing in to anything, and avoid typing passwords until it's on.",
+          title: `Unprotected on ${where}`,
+          detail: `Whoever runs this network can see which sites you visit, and every site sees your IP${location ? ` and your location (${location})` : ""}. Turn on a VPN, iCloud Private Relay or private DNS, then check the network again.`,
           state: "Open",
           canFix: false,
         });
-      } else if (open && isProtected) {
+      } else if (wifi.protectedOn && net.relayLikely === false) {
         list.push({
           id: "wifi",
           severity: "Low",
           source: "Wi-Fi Shield",
-          title: `Open Wi-Fi: ${label} (${wifi.place.toLowerCase()}), protection on`,
-          detail: "Keep protection on while you're here, and turn off auto-join for this network.",
+          title: "Protection on, but not detected yet",
+          detail: `You turned protection on, but sites still see ${where}. Wait for your VPN or Private Relay to connect, then check the network again.`,
           state: "Open",
           canFix: false,
         });
@@ -270,7 +294,7 @@ export default function ShieldPage() {
       (a, b) => (a.state === "Confirmed" ? 1 : 0) - (b.state === "Confirmed" ? 1 : 0) || RANK[a.severity] - RANK[b.severity]
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, status, stored, wifi, isProtected]);
+  }, [items, status, stored, wifi, isProtected, net, netLoading, location]);
 
   const counts = useMemo(() => {
     const c = { Authorized: 0, Unauthorized: 0, "Needs review": 0 } as Record<Review, number>;
@@ -323,7 +347,6 @@ export default function ShieldPage() {
   const ghHigh = ghShown.filter((i) => i.risk === "High").length;
   const repoCount = new Set(ghShown.map((i) => i.group)).size;
 
-  const location = net && (net.city || net.region || net.country) ? [net.city, net.region, net.country].filter(Boolean).join(", ") : null;
 
   return (
     <main className="gcs">
@@ -378,10 +401,25 @@ export default function ShieldPage() {
           <button type="button" className="gcs-btn" onClick={checkAgain} disabled={loading}>
             {loading ? "Checking…" : "Check again"}
           </button>
-          <button type="button" className="gcs-btn gcs-btn-quiet" onClick={exportCsv} disabled={!items.length}>
-            Export to Meridian (CSV)
+          <button
+            type="button"
+            className="gcs-btn gcs-btn-quiet"
+            onClick={() => callMeridian({ action: "syncItems", items: items.map((it) => toMeridian(it, reviewOf(it.id))) })}
+            disabled={!items.length || meridian.state === "syncing"}
+          >
+            {meridian.state === "syncing" ? "Syncing…" : "Sync to Meridian"}
           </button>
         </div>
+      </div>
+      <div className={`gcs-meridian gcs-meridian-${meridian.state}`} role="status">
+        <strong>Meridian back office</strong>
+        <span>
+          {meridian.message}
+          {meridian.at ? ` · ${time(meridian.at)}` : ""}
+        </span>
+        <button type="button" className="gcs-link" onClick={exportCsv} disabled={!items.length}>
+          Download CSV
+        </button>
       </div>
 
       <nav className="gcs-tabs" aria-label="Shield views">
@@ -609,84 +647,59 @@ export default function ShieldPage() {
             </dl>
             <p className="gcs-note">
               This is the Wi-Fi&apos;s connection to the internet, seen the same way any website sees it. Browsers don&apos;t let websites read the
-              Wi-Fi&apos;s name or password settings, so you fill those in below.
+              Wi-Fi&apos;s name or password settings, so Shield judges the network by what it exposes.
             </p>
             <button type="button" className="gcs-btn gcs-btn-quiet" onClick={checkNetwork} disabled={netLoading}>
               {netLoading ? "Checking…" : "Check this network again"}
             </button>
           </div>
 
-          <div className="gcs-q">
-            <label htmlFor="gcs-wifi-name">
-              <h3>Wi-Fi name, as shown on your device</h3>
-            </label>
-            <input
-              id="gcs-wifi-name"
-              type="text"
-              placeholder="e.g. Hackathon-Guest"
-              value={wifi.name}
-              onChange={(e) => updateWifi({ name: e.target.value })}
-            />
-          </div>
-
-          <div className="gcs-q">
-            <h3>Did this Wi-Fi ask for a password to join?</h3>
-            <div className="gcs-seg" role="group" aria-label="Wi-Fi password">
-              {(["Yes", "No", "Not sure"] as const).map((v) => (
-                <button key={v} type="button" aria-pressed={wifi.password === v} onClick={() => updateWifi({ password: v })}>
-                  {v}
-                </button>
-              ))}
+          <div className="gcs-protect">
+            <div className="gcs-protect-head">
+              <div>
+                <h3>Protection on this network</h3>
+                <p>
+                  {net?.relayLikely === true
+                    ? `Verified: sites now see ${net.provider}, not this Wi-Fi.`
+                    : wifi.protectedOn
+                    ? "Added by you. Check the network again to confirm it's working."
+                    : "Off. Turn it on after you switch on a VPN, iCloud Private Relay or private DNS."}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={wifi.protectedOn}
+                aria-label="Protection on this network"
+                className="gcs-switch gcs-switch-big"
+                onClick={() => updateWifi({ protectedOn: !wifi.protectedOn })}
+              >
+                <span>{wifi.protectedOn ? "On" : "Off"}</span>
+              </button>
+            </div>
+            <div className="gcs-means">
+              <div className={!isProtected ? "is-now" : ""}>
+                <strong>Off means</strong>
+                <span>Whoever runs this Wi-Fi can see which sites you visit. Every site sees this IP and the location it gives away.</span>
+              </div>
+              <div className={isProtected ? "is-now" : ""}>
+                <strong>On means</strong>
+                <span>Your traffic is encrypted through a VPN or relay. The Wi-Fi owner can&apos;t see where you browse, and sites see the relay&apos;s location instead of yours.</span>
+              </div>
+            </div>
+            <div className="gcs-finding-actions">
+              <button
+                type="button"
+                className="gcs-btn"
+                onClick={() =>
+                  callMeridian({ action: "logWifi", wifi: { provider: net?.provider ?? null, ip: net?.ip ?? null, location, protectedOn: isProtected } })
+                }
+                disabled={meridian.state === "syncing" || netLoading}
+              >
+                Save this session to Meridian
+              </button>
             </div>
           </div>
-
-          <div className="gcs-q">
-            <label htmlFor="gcs-place">
-              <h3>Where are you?</h3>
-            </label>
-            <select id="gcs-place" value={wifi.place} onChange={(e) => updateWifi({ place: e.target.value })}>
-              {["Coffee shop", "Library", "Airport", "Hotel", "Event venue", "Office", "Home"].map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="gcs-toggle-row">
-            <div>
-              <h3>Protection on this network</h3>
-              <p>
-                Turn on if you&apos;ve switched on a VPN, iCloud Private Relay or private DNS. Added by you.
-                {net?.relayLikely === true && !wifi.protectedOn ? " Shield already sees a likely VPN or relay." : ""}
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={wifi.protectedOn}
-              aria-label="Protection on this network"
-              className="gcs-switch"
-              onClick={() => updateWifi({ protectedOn: !wifi.protectedOn })}
-            >
-              <span>{wifi.protectedOn ? "On" : "Off"}</span>
-            </button>
-          </div>
-
-          <div className="gcs-q">
-            <h3>Device checklist</h3>
-            {CHECKS.map((c, i) => (
-              <label key={c} className="gcs-check" htmlFor={`gcs-check-${i}`}>
-                <input
-                  id={`gcs-check-${i}`}
-                  type="checkbox"
-                  checked={!!wifi.checks[c]}
-                  onChange={(e) => updateWifi({ checks: { ...wifi.checks, [c]: e.target.checked } })}
-                />
-                <span>{c}</span>
-              </label>
-            ))}
-          </div>
-
-          <p className="gcs-note">The Wi-Fi Shield phone app reads the network name and security directly and turns protection on for you.</p>
         </section>
       )}
 
@@ -779,6 +792,21 @@ const CSS = `
 .gcs-switch[aria-checked="true"]{background:var(--red);color:#fff}
 .gcs-check{display:flex;gap:10px;align-items:center;min-height:44px;cursor:pointer}
 .gcs-check input{width:22px;height:22px;accent-color:var(--red)}
+.gcs-meridian{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;border-radius:16px;border:2px solid var(--line);font-size:.9rem}
+.gcs-meridian strong{color:var(--red)}
+.gcs-meridian span{flex:1 1 240px;min-width:0;overflow-wrap:anywhere}
+.gcs-meridian-ok{border-color:var(--red)}
+.gcs-meridian-error{border-style:dashed;border-color:var(--red);color:var(--red)}
+.gcs-link{min-height:44px;border:0;background:transparent;color:var(--red);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+.gcs-protect{border:2px solid var(--red);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.gcs-protect-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.gcs-protect-head>div{min-width:0;display:flex;flex-direction:column;gap:4px}
+.gcs-switch-big{min-width:110px;min-height:56px;border-radius:28px;font-size:1.1rem}
+.gcs-means{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gcs-means>div{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:16px;border:2px solid var(--line);font-size:.92rem}
+.gcs-means>div.is-now{border-color:var(--red);background:var(--tint)}
+.gcs-means strong{color:var(--red)}
+@media (max-width:520px){.gcs-means{grid-template-columns:1fr}.gcs-protect-head{flex-direction:column;align-items:flex-start}}
 .gcs-foot{font-size:.8rem;color:var(--red2);text-align:center;padding-top:8px}
 @media (max-width:520px){.gcs-score{width:110px;height:110px}.gcs-exposed dl{grid-template-columns:1fr}.gcs-group .gcs-item{margin-left:0}}
 `;
