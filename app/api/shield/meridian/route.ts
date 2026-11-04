@@ -12,7 +12,7 @@ const BASE = (process.env.MERIDIAN_BASE_URL || "https://dev.lightleap.ai/meridia
 const API = `${BASE}/api/ext/v1/objects`;
 
 type Fields = Record<string, string | number | boolean | null>;
-type Rec = { id: string; fields: Record<string, unknown> };
+type Rec = { id: string; fields: Record<string, unknown>; raw: string };
 
 type ItemIn = {
   service?: string;
@@ -53,9 +53,9 @@ async function list(object: string): Promise<Rec[]> {
   const rows: unknown[] = Array.isArray(body) ? body : body.records ?? body.data ?? body.items ?? body.rows ?? [];
   return rows.map((r) => {
     const o = r as Record<string, unknown>;
-    const id = String(o.id ?? o._id ?? o.recordId ?? "");
+    const id = String(o.id ?? o._id ?? o.recordId ?? o.uuid ?? o.key ?? "");
     const fields = (o.fields ?? o.values ?? o.data ?? o) as Record<string, unknown>;
-    return { id, fields };
+    return { id, fields, raw: JSON.stringify(o).toLowerCase() };
   });
 }
 
@@ -128,22 +128,32 @@ function meridianType(t: string) {
 async function ensureAccount(service: string, cache: Map<string, string>): Promise<string> {
   const hit = cache.get(service);
   if (hit) return hit;
-  const accounts = await list("account");
-  const found = accounts.find((r) => String(r.fields.name ?? "").toLowerCase() === service.toLowerCase());
+  const wantedId = `ACC-${service.replace(/[^a-z0-9]+/gi, "-").toUpperCase().slice(0, 40)}`;
+  // Match by name or by Account ID, looking at every field so naming differences don't matter.
+  // Search the whole record, however Meridian nests its fields.
+  const match = (r: Rec) => r.raw.includes(`"${wantedId.toLowerCase()}"`) || r.raw.includes(`"${service.toLowerCase()}"`);
+  let found = (await list("account")).find(match);
   let id = found?.id ?? null;
   if (!id) {
-    id = await write("account", {
-      accountId: `ACC-${service.replace(/[^a-z0-9]+/gi, "-").toUpperCase().slice(0, 40)}`,
-      name: service,
-      category: "Building",
-      myRole: "Owner",
-      twoStepLogin: "Unknown",
-      evidence: "Verified",
-      watching: true,
-      lastChecked: today(),
-    });
+    try {
+      id = await write("account", {
+        accountId: wantedId,
+        name: service,
+        category: "Building",
+        myRole: "Owner",
+        twoStepLogin: "Unknown",
+        evidence: "Verified",
+        watching: true,
+        lastChecked: today(),
+      });
+    } catch (e) {
+      // Already exists (409): look it up again and use it.
+      found = (await list("account")).find(match);
+      id = found?.id || null;
+      if (!id) throw new Error(`The ${service} account already exists in Meridian, but the API didn't return it. Check that Account allows read on the Object API. (${e instanceof Error ? e.message : ""})`);
+    }
   }
-  if (!id) throw new Error(`Meridian created the ${service} account but didn't return its id.`);
+  if (!id) throw new Error(`Couldn't find or create the ${service} account in Meridian.`);
   cache.set(service, id);
   return id;
 }
