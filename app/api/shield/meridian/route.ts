@@ -15,6 +15,7 @@ type Fields = Record<string, string | number | boolean | null>;
 type Rec = { id: string; fields: Record<string, unknown> };
 
 type ItemIn = {
+  service?: string;
   name: string;
   direction: string;
   type: string;
@@ -123,6 +124,42 @@ function meridianType(t: string) {
   return "App";
 }
 
+// Every Access Item must link to an Account in Meridian: find it by name, or create it.
+async function ensureAccount(service: string, cache: Map<string, string>): Promise<string> {
+  const hit = cache.get(service);
+  if (hit) return hit;
+  const accounts = await list("account");
+  const found = accounts.find((r) => String(r.fields.name ?? "").toLowerCase() === service.toLowerCase());
+  let id = found?.id ?? null;
+  if (!id) {
+    id = await write("account", {
+      accountId: `ACC-${service.replace(/[^a-z0-9]+/gi, "-").toUpperCase().slice(0, 40)}`,
+      name: service,
+      category: "Building",
+      myRole: "Owner",
+      twoStepLogin: "Unknown",
+      evidence: "Verified",
+      watching: true,
+      lastChecked: today(),
+    });
+  }
+  if (!id) throw new Error(`Meridian created the ${service} account but didn't return its id.`);
+  cache.set(service, id);
+  return id;
+}
+
+// Wi-Fi Sessions link to a Device: use (or create) one for this browser.
+async function ensureDevice(): Promise<string | null> {
+  try {
+    const devices = await list("device");
+    const found = devices.find((r) => String(r.fields.name ?? "") === "Web browser");
+    if (found) return found.id;
+    return await write("device", { deviceId: "DEV-WEB", name: "Web browser", deviceType: "Laptop", operatingSystem: "Web", lastReviewed: today() });
+  } catch {
+    return null; // Device not exposed on the API: send the session without it
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (!process.env.MERIDIAN_API_KEY) {
     return NextResponse.json({ error: "MERIDIAN_API_KEY is missing. Add your mk_live_ key to the environment variables and redeploy." }, { status: 500 });
@@ -141,12 +178,14 @@ export async function POST(req: NextRequest) {
       const byKey = new Map(existing.map((r) => [key(r.fields.name, r.fields.accessDescription), r]));
       let created = 0;
       let updated = 0;
+      const accountCache = new Map<string, string>();
       for (const raw of incoming) {
         const it = { ...raw, type: meridianType(raw.type) };
         const k = key(it.name, it.description);
         const found = byKey.get(k);
         if (!found) {
-          const id = await write("accessItem", itemFields(it, "Needs review"));
+          const accountId = await ensureAccount(raw.service || "GitHub", accountCache);
+          const id = await write("accessItem", { ...itemFields(it, "Needs review"), account: accountId });
           created++;
           if (it.reviewStatus !== "Needs review" && id) {
             await write("accessItem", { reviewStatus: it.reviewStatus }, id);
@@ -176,7 +215,9 @@ export async function POST(req: NextRequest) {
           lastJoined: today(),
         });
       }
+      const deviceId = await ensureDevice();
       await write("wiFiSession", {
+        ...(deviceId ? { device: deviceId } : {}),
         sessionName: `${networkName} · ${new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`,
         started: today(),
         safeWiFiMode: w.protectedOn,

@@ -113,6 +113,7 @@ function save(key: string, value: unknown) {
 
 function toMeridian(it: AccessItem, review: Review) {
   return {
+    service: it.service,
     name: it.name,
     direction: it.direction,
     type: it.type,
