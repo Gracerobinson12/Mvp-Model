@@ -1,10 +1,11 @@
 "use client";
 
 // GC Shield by Gratia Core · /shield
-// Access Shield: live, read-only scan of your GitHub (via /api/shield/github).
-// Wi-Fi Shield: what the network you're on reveals (via /api/shield/network),
-// plus your answers about the Wi-Fi and its protection.
-// Labels and fields match the Meridian back office (Access Item, Finding).
+// Access Shield: live, read-only scan of your GitHub (via /api/shield/github),
+// shown service first (GitHub), then grouped by repository.
+// Wi-Fi Shield: the network you're on right now, as every website sees it
+// (via /api/shield/network), plus your answers about the Wi-Fi.
+// Labels and fields match the Meridian back office (Account, Access Item, Wi-Fi Network, Finding).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -14,6 +15,8 @@ type Direction = "Can reach you" | "You can reach";
 
 type AccessItem = {
   id: string;
+  service: string;
+  group: string;
   direction: Direction;
   type: string;
   name: string;
@@ -32,7 +35,16 @@ type GithubData = {
   items: AccessItem[];
 };
 
-type NetData = { ip: string; city: string | null; region: string | null; country: string | null; https: boolean; checkedAt: string };
+type NetData = {
+  ip: string | null;
+  provider: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  relayLikely: boolean | null;
+  https: boolean;
+  checkedAt: string;
+};
 
 type StoredFinding = { state: "Open" | "Fixing" | "Confirmed"; title: string; detail: string; note?: string; at?: string };
 
@@ -49,6 +61,7 @@ type Finding = {
 };
 
 type WifiAnswers = {
+  name: string;
   password: "Yes" | "No" | "Not sure" | null;
   place: string;
   protectedOn: boolean;
@@ -62,12 +75,19 @@ const CHECKS = [
   "Phone and laptop software up to date",
 ];
 
+const NOT_CONNECTED = [
+  { name: "Google", sub: "Apps and AI tools connected to Gmail, Drive and Calendar" },
+  { name: "Vercel", sub: "Tokens and team members on your projects" },
+  { name: "Stripe", sub: "Team members and connected apps on your payments" },
+];
+
 const KEYS = { status: "gcshield.status", findings: "gcshield.findings", wifi: "gcshield.wifi" };
+const EMPTY_WIFI: WifiAnswers = { name: "", password: null, place: "Coffee shop", protectedOn: false, checks: {} };
 
 function load<T>(key: string, fallback: T): T {
   try {
     const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    return raw ? { ...fallback, ...(JSON.parse(raw) as T) } : fallback;
   } catch {
     return fallback;
   }
@@ -81,6 +101,7 @@ function save(key: string, value: unknown) {
 }
 
 const WEIGHT: Record<Risk, number> = { High: 15, Medium: 8, Low: 3 };
+const RANK: Record<Risk, number> = { High: 0, Medium: 1, Low: 2 };
 const time = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "");
 
 export default function ShieldPage() {
@@ -88,15 +109,21 @@ export default function ShieldPage() {
   const [ghError, setGhError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [net, setNet] = useState<NetData | null>(null);
+  const [netLoading, setNetLoading] = useState(true);
+  const [connType, setConnType] = useState<string | null>(null);
   const [tab, setTab] = useState<"reach-you" | "you-reach" | "findings" | "wifi">("reach-you");
+  const [openService, setOpenService] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Record<string, Review>>({});
   const [stored, setStored] = useState<Record<string, StoredFinding>>({});
-  const [wifi, setWifi] = useState<WifiAnswers>({ password: null, place: "Coffee shop", protectedOn: false, checks: {} });
+  const [wifi, setWifi] = useState<WifiAnswers>(EMPTY_WIFI);
 
   useEffect(() => {
     setStatus(load(KEYS.status, {}));
     setStored(load(KEYS.findings, {}));
-    setWifi(load(KEYS.wifi, { password: null, place: "Coffee shop", protectedOn: false, checks: {} }));
+    setWifi(load(KEYS.wifi, EMPTY_WIFI));
+    const c = (navigator as Navigator & { connection?: { type?: string } }).connection;
+    if (c?.type) setConnType(c.type);
   }, []);
 
   const scan = useCallback(async (): Promise<GithubData | null> => {
@@ -120,11 +147,14 @@ export default function ShieldPage() {
   }, []);
 
   const checkNetwork = useCallback(async () => {
+    setNetLoading(true);
     try {
       const res = await fetch("/api/shield/network", { cache: "no-store" });
       setNet((await res.json()) as NetData);
     } catch {
       setNet(null);
+    } finally {
+      setNetLoading(false);
     }
   }, []);
 
@@ -171,6 +201,8 @@ export default function ShieldPage() {
     save(KEYS.findings, next);
   }
 
+  const isProtected = wifi.protectedOn || net?.relayLikely === true;
+
   const findings: Finding[] = useMemo(() => {
     const list: Finding[] = [];
     const live = new Set(items.map((i) => i.id));
@@ -209,34 +241,36 @@ export default function ShieldPage() {
       }
     }
     if (wifi.password) {
+      const label = wifi.name.trim() || "this Wi-Fi";
       const open = wifi.password === "No";
       const unsure = wifi.password === "Not sure";
-      if ((open || unsure) && !wifi.protectedOn) {
+      if ((open || unsure) && !isProtected) {
         list.push({
           id: "wifi",
           severity: open ? "High" : "Medium",
           source: "Wi-Fi Shield",
-          title: `Risky Wi-Fi: ${open ? "open" : "unknown"} network at a ${wifi.place.toLowerCase()} with no protection`,
-          detail: "Turn on a VPN, iCloud Private Relay or private DNS before signing in to anything. Avoid entering passwords until it's on.",
+          title: `Risky Wi-Fi: ${label} (${open ? "no password" : "password unknown"}, ${wifi.place.toLowerCase()}, no protection)`,
+          detail: "Turn on a VPN, iCloud Private Relay or private DNS before signing in to anything, and avoid typing passwords until it's on.",
           state: "Open",
           canFix: false,
         });
-      } else if (open && wifi.protectedOn) {
+      } else if (open && isProtected) {
         list.push({
           id: "wifi",
           severity: "Low",
           source: "Wi-Fi Shield",
-          title: `Open Wi-Fi at a ${wifi.place.toLowerCase()}, protection on`,
+          title: `Open Wi-Fi: ${label} (${wifi.place.toLowerCase()}), protection on`,
           detail: "Keep protection on while you're here, and turn off auto-join for this network.",
           state: "Open",
           canFix: false,
         });
       }
     }
-    const order: Record<Risk, number> = { High: 0, Medium: 1, Low: 2 };
-    return list.sort((a, b) => (a.state === "Confirmed" ? 1 : 0) - (b.state === "Confirmed" ? 1 : 0) || order[a.severity] - order[b.severity]);
+    return list.sort(
+      (a, b) => (a.state === "Confirmed" ? 1 : 0) - (b.state === "Confirmed" ? 1 : 0) || RANK[a.severity] - RANK[b.severity]
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, status, stored, wifi]);
+  }, [items, status, stored, wifi, isProtected]);
 
   const counts = useMemo(() => {
     const c = { Authorized: 0, Unauthorized: 0, "Needs review": 0 } as Record<Review, number>;
@@ -249,10 +283,12 @@ export default function ShieldPage() {
   const score = Math.max(0, 100 - openFindings.reduce((s, f) => s + WEIGHT[f.severity], 0) - 4 * counts["Needs review"]);
 
   function exportCsv() {
-    const head = ["Name", "Direction", "Item Type", "Access Description", "Risk", "Evidence", "Review Status", "How To Remove", "Removal Confirmed", "Last Seen"];
+    const head = ["Name", "Account", "Group", "Direction", "Item Type", "Access Description", "Risk", "Evidence", "Review Status", "How To Remove", "Removal Confirmed", "Last Seen"];
     const q = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const rows = items.map((it) =>
-      [it.name, it.direction, it.type, it.description, it.risk, it.evidence, reviewOf(it.id), it.howToRemove, "No", gh?.checkedAt.slice(0, 10) ?? ""].map(q).join(",")
+      [it.name, it.service, it.group, it.direction, it.type, it.description, it.risk, it.evidence, reviewOf(it.id), it.howToRemove, "No", gh?.checkedAt.slice(0, 10) ?? ""]
+        .map(q)
+        .join(",")
     );
     const blob = new Blob([[head.map(q).join(","), ...rows].join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
@@ -262,7 +298,31 @@ export default function ShieldPage() {
     URL.revokeObjectURL(a.href);
   }
 
-  const shown = items.filter((i) => i.direction === (tab === "you-reach" ? "You can reach" : "Can reach you"));
+  const direction: Direction = tab === "you-reach" ? "You can reach" : "Can reach you";
+  const shown = items.filter((i) => i.direction === direction);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, AccessItem[]>();
+    for (const it of shown.filter((i) => i.service === openService)) {
+      map.set(it.group, [...(map.get(it.group) ?? []), it]);
+    }
+    return [...map.entries()]
+      .map(([name, list]) => ({
+        name,
+        list: [...list].sort((a, b) => RANK[a.risk] - RANK[b.risk]),
+        review: list.filter((i) => reviewOf(i.id) === "Needs review").length,
+        unauth: list.filter((i) => reviewOf(i.id) === "Unauthorized").length,
+        top: list.reduce<Risk>((t, i) => (RANK[i.risk] < RANK[t] ? i.risk : t), "Low"),
+      }))
+      .sort((a, b) => RANK[a.top] - RANK[b.top] || b.review - a.review || a.name.localeCompare(b.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, openService, status]);
+
+  const ghShown = shown.filter((i) => i.service === "GitHub");
+  const ghReview = ghShown.filter((i) => reviewOf(i.id) === "Needs review").length;
+  const ghHigh = ghShown.filter((i) => i.risk === "High").length;
+  const repoCount = new Set(ghShown.map((i) => i.group)).size;
+
   const location = net && (net.city || net.region || net.country) ? [net.city, net.region, net.country].filter(Boolean).join(", ") : null;
 
   return (
@@ -333,56 +393,139 @@ export default function ShieldPage() {
             ["wifi", "Wi-Fi Shield"],
           ] as const
         ).map(([id, label]) => (
-          <button key={id} type="button" aria-pressed={tab === id} className="gcs-tab" onClick={() => setTab(id)}>
+          <button
+            key={id}
+            type="button"
+            aria-pressed={tab === id}
+            className="gcs-tab"
+            onClick={() => {
+              setTab(id);
+              setOpenService(null);
+            }}
+          >
             {label}
           </button>
         ))}
       </nav>
 
-      {(tab === "reach-you" || tab === "you-reach") && (
-        <section className="gcs-list" aria-label={tab === "reach-you" ? "Can reach you" : "You can reach"}>
+      {(tab === "reach-you" || tab === "you-reach") && !openService && (
+        <section className="gcs-list" aria-label="Services">
           <p className="gcs-hint">
-            {tab === "reach-you"
-              ? "People, servers, services and computers with access to your GitHub."
-              : "Other people's repositories and organizations you can still change."}
+            {tab === "reach-you" ? "Pick a service to see who and what can reach it." : "Pick a service to see what you can still reach through it."}
           </p>
-          {!loading && !ghError && shown.length === 0 && (
+          <button type="button" className="gcs-service" onClick={() => setOpenService("GitHub")} disabled={!gh}>
+            <span className="gcs-service-mark" aria-hidden="true">
+              GH
+            </span>
+            <span className="gcs-service-text">
+              <strong>GitHub</strong>
+              <span>
+                {gh
+                  ? `Connected as @${gh.login} · ${ghShown.length} ${ghShown.length === 1 ? "item" : "items"} across ${repoCount} ${
+                      repoCount === 1 ? "group" : "groups"
+                    }`
+                  : ghError ?? "Connecting…"}
+              </span>
+            </span>
+            <span className="gcs-chips">
+              {ghHigh > 0 && <span className="gcs-chip gcs-risk-high">{ghHigh} high risk</span>}
+              {ghReview > 0 && <span className="gcs-chip gcs-risk-medium">{ghReview} need review</span>}
+              <span className="gcs-chip gcs-chip-evidence">Verified · live</span>
+            </span>
+            <span className="gcs-chevron" aria-hidden="true">
+              ›
+            </span>
+          </button>
+          {NOT_CONNECTED.map((s) => (
+            <div key={s.name} className="gcs-service gcs-service-off">
+              <span className="gcs-service-mark" aria-hidden="true">
+                {s.name.slice(0, 2).toUpperCase()}
+              </span>
+              <span className="gcs-service-text">
+                <strong>{s.name}</strong>
+                <span>{s.sub}</span>
+              </span>
+              <span className="gcs-chips">
+                <span className="gcs-chip">Not connected · coming next</span>
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {(tab === "reach-you" || tab === "you-reach") && openService && (
+        <section className="gcs-list" aria-label={`${openService} · ${direction}`}>
+          <button type="button" className="gcs-crumb" onClick={() => setOpenService(null)}>
+            ‹ All services
+          </button>
+          <h2 className="gcs-h2">
+            {openService} · {direction}
+          </h2>
+          {!loading && groups.length === 0 && (
             <p className="gcs-empty">
-              Nothing found here. {tab === "you-reach" ? "A fine-grained key only sees repositories you own, so this list may stay empty." : ""}
+              Nothing found here.{" "}
+              {tab === "you-reach" ? "A fine-grained key only sees repositories you own, so this list may stay empty." : ""}
             </p>
           )}
-          {shown.map((it) => {
-            const r = reviewOf(it.id);
+          {groups.map((g) => {
+            const open = !!openGroups[g.name];
             return (
-              <article key={it.id} className="gcs-item">
-                <div className="gcs-item-head">
-                  <div className="gcs-item-text">
-                    <h3>{it.name}</h3>
-                    <p>{it.description}</p>
-                  </div>
-                  <div className="gcs-chips">
-                    <span className="gcs-chip">{it.type}</span>
-                    <span className={`gcs-chip gcs-risk-${it.risk.toLowerCase()}`}>{it.risk} risk</span>
-                    <span className="gcs-chip gcs-chip-evidence">Verified · GitHub</span>
-                  </div>
-                </div>
-                <div className="gcs-seg" role="group" aria-label={`Review ${it.name}`}>
-                  {(["Authorized", "Unauthorized", "Needs review"] as const).map((v) => (
-                    <button key={v} type="button" aria-pressed={r === v} onClick={() => setReview(it, v)}>
-                      {v}
-                    </button>
-                  ))}
-                </div>
-                {r === "Unauthorized" && (
-                  <div className="gcs-remove">
-                    <strong>Shield won&apos;t change this. To remove it yourself:</strong>
-                    <span>{it.howToRemove}</span>
-                    <a href={it.link} target="_blank" rel="noreferrer">
-                      Open on GitHub ↗
-                    </a>
-                  </div>
-                )}
-              </article>
+              <div key={g.name} className="gcs-group">
+                <button
+                  type="button"
+                  className="gcs-group-head"
+                  aria-expanded={open}
+                  onClick={() => setOpenGroups({ ...openGroups, [g.name]: !open })}
+                >
+                  <span className="gcs-group-name">
+                    <strong>{g.name}</strong>
+                    <span>
+                      {g.list.length} {g.list.length === 1 ? "item" : "items"}
+                      {g.review ? ` · ${g.review} need review` : ""}
+                      {g.unauth ? ` · ${g.unauth} unauthorized` : ""}
+                    </span>
+                  </span>
+                  <span className={`gcs-chip gcs-risk-${g.top.toLowerCase()}`}>Top risk: {g.top}</span>
+                  <span className="gcs-chevron" aria-hidden="true">
+                    {open ? "–" : "+"}
+                  </span>
+                </button>
+                {open &&
+                  g.list.map((it) => {
+                    const r = reviewOf(it.id);
+                    return (
+                      <article key={it.id} className="gcs-item">
+                        <div className="gcs-item-head">
+                          <div className="gcs-item-text">
+                            <h3>{it.name}</h3>
+                            <p>{it.description}</p>
+                          </div>
+                          <div className="gcs-chips">
+                            <span className="gcs-chip">{it.type}</span>
+                            <span className={`gcs-chip gcs-risk-${it.risk.toLowerCase()}`}>{it.risk} risk</span>
+                            <span className="gcs-chip gcs-chip-evidence">Verified · GitHub</span>
+                          </div>
+                        </div>
+                        <div className="gcs-seg" role="group" aria-label={`Review ${it.name}`}>
+                          {(["Authorized", "Unauthorized", "Needs review"] as const).map((v) => (
+                            <button key={v} type="button" aria-pressed={r === v} onClick={() => setReview(it, v)}>
+                              {v}
+                            </button>
+                          ))}
+                        </div>
+                        {r === "Unauthorized" && (
+                          <div className="gcs-remove">
+                            <strong>Shield won&apos;t change this. To remove it yourself:</strong>
+                            <span>{it.howToRemove}</span>
+                            <a href={it.link} target="_blank" rel="noreferrer">
+                              Open on GitHub ↗
+                            </a>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+              </div>
             );
           })}
           {gh && (gh.notChecked.collaborators || gh.notChecked.deployKeys || gh.notChecked.webhooks || gh.notChecked.sshKeys) ? (
@@ -436,18 +579,54 @@ export default function ShieldPage() {
       {tab === "wifi" && (
         <section className="gcs-list" aria-label="Wi-Fi Shield">
           <div className="gcs-exposed">
-            <p className="gcs-eyebrow">What this Wi-Fi reveals to every site you visit</p>
+            <div className="gcs-exposed-head">
+              <p className="gcs-eyebrow">The network you&apos;re on right now</p>
+              <span className="gcs-chip gcs-chip-evidence">Verified · live check {net ? time(net.checkedAt) : ""}</span>
+            </div>
             <dl>
+              <dt>Internet provider</dt>
+              <dd>{netLoading ? "Checking…" : net?.provider ?? "Couldn't look up the provider (works once deployed)"}</dd>
               <dt>Public IP address</dt>
-              <dd>{net?.ip ?? "Checking…"}</dd>
-              <dt>Location from that IP</dt>
-              <dd>{location ?? "Shows once deployed on Vercel"}</dd>
-              <dt>This page&apos;s connection</dt>
-              <dd>{net ? (net.https ? "Encrypted (HTTPS)" : "Not encrypted") : "Checking…"}</dd>
+              <dd>{netLoading ? "Checking…" : net?.ip ?? "Not available on localhost"}</dd>
+              <dt>Location it gives away</dt>
+              <dd>{netLoading ? "Checking…" : location ?? "Shows once deployed"}</dd>
+              <dt>VPN or relay</dt>
+              <dd>
+                {netLoading
+                  ? "Checking…"
+                  : net?.relayLikely === true
+                  ? `Likely on: traffic leaves through ${net.provider}, not the venue's own internet`
+                  : net?.relayLikely === false
+                  ? "Not detected: websites see this Wi-Fi's own connection"
+                  : "Unknown"}
+              </dd>
+              {connType && (
+                <>
+                  <dt>Device connection</dt>
+                  <dd>{connType === "wifi" ? "Wi-Fi" : connType}</dd>
+                </>
+              )}
             </dl>
-            <button type="button" className="gcs-btn gcs-btn-quiet" onClick={checkNetwork}>
-              Check this network again
+            <p className="gcs-note">
+              This is the Wi-Fi&apos;s connection to the internet, seen the same way any website sees it. Browsers don&apos;t let websites read the
+              Wi-Fi&apos;s name or password settings, so you fill those in below.
+            </p>
+            <button type="button" className="gcs-btn gcs-btn-quiet" onClick={checkNetwork} disabled={netLoading}>
+              {netLoading ? "Checking…" : "Check this network again"}
             </button>
+          </div>
+
+          <div className="gcs-q">
+            <label htmlFor="gcs-wifi-name">
+              <h3>Wi-Fi name, as shown on your device</h3>
+            </label>
+            <input
+              id="gcs-wifi-name"
+              type="text"
+              placeholder="e.g. Hackathon-Guest"
+              value={wifi.name}
+              onChange={(e) => updateWifi({ name: e.target.value })}
+            />
           </div>
 
           <div className="gcs-q">
@@ -466,7 +645,7 @@ export default function ShieldPage() {
               <h3>Where are you?</h3>
             </label>
             <select id="gcs-place" value={wifi.place} onChange={(e) => updateWifi({ place: e.target.value })}>
-              {["Coffee shop", "Library", "Airport", "Hotel", "Office", "Home"].map((p) => (
+              {["Coffee shop", "Library", "Airport", "Hotel", "Event venue", "Office", "Home"].map((p) => (
                 <option key={p}>{p}</option>
               ))}
             </select>
@@ -475,12 +654,16 @@ export default function ShieldPage() {
           <div className="gcs-toggle-row">
             <div>
               <h3>Protection on this network</h3>
-              <p>A VPN, iCloud Private Relay or private DNS is turned on. Added by you.</p>
+              <p>
+                Turn on if you&apos;ve switched on a VPN, iCloud Private Relay or private DNS. Added by you.
+                {net?.relayLikely === true && !wifi.protectedOn ? " Shield already sees a likely VPN or relay." : ""}
+              </p>
             </div>
             <button
               type="button"
               role="switch"
               aria-checked={wifi.protectedOn}
+              aria-label="Protection on this network"
               className="gcs-switch"
               onClick={() => updateWifi({ protectedOn: !wifi.protectedOn })}
             >
@@ -503,10 +686,7 @@ export default function ShieldPage() {
             ))}
           </div>
 
-          <p className="gcs-note">
-            A website can&apos;t read your Wi-Fi name or settings, so the questions above are answered by you. The Wi-Fi Shield download checks the
-            network and turns on protection automatically.
-          </p>
+          <p className="gcs-note">The Wi-Fi Shield phone app reads the network name and security directly and turns protection on for you.</p>
         </section>
       )}
 
@@ -519,8 +699,9 @@ const CSS = `
 .gcs{--red:#D7141A;--red2:#9E0B10;--ink:#5E080C;--tint:#FDECEC;--line:#F4C7C9;--paper:#FFFFFF;
   max-width:880px;margin:0 auto;padding-block:32px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   background:var(--paper);color:var(--ink);font-family:Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:20px}
-.gcs h1,.gcs h3{margin:0;color:var(--red)}
+.gcs h1,.gcs h2,.gcs h3{margin:0;color:var(--red)}
 .gcs h1{font-family:Unbounded,Figtree,system-ui,sans-serif;font-size:2rem;letter-spacing:-0.02em}
+.gcs-h2{font-size:1.25rem}
 .gcs h3{font-size:1rem}
 .gcs p{margin:0;line-height:1.5}
 .gcs-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -528,7 +709,7 @@ const CSS = `
 .gcs-dot{width:40px;height:40px;border-radius:50%;background:var(--red);box-shadow:inset -10px -10px 0 0 var(--red2)}
 .gcs-eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red2)}
 .gcs-pill{padding:6px 14px;border-radius:999px;background:var(--tint);color:var(--red2);font-weight:700;font-size:.85rem}
-.gcs-lead{max-width:62ch;color:var(--ink)}
+.gcs-lead{max-width:62ch}
 .gcs-summary{display:flex;gap:16px;align-items:stretch;flex-wrap:wrap}
 .gcs-score{width:132px;height:132px;border-radius:50%;background:var(--red);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
 .gcs-score strong{font-family:Unbounded,Figtree,sans-serif;font-size:2.4rem;line-height:1;font-variant-numeric:tabular-nums}
@@ -544,17 +725,32 @@ const CSS = `
 .gcs-btn{min-height:44px;padding:0 18px;border-radius:22px;border:2px solid var(--red);background:var(--red);color:#fff;font:inherit;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;text-decoration:none}
 .gcs-btn:disabled{opacity:.55;cursor:default}
 .gcs-btn-quiet{background:var(--paper);color:var(--red)}
-.gcs-btn:focus-visible,.gcs-tab:focus-visible,.gcs-seg button:focus-visible,.gcs-switch:focus-visible{outline:3px solid var(--red2);outline-offset:2px}
+.gcs button:focus-visible,.gcs a:focus-visible,.gcs input:focus-visible,.gcs select:focus-visible{outline:3px solid var(--red2);outline-offset:2px}
 .gcs-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:4px;border:2px solid var(--line);border-radius:28px}
 .gcs-tab{flex:1;min-width:130px;min-height:44px;border:0;border-radius:22px;background:transparent;color:var(--red);font:inherit;font-weight:700;cursor:pointer}
 .gcs-tab[aria-pressed="true"]{background:var(--red);color:#fff}
 .gcs-list{display:flex;flex-direction:column;gap:12px}
 .gcs-hint{color:var(--red2);font-weight:600}
 .gcs-empty{padding:20px;border:2px dashed var(--line);border-radius:20px;color:var(--red2)}
+.gcs-service{box-sizing:border-box;display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%;text-align:left;padding:16px;border:2px solid var(--red);border-radius:22px;background:var(--paper);color:var(--ink);font:inherit;cursor:pointer}
+.gcs-service:disabled{cursor:default}
+.gcs-service-off{border-color:var(--line);cursor:default;opacity:.8}
+.gcs-service-mark{width:48px;height:48px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+.gcs-service-off .gcs-service-mark{background:var(--tint);color:var(--red2)}
+.gcs-service-text{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gcs-service-text strong{color:var(--red);font-size:1.1rem}
+.gcs-chevron{font-size:1.6rem;font-weight:700;color:var(--red);line-height:1}
+.gcs-crumb{align-self:flex-start;min-height:44px;padding:0 4px;border:0;background:transparent;color:var(--red);font:inherit;font-weight:700;cursor:pointer}
+.gcs-group{display:flex;flex-direction:column;gap:10px}
+.gcs-group-head{box-sizing:border-box;display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;text-align:left;min-height:64px;padding:12px 16px;border:2px solid var(--line);border-radius:20px;background:var(--tint);color:var(--ink);font:inherit;cursor:pointer}
+.gcs-group-head[aria-expanded="true"]{border-color:var(--red)}
+.gcs-group-name{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}
+.gcs-group-name strong{color:var(--red)}
 .gcs-item,.gcs-finding,.gcs-q,.gcs-toggle-row,.gcs-exposed{border:2px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.gcs-group .gcs-item{margin-left:16px}
 .gcs-item-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .gcs-item-text{min-width:0;flex:1 1 280px;display:flex;flex-direction:column;gap:4px}
-.gcs-item-text p{color:var(--ink);overflow-wrap:anywhere}
+.gcs-item-text p{overflow-wrap:anywhere}
 .gcs-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start}
 .gcs-chip{padding:4px 10px;border-radius:999px;border:2px solid var(--line);font-size:.78rem;font-weight:700;color:var(--red2);white-space:nowrap}
 .gcs-chip-evidence{background:var(--tint);border-color:var(--tint)}
@@ -571,11 +767,12 @@ const CSS = `
 .gcs-finding.is-done{opacity:.75}
 .gcs-finding-actions{display:flex;gap:8px;flex-wrap:wrap}
 .gcs-exposed{background:var(--tint);border-color:var(--tint)}
+.gcs-exposed-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
 .gcs-exposed dl{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr);gap:8px 16px;margin:0}
 .gcs-exposed dt{font-weight:700;color:var(--red)}
 .gcs-exposed dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .gcs-exposed .gcs-btn{align-self:flex-start}
-.gcs-q select{min-height:44px;border-radius:22px;border:2px solid var(--line);padding:0 14px;font:inherit;color:var(--ink);background:var(--paper);max-width:280px}
+.gcs-q input[type="text"],.gcs-q select{min-height:44px;border-radius:22px;border:2px solid var(--line);padding:0 16px;font:inherit;color:var(--ink);background:var(--paper);max-width:360px;width:100%}
 .gcs-toggle-row{flex-direction:row;align-items:center;justify-content:space-between;gap:16px}
 .gcs-toggle-row>div{min-width:0;display:flex;flex-direction:column;gap:4px}
 .gcs-switch{min-width:88px;min-height:44px;border-radius:22px;border:2px solid var(--red);background:var(--paper);color:var(--red);font:inherit;font-weight:700;cursor:pointer;flex-shrink:0}
@@ -583,6 +780,5 @@ const CSS = `
 .gcs-check{display:flex;gap:10px;align-items:center;min-height:44px;cursor:pointer}
 .gcs-check input{width:22px;height:22px;accent-color:var(--red)}
 .gcs-foot{font-size:.8rem;color:var(--red2);text-align:center;padding-top:8px}
-@media (max-width:520px){.gcs-counts{grid-template-columns:repeat(3,minmax(0,1fr));min-width:0}.gcs-score{width:110px;height:110px}.gcs-exposed dl{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){.gcs *{transition:none!important}}
+@media (max-width:520px){.gcs-score{width:110px;height:110px}.gcs-exposed dl{grid-template-columns:1fr}.gcs-group .gcs-item{margin-left:0}}
 `;

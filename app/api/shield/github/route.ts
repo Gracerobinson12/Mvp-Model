@@ -10,6 +10,8 @@ type Risk = "Low" | "Medium" | "High";
 
 export type AccessItem = {
   id: string;
+  service: "GitHub";
+  group: string;
   direction: "Can reach you" | "You can reach";
   type: string;
   name: string;
@@ -107,6 +109,8 @@ export async function GET() {
           const risk: Risk = role === "admin" ? "High" : role === "write" || role === "maintain" ? "Medium" : "Low";
           items.push({
             id: `collab:${full}:${c.login}`,
+            service: "GitHub",
+            group: full,
             direction: "Can reach you",
             type: "Person",
             name: c.login,
@@ -123,6 +127,8 @@ export async function GET() {
         for (const k of keys.value) {
           items.push({
             id: `deploykey:${full}:${k.id}`,
+            service: "GitHub",
+            group: full,
             direction: "Can reach you",
             type: "Deploy key",
             name: k.title,
@@ -142,6 +148,8 @@ export async function GET() {
           const events = h.events.includes("*") ? "every event" : h.events.join(", ");
           items.push({
             id: `webhook:${full}:${h.id}`,
+            service: "GitHub",
+            group: full,
             direction: "Can reach you",
             type: "Webhook",
             name: hostOf(h.config.url),
@@ -161,6 +169,8 @@ export async function GET() {
       for (const k of ssh) {
         items.push({
           id: `ssh:${k.id}`,
+          service: "GitHub",
+          group: "Your GitHub account",
           direction: "Can reach you",
           type: "SSH key",
           name: k.title || `SSH key ${k.id}`,
@@ -181,6 +191,8 @@ export async function GET() {
       if (!r.permissions?.push && !r.permissions?.admin) continue;
       items.push({
         id: `repo:${r.full_name}`,
+        service: "GitHub",
+        group: `Owned by ${r.owner.login}`,
         direction: "You can reach",
         type: "Repository",
         name: r.full_name,
@@ -198,6 +210,8 @@ export async function GET() {
       for (const o of orgs) {
         items.push({
           id: `org:${o.login}`,
+          service: "GitHub",
+          group: "Organizations",
           direction: "You can reach",
           type: "Organization",
           name: o.login,
