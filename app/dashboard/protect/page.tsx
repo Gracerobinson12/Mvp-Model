@@ -1,14 +1,14 @@
 'use client';
 // @ts-nocheck
-// app/dashboard/protect/page.tsx — GC Protect bubble. Opens gcprotect.tech in a new tab.
-// NEXT_PUBLIC_PROTECT_URL can override the default; if unset, falls back to gcprotect.tech.
-
 import React from 'react';
 import { useModules } from '@/components/gc/useModules';
-import { Header, Icon, ModuleGate, Toggle } from '@/components/gc/ui';
-const ExternalIcon = Icon.external;
+import { Header, ModuleGate, Toggle } from '@/components/gc/ui';
 
-const CAUGHT = ['Names', 'SSNs & IDs', 'Emails', 'Phone numbers', 'Credit cards', 'API keys', 'GitHub tokens', 'AWS keys', 'Passwords', 'Database strings'];
+const CAUGHT = [
+  'Names', 'SSNs and IDs', 'Emails', 'Phone numbers',
+  'Credit cards', 'API keys', 'GitHub tokens', 'AWS keys',
+  'Passwords', 'Database strings',
+];
 
 export default function ProtectPage() {
   const m = useModules();
@@ -17,22 +17,49 @@ export default function ProtectPage() {
 
   return (
     <div className="gc-wrap">
-      <Header back right={<span className="gc-pill gc-glass gc-glass--pink" style={{ borderRadius: 999 }}><span className="gc-dot" />{m.loading ? '…' : on ? 'On · $9/mo' : 'Off'}</span>} />
+      <Header
+        back
+        right={
+          <span className="gc-pill gc-glass gc-glass--pink" style={{ borderRadius: 999 }}>
+            <span className="gc-dot" />
+            {m.loading ? '…' : on ? 'On · $5/mo' : 'Off'}
+          </span>
+        }
+      />
 
-      <ModuleGate id="protect" state={m.stateOf('protect')} busy={m.busy === 'protect'} onTurnOn={() => m.toggle('protect', true)}>
+      <ModuleGate
+        id="protect"
+        state={m.stateOf('protect')}
+        busy={m.busy === 'protect'}
+        onTurnOn={() => m.toggle('protect', true)}
+      >
         <div className="gc-stack">
           <h1 className="gc-h1">GC Protect</h1>
-          <p className="gc-sub">Sensitive details become tokens before any AI sees them. You keep the real values; the AI only ever gets placeholders.</p>
+          <p className="gc-sub">
+            Sensitive details become tokens before any AI sees them.
+            You keep the real values; the AI only ever gets placeholders.
+          </p>
         </div>
 
         <div className="gc-two">
           <div className="gc-main">
             <div className="gc-glass gc-glass--pink gc-row" style={{ padding: '18px 18px 18px 24px' }}>
               <span className="gc-stack" style={{ gap: 2 }}>
-                <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--gc-red)' }}>Protection {on ? 'on' : 'off'}</span>
-                <span className="gc-small">{on ? 'Tokens are made on every prompt across your account.' : 'Turn on to start tokenizing.'}</span>
+                <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--gc-red)' }}>
+                  {on ? 'Protection on' : 'Protection off'}
+                </span>
+                <span className="gc-small">
+                  {on
+                    ? 'Tokens are made on every prompt across your account.'
+                    : 'Turn on to start tokenizing.'}
+                </span>
               </span>
-              <Toggle on={on} busy={m.busy === 'protect'} label={`Protection ${on ? 'on' : 'off'}`} onChange={v => m.toggle('protect', v)} />
+              <Toggle
+                on={on}
+                busy={m.busy === 'protect'}
+                label="Protection toggle"
+                onChange={(v) => m.toggle('protect', v)}
+              />
             </div>
             {m.error && <p className="gc-error">{m.error}</p>}
 
@@ -41,30 +68,49 @@ export default function ProtectPage() {
               <div className="gc-grid3" style={{ gap: 12 }}>
                 <div className="gc-glass gc-stack" style={{ padding: '16px 18px', gap: 8, borderRadius: 20 }}>
                   <span className="gc-label" style={{ marginBottom: 0 }}>You type</span>
-                  <span className="gc-mono" style={{ lineHeight: 1.55 }}>Customer: Jane Doe<br />SSN: 123-45-6789<br />key: sk_live_4e…</span>
+                  <div className="gc-mono" style={{ lineHeight: 1.55 }}>
+                    <div>Customer: Jane Doe</div>
+                    <div>SSN: 123-45-6789</div>
+                    <div>key: sk_live_4e</div>
+                  </div>
                 </div>
                 <div className="gc-glass gc-glass--red gc-stack" style={{ padding: '16px 18px', gap: 8, borderRadius: 20 }}>
                   <span className="gc-label" style={{ marginBottom: 0 }}>AI sees</span>
-                  <span className="gc-mono" style={{ lineHeight: 1.55, color: '#fff' }}>Customer: GC-C9K2P4M<br />SSN: GC-IDX8R2Q1<br />key: GC-SECRET-01</span>
+                  <div className="gc-mono" style={{ lineHeight: 1.55, color: '#fff' }}>
+                    <div>Customer: GC-C9K2P4M</div>
+                    <div>SSN: GC-IDX8R2Q1</div>
+                    <div>key: GC-SECRET-01</div>
+                  </div>
                 </div>
                 <div className="gc-glass gc-stack" style={{ padding: '16px 18px', gap: 8, borderRadius: 20 }}>
                   <span className="gc-label" style={{ marginBottom: 0 }}>You read</span>
-                  <span style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--gc-red-deep)' }}>“Dear Jane Doe, thank you for your order…” — real values put back, only on your screen.</span>
+                  <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--gc-red-deep)' }}>
+                    Real values put back, only on your screen.
+                  </div>
                 </div>
               </div>
             </section>
           </div>
 
           <aside className="gc-rail">
-            <a href={url} target="_blank" rel="noopener noreferrer"
-              className="gc-btn gc-btn--red gc-btn--big gc-btn--block" style={{ minHeight: 56 }}>
-              Open GC Protect <ExternalIcon size={18} />
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="gc-btn gc-btn--red gc-btn--big gc-btn--block"
+              style={{ minHeight: 56 }}
+            >
+              Open GC Protect
             </a>
-            <p className="gc-note" style={{ textAlign: ‘center’ }}>Opens in a new tab</p>
+            <p className="gc-note" style={{ textAlign: 'center' }}>Opens in a new tab</p>
             <div className="gc-glass gc-pad gc-stack" style={{ gap: 12 }}>
               <span className="gc-h2" style={{ fontSize: 16 }}>What gets caught</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {CAUGHT.map(c => <span key={c} className="gc-tag gc-tag--pink" style={{ fontWeight: 600, padding: '8px 14px' }}>{c}</span>)}
+                {CAUGHT.map((c) => (
+                  <span key={c} className="gc-tag gc-tag--pink" style={{ fontWeight: 600, padding: '8px 14px' }}>
+                    {c}
+                  </span>
+                ))}
               </div>
             </div>
           </aside>
