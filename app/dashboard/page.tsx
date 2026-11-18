@@ -13,11 +13,10 @@ import { Header, Icon, MODULE_ICON } from '@/components/gc/ui';
 
 // bubble positions as % of a 720×560 stage (scales to phones)
 const POS = {
-  protect:  { left: '0%',    top: '0%',    width: '33.3%' },
-  vault:    { left: '40.3%', top: '6.4%',  width: '29.2%' },
-  add:      { left: '77.8%', top: '19.6%', width: '15.3%' },
-  barter:   { left: '9.7%',  top: '51.8%', width: '29.2%' },
-  advisory: { left: '45.8%', top: '53.6%', width: '30.5%' },
+  protect:  { left: '2%',    top: '4%',    width: '33.3%' },
+  vault:    { left: '38%',   top: '4%',    width: '29.2%' },
+  add:      { left: '75%',   top: '16%',   width: '15.3%' },
+  barter:   { left: '18%',   top: '54%',   width: '29.2%' },
 };
 
 export default function Page() {
@@ -100,7 +99,7 @@ function HomePage() {
           <div className="gc-orb" style={{ left: '12%', top: '7%', width: '58%', height: '75%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.38), rgba(215,20,26,0) 70%)' }} />
           <div className="gc-orb" style={{ left: '50%', top: '45%', width: '50%', height: '64%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.42), rgba(255,120,126,0) 70%)' }} />
 
-          {(['protect', 'vault', 'barter', 'advisory']).map(id => {
+          {(['protect', 'vault', 'barter']).map(id => {
             const Ico = MODULE_ICON[id];
             return (
               <Link key={id} href={MODULES[id].href} className={`gc-bubble ${cls(id)}`} style={POS[id]}>
@@ -128,7 +127,6 @@ function HomePage() {
                   <span>{m.access[id] ? money(MODULES[id].price) : 'off'}</span>
                 </div>
               ))}
-              <div className="gc-row gc-muted"><span>Advisory</span><span>free</span></div>
               <div className="gc-divider" />
               <div className="gc-row" style={{ fontWeight: 700, fontSize: 17 }}><span>Total</span><span>{money(m.monthTotal)}</span></div>
             </div>

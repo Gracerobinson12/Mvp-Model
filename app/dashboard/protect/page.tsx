@@ -1,8 +1,7 @@
 'use client';
 // @ts-nocheck
-// app/dashboard/protect/page.tsx — GC Protect bubble. Protect runs in its own app on its own domain
-// (same Supabase project = same login). This page: on/off + what it does + open it.
-// Env: NEXT_PUBLIC_PROTECT_URL (e.g. https://protect.gratiacore.com). Until it's set, the button says so.
+// app/dashboard/protect/page.tsx — GC Protect bubble. Opens gcprotect.tech in a new tab.
+// NEXT_PUBLIC_PROTECT_URL can override the default; if unset, falls back to gcprotect.tech.
 
 import React from 'react';
 import { useModules } from '@/components/gc/useModules';
@@ -12,7 +11,7 @@ const CAUGHT = ['Names', 'SSNs & IDs', 'Emails', 'Phone numbers', 'Credit cards'
 
 export default function ProtectPage() {
   const m = useModules();
-  const url = process.env.NEXT_PUBLIC_PROTECT_URL || '';
+  const url = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect.tech';
   const on = !!m.access.protect;
 
   return (
@@ -56,10 +55,11 @@ export default function ProtectPage() {
           </div>
 
           <aside className="gc-rail">
-            {url
-              ? <a href={url} className="gc-btn gc-btn--red gc-btn--big gc-btn--block" style={{ minHeight: 56 }}>Open GC Protect <Icon.external size={18} /></a>
-              : <span className="gc-btn gc-btn--outline gc-btn--big gc-btn--block" style={{ minHeight: 56, opacity: .7 }}>GC Protect app · launching now</span>}
-            <p className="gc-note" style={{ textAlign: 'center' }}>Opens in its own app. Same account — you’re already signed in.</p>
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              className="gc-btn gc-btn--red gc-btn--big gc-btn--block" style={{ minHeight: 56 }}>
+              Open GC Protect <Icon.external size={18} />
+            </a>
+            <p className="gc-note" style={{ textAlign: ‘center’ }}>Opens gcprotect.tech in a new tab.</p>
             <div className="gc-glass gc-pad gc-stack" style={{ gap: 12 }}>
               <span className="gc-h2" style={{ fontSize: 16 }}>What gets caught</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

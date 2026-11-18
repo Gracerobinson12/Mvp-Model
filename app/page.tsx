@@ -9,13 +9,9 @@ import { MODULES } from '@/lib/modules';
 
 const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect.tech';
 
-// Two active bubbles.
+// Active modules.
 const BRANCHES = [
-  { n: '01', id: 'consulting', name: 'Consulting', icon: '🧭', color: '#ff3b30', ink: '#cc2018', live: true, href: '/advisory', badge: 'Free to ask',
-    hook: "You have a problem. Let's figure it out.",
-    desc: 'Quality assurance, product concept, support & upkeep. Free scoping call, then one fixed quote.',
-    cta: 'Start a conversation →' },
-  { n: '02', id: 'protect', name: 'GC Protect', icon: '🛡️', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=protect', badge: 'Live · $5/mo',
+  { n: '01', id: 'protect', name: 'GC Protect', icon: '🛡️', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=protect', badge: 'Live · $5/mo',
     hook: 'Sensitive details become tokens before any AI sees them.',
     desc: 'Names, SSNs, cards, API keys caught on every prompt. Works with any AI you use. Audit log you can export.',
     cta: 'Explore GC Protect →' },
@@ -24,8 +20,7 @@ const BRANCHES = [
 const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
 
 const BUBBLES = [
-  { id: 'protect',    name: 'GC Protect',  sub: 'Live · $5/mo',  href: '/signup?module=protect', pos: { left: '5%',   top: '8%',   width: '38%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
-  { id: 'consulting', name: 'Consulting',   sub: 'Free to ask',   href: '/advisory',              pos: { left: '42%',  top: '38%',  width: '38%' }, svg: svgP('<path d="M4 5h16v11H9l-5 4z"/>') },
+  { id: 'protect', name: 'GC Protect', sub: 'Live · $5/mo', href: '/signup?module=protect', pos: { left: '12%', top: '12%', width: '44%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
 ];
 
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
@@ -126,13 +121,10 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [flipped]);
 
-  const isConsulting = bubble.id === 'consulting';
-  const signupHref = isConsulting ? '/advisory' : `/signup?module=${bubble.id}`;
-  const ctaLabel   = isConsulting ? 'Start a conversation →' : 'Try today →';
-  const priceStr   = isConsulting ? 'Free to ask' : (mod && mod.price > 0 ? `$${mod.price}/mo` : 'Free');
-  const bullets: string[]    = isConsulting
-    ? ['QA & user testing', 'Product concept lab', 'Tech due diligence', 'Ongoing support']
-    : (mod?.bullets || []);
+  const signupHref = `/signup?module=${bubble.id}`;
+  const ctaLabel   = 'Try today →';
+  const priceStr   = mod && mod.price > 0 ? `$${mod.price}/mo` : 'Free';
+  const bullets: string[] = mod?.bullets || [];
 
   return (
     <div
@@ -168,6 +160,7 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
 function LandingPage() {
   const [checked, setChecked] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
+  const [audience, setAudience] = useState<'individual' | 'business'>('individual');
 
   useEffect(() => {
     if (window.location.search.includes('intro')) { localStorage.removeItem('gc_intro_seen'); setChecked(true); return; }
@@ -178,11 +171,11 @@ function LandingPage() {
   const handleIntroComplete = useCallback(() => { localStorage.setItem('gc_intro_seen', '1'); setIntroComplete(true); }, []);
 
   const scatteredBadges = [
-    { text: 'Consulting', color: '#ff3b30', rotate: -6 },
-    { text: 'GC Protect', color: '#D7141A', rotate: 8 },
-    { text: 'Quality assurance', color: '#bf5af2', rotate: -4 },
-    { text: 'Product concept', color: '#ff9500', rotate: 12 },
-    { text: 'Add what you need', color: '#30d158', rotate: -9 },
+    { text: 'GC Protect', color: '#D7141A', rotate: -6 },
+    { text: 'Idea Vault', color: '#bf5af2', rotate: 8 },
+    { text: 'Privacy first', color: '#ff9500', rotate: -4 },
+    { text: 'Barter', color: '#30d158', rotate: 12 },
+    { text: 'Add what you need', color: '#0a84ff', rotate: -9 },
   ];
   const driftPaths = [
     { x: ['-25vw','30vw','-10vw','25vw','-25vw'], y: ['-20vh','20vh','-10vh','30vh','-20vh'] },
@@ -284,10 +277,10 @@ function LandingPage() {
           <div className="gc-ticker-track">
             {[0, 1].map((dupe) => (
               <React.Fragment key={dupe}>
-                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Consulting is open &mdash; QA, product concept, support &amp; upkeep</div>
                 <div className="gc-ticker-item"><span className="gc-ticker-dot" /> GC Protect &mdash; tokens before any AI sees your data</div>
-                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Free scoping call &middot; one fixed quote</div>
+                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Idea Vault &amp; Barter coming soon &mdash; join the waitlist</div>
                 <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Add what you need &middot; pay only for what&apos;s on</div>
+                <div className="gc-ticker-item"><span className="gc-ticker-dot" /> Business tier with team tools &mdash; launching soon</div>
               </React.Fragment>
             ))}
           </div>
@@ -311,8 +304,34 @@ function LandingPage() {
             Solutions for businesses<br />moving forward.
           </motion.h1>
           <motion.p className="hero-subtitle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 0.5 }}>
-            We help businesses navigate problems, understand change, and find solutions &mdash; through consulting, intelligence, and technology.
+            We help businesses navigate problems, understand change, and find solutions &mdash; through intelligent protection, smart tools, and technology that works for you.
           </motion.p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.57, type: 'spring', stiffness: 120, damping: 22 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28 }}>
+            <button
+              onClick={() => setAudience('individual')}
+              style={{
+                padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+                background: audience === 'individual' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
+                color: audience === 'individual' ? '#fff' : 'rgba(28,28,30,0.52)',
+                transition: 'all 0.2s',
+              }}
+            >Individual</button>
+            <button
+              onClick={() => setAudience('business')}
+              style={{
+                padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+                background: audience === 'business' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
+                color: audience === 'business' ? '#fff' : 'rgba(28,28,30,0.52)',
+                transition: 'all 0.2s',
+              }}
+            >Business</button>
+            {audience === 'business' && (
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fff', background: '#D7141A', borderRadius: 999, padding: '3px 10px' }}>
+                Coming soon
+              </span>
+            )}
+          </motion.div>
           <motion.div className="hero-actions" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, type: 'spring', stiffness: 120, damping: 22 }}>
             <Link href="/signup" className="btn-primary">Only pay for what you need <ChevronRight size={16} strokeWidth={2.5} /></Link>
           </motion.div>
@@ -325,8 +344,29 @@ function LandingPage() {
       </section>
 
       <section id="branches" className="content-section">
-        <p className="section-eyebrow">Two ways we work &middot; click any bubble to learn more</p>
-        <motion.nav aria-label="Modules" className="lp-stage" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 160, damping: 22 }}>
+        <p className="section-eyebrow">Live now &middot; click any bubble to learn more</p>
+        <motion.nav aria-label="Modules" className="lp-stage" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 160, damping: 22 }}
+          style={{ position: 'relative' }}>
+          {audience === 'business' && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10, borderRadius: 32,
+              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+              background: 'rgba(242,242,247,0.82)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#D7141A' }}>Business tier</span>
+              <p style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Sora',sans-serif", color: '#1c1c1e', margin: 0, textAlign: 'center', letterSpacing: -0.5 }}>
+                Enterprise tools,<br />coming soon.
+              </p>
+              <p style={{ fontSize: 14, color: 'rgba(28,28,30,0.52)', margin: 0, textAlign: 'center', maxWidth: 260, lineHeight: 1.55 }}>
+                Multi-seat access, team vaults, and business-grade compliance are on the way.
+              </p>
+              <Link href="/contact?waitlist=1" style={{
+                marginTop: 6, padding: '10px 24px', borderRadius: 999, background: '#D7141A', color: '#fff',
+                fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'inline-block',
+              }}>Join the waitlist →</Link>
+            </div>
+          )}
           <div className="lp-orb" style={{ left: '5%', top: '5%', width: '60%', height: '75%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.30), rgba(215,20,26,0) 70%)' }} />
           <div className="lp-orb" style={{ left: '40%', top: '35%', width: '55%', height: '64%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.34), rgba(255,120,126,0) 70%)' }} />
           {BUBBLES.map(b => (
@@ -357,12 +397,12 @@ function LandingPage() {
         <div className="gc-footer-grid">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}><GCIcon size={28} /><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: -0.5, color: '#1c1c1e' }}>Gratia Core</span></div>
-            <p style={{ fontSize: 13, color: 'rgba(28,28,30,0.5)', lineHeight: 1.65, maxWidth: 240 }}>Solutions for businesses moving forward &mdash; consulting, protection, and the tools to act.</p>
+            <p style={{ fontSize: 13, color: 'rgba(28,28,30,0.5)', lineHeight: 1.65, maxWidth: 240 }}>Solutions for businesses moving forward &mdash; protection, intelligence, and the tools to act.</p>
           </div>
           <div>
             <p className="gc-footer-col-label">Services</p>
-            <Link href="/advisory" className="gc-footer-link">Consulting · free to ask</Link>
             <Link href="/signup?module=protect" className="gc-footer-link">GC Protect · $5/mo</Link>
+            <Link href="/contact?waitlist=1" className="gc-footer-link">Idea Vault · waitlist</Link>
             <Link href="/pricing" className="gc-footer-link">See all pricing →</Link>
           </div>
           <div>
@@ -388,10 +428,10 @@ function LandingPage() {
 
       <header className="navbar">
         <nav className="nav-pill">
-          <Link href="/advisory" className="nav-item">Consulting</Link>
           <a href="#branches" className="nav-item">Modules</a>
           <Link href="/pricing" className="nav-item">Pricing</Link>
           <Link href="/about" className="nav-item">About</Link>
+          <Link href="/contact" className="nav-item">Contact</Link>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Link href="/login" className="btn-login">Log in</Link>
@@ -449,11 +489,11 @@ function GatePage({ onUnlock }: { onUnlock: () => void }) {
   const inp: React.CSSProperties = { width: '100%', padding: '13px 16px', borderRadius: 12, fontSize: 15, fontFamily: 'inherit', outline: 'none', background: 'rgba(120,120,128,0.08)', border: '1px solid ' + (error ? '#ff3b30' : 'rgba(0,0,0,0.1)'), color: '#1c1c1e', boxSizing: 'border-box', transition: 'border-color 0.2s' };
 
   const scatteredBadges = [
-    { text: 'Consulting', color: '#ff3b30', rotate: -6 },
-    { text: 'GC Protect', color: '#D7141A', rotate: 8 },
-    { text: 'Quality assurance', color: '#bf5af2', rotate: -4 },
-    { text: 'Product concept', color: '#ff9500', rotate: 12 },
-    { text: 'Moving forward', color: '#30d158', rotate: -9 },
+    { text: 'GC Protect', color: '#D7141A', rotate: -6 },
+    { text: 'Idea Vault', color: '#bf5af2', rotate: 8 },
+    { text: 'Privacy first', color: '#ff9500', rotate: -4 },
+    { text: 'Barter', color: '#30d158', rotate: 12 },
+    { text: 'Moving forward', color: '#0a84ff', rotate: -9 },
   ];
   const driftPaths = [
     { x: ['-25vw','30vw','-10vw','25vw','-25vw'], y: ['-20vh','20vh','-10vh','30vh','-20vh'] },
