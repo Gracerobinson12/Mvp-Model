@@ -10,6 +10,9 @@ import { supabase } from '@/lib/supabase';
 import { MODULES, PAID_MODULES, money } from '@/lib/modules';
 import { useModules } from '@/components/gc/useModules';
 import { Header, Icon, MODULE_ICON } from '@/components/gc/ui';
+const PlusIcon = Icon.plus;
+const ArrowIcon = Icon.arrow;
+const PowerIcon = Icon.power;
 
 // bubble positions as % of a 720×560 stage (scales to phones)
 const POS = {
@@ -110,7 +113,7 @@ function HomePage() {
             );
           })}
           <Link href="/dashboard/modules" aria-label="Add a module" className="gc-bubble gc-bubble--add" style={POS.add}>
-            <Icon.plus /><span className="gc-bubble-sub" style={{ fontWeight: 600 }}>Add</span>
+            <PlusIcon /><span className="gc-bubble-sub" style={{ fontWeight: 600 }}>Add</span>
           </Link>
         </nav>
 
@@ -131,7 +134,7 @@ function HomePage() {
               <div className="gc-row" style={{ fontWeight: 700, fontSize: 17 }}><span>Total</span><span>{money(m.monthTotal)}</span></div>
             </div>
             <p className="gc-note">Turn a module on and you're charged today, then monthly until you turn it off.</p>
-            <Link href="/dashboard/modules" className="gc-btn gc-btn--red gc-btn--block" style={{ minHeight: 48 }}>Add or change modules <Icon.arrow size={18} /></Link>
+            <Link href="/dashboard/modules" className="gc-btn gc-btn--red gc-btn--block" style={{ minHeight: 48 }}>Add or change modules <ArrowIcon size={18} /></Link>
           </section>
 
           <section className="gc-glass gc-pad gc-stack" style={{ gap: 14 }}>
@@ -156,7 +159,7 @@ function HomePage() {
               <span style={{ fontWeight: 700, fontSize: 16 }}>Pause everything</span>
               <span className="gc-small">Turn every module off at once. Billing stops today.</span>
             </span>
-            <span className="gc-glass gc-glass--red" style={{ width: 44, height: 44, borderRadius: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon.power size={20} /></span>
+            <span className="gc-glass gc-glass--red" style={{ width: 44, height: 44, borderRadius: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><PowerIcon size={20} /></span>
           </Link>
         </aside>
       </div>

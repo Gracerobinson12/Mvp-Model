@@ -9,6 +9,13 @@ import { supabase } from '@/lib/supabase';
 import { useModules } from '@/components/gc/useModules';
 import { Header, Icon, Modal, ModuleGate, fmtDate } from '@/components/gc/ui';
 import { readCanary } from '@/lib/canary';
+const CloseIcon = Icon.close;
+const VaultIcon = Icon.vault;
+const CheckIcon = Icon.check;
+const BulbIcon = Icon.bulb;
+const PlusIcon = Icon.plus;
+const DownloadIcon = Icon.download;
+const GlobeIcon = Icon.globe;
 
 const BUCKET = 'vault-attachments';
 const MAX_FILE_MB = 20;

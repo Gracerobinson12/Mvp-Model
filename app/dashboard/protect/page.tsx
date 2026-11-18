@@ -6,6 +6,7 @@
 import React from 'react';
 import { useModules } from '@/components/gc/useModules';
 import { Header, Icon, ModuleGate, Toggle } from '@/components/gc/ui';
+const ExternalIcon = Icon.external;
 
 const CAUGHT = ['Names', 'SSNs & IDs', 'Emails', 'Phone numbers', 'Credit cards', 'API keys', 'GitHub tokens', 'AWS keys', 'Passwords', 'Database strings'];
 
@@ -57,7 +58,7 @@ export default function ProtectPage() {
           <aside className="gc-rail">
             <a href={url} target="_blank" rel="noopener noreferrer"
               className="gc-btn gc-btn--red gc-btn--big gc-btn--block" style={{ minHeight: 56 }}>
-              Open GC Protect <Icon.external size={18} />
+              Open GC Protect <ExternalIcon size={18} />
             </a>
             <p className="gc-note" style={{ textAlign: ‘center’ }}>{‘Opens gcprotect.tech in a new tab.’}</p>
             <div className="gc-glass gc-pad gc-stack" style={{ gap: 12 }}>

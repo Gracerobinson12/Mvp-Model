@@ -7,6 +7,9 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useModules } from '@/components/gc/useModules';
 import { Header, Icon, Modal, ModuleGate, fmtDate } from '@/components/gc/ui';
+const CheckIcon = Icon.check;
+const MailIcon = Icon.mail;
+const PlusIcon = Icon.plus;
 
 const STATUS = {
   draft: 'Draft', sent: 'Waiting for them', confirmed: 'Confirmed', completed: 'Done', declined: 'Declined',
@@ -121,13 +124,13 @@ function AgreementCard({ ag, onUpdate, onEdit }) {
           <span className="gc-small">With {ag.counterparty_name}{ag.due_date ? ` · due ${fmtDate(ag.due_date)}` : ''}{ag.confirmed_at ? ` · both confirmed ${fmtDate(ag.confirmed_at)}` : ''}</span>
           {ag.notes && <span className="gc-small">Notes: {ag.notes}</span>}
         </div>
-        <span className={`gc-tag ${ag.status === 'sent' ? 'gc-tag--red' : 'gc-tag--pink'}`}>{confirmed && <Icon.check size={12} />}{ag.status === 'sent' ? `Waiting for ${ag.counterparty_name} to confirm` : STATUS[ag.status] || ag.status}</span>
+        <span className={`gc-tag ${ag.status === 'sent' ? 'gc-tag--red' : 'gc-tag--pink'}`}>{confirmed && <CheckIcon size={12} />}{ag.status === 'sent' ? `Waiting for ${ag.counterparty_name} to confirm` : STATUS[ag.status] || ag.status}</span>
       </div>
 
       {(ag.status === 'draft' || ag.status === 'sent') && (
         <div className="gc-row" style={{ paddingTop: 14, borderTop: '1px solid var(--gc-line)' }}>
           <span className="gc-small" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon.mail size={18} />
+            <MailIcon size={18} />
             {ag.status === 'sent' && ag.counterparty_email ? <>Sent to <strong style={{ color: 'var(--gc-red)' }}>{ag.counterparty_email}</strong>{ag.sent_at ? ` · ${fmtDate(ag.sent_at, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}</> : ag.counterparty_email ? `Will be sent to ${ag.counterparty_email}` : 'Add their email to send it'}
           </span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -184,7 +187,7 @@ export default function BarterPage() {
             <h1 className="gc-h1">Barter</h1>
             <p className="gc-sub">Trade services with another founder. Write it down, both confirm, both get the agreement by email. No money changes hands.</p>
           </div>
-          <button className="gc-btn gc-btn--red gc-btn--big" onClick={() => setShowNew(true)}><Icon.plus size={18} /> New agreement</button>
+          <button className="gc-btn gc-btn--red gc-btn--big" onClick={() => setShowNew(true)}><PlusIcon size={18} /> New agreement</button>
         </div>
 
         <div className="gc-grid3">
