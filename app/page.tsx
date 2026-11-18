@@ -20,7 +20,9 @@ const BRANCHES = [
 const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
 
 const BUBBLES = [
-  { id: 'protect', name: 'GC Protect', sub: 'Live · $5/mo', href: '/signup?module=protect', pos: { left: '12%', top: '12%', width: '44%' }, svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
+  { id: 'protect', name: 'GC Protect', sub: 'Live · $5/mo', href: '/signup?module=protect', pos: { left: '8%', top: '8%', width: '38%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
+  { id: 'vault', name: 'Idea Vault', sub: 'Coming soon', href: '/contact?waitlist=vault', pos: { left: '55%', top: '5%', width: '32%' }, color: '#bf5af2', dark: '#8c35c9', svg: svgP('<path d="M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3c1.8-1.2 3-3.3 3-5.7a7 7 0 0 0-7-7z"/>') },
+  { id: 'barter', name: 'Barter', sub: 'Coming soon', href: '/contact?waitlist=barter', pos: { left: '48%', top: '52%', width: '28%' }, color: '#30d158', dark: '#1a8c36', svg: svgP('<path d="M7 16l-4-4 4-4"/><path d="M3 12h18"/><path d="M17 8l4 4-4 4"/>') },
 ];
 
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
@@ -121,10 +123,13 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [flipped]);
 
-  const signupHref = `/signup?module=${bubble.id}`;
-  const ctaLabel   = 'Try today →';
-  const priceStr   = mod && mod.price > 0 ? `$${mod.price}/mo` : 'Free';
+  const isLive    = bubble.sub.startsWith('Live');
+  const signupHref = isLive ? `/signup?module=${bubble.id}` : `/contact?waitlist=${bubble.id}`;
+  const ctaLabel   = isLive ? 'Try today →' : 'Join waitlist →';
+  const priceStr   = mod && mod.price > 0 ? `$${mod.price}/mo` : (mod ? 'Free' : 'Coming soon');
   const bullets: string[] = mod?.bullets || [];
+  const c = bubble.color || '#D7141A';
+  const dk = bubble.dark || '#9E0B10';
 
   return (
     <div
@@ -134,21 +139,24 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
       onClick={() => setFlipped(f => !f)}
     >
       <div className="flip-inner">
-        <div className="flip-front">
+        <div className="flip-front" style={{
+          background: `linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 48%), linear-gradient(160deg, ${c}ee, ${dk}eb)`,
+          boxShadow: `inset 0 1px 1px rgba(255,255,255,0.5), inset 0 -10px 24px rgba(0,0,0,0.18), 0 18px 44px ${c}50`,
+        }}>
           {bubble.svg}
           <span className="n">{bubble.name}</span>
           <span className="s">{bubble.sub}</span>
         </div>
-        <div className="flip-back" onClick={e => e.stopPropagation()}>
+        <div className="flip-back" style={{ boxShadow: `0 18px 44px ${c}36` }} onClick={e => e.stopPropagation()}>
           <button className="flip-close" onClick={e => { e.stopPropagation(); setFlipped(false); }} aria-label="Close">✕</button>
           <div style={{ textAlign: 'center' }}>
             <p className="flip-back-name">{bubble.name}</p>
-            <p className="flip-back-price">{priceStr}</p>
+            <p className="flip-back-price" style={{ color: c }}>{priceStr}</p>
           </div>
           <ul className="flip-back-bullets">
-            {bullets.map(b => <li key={b}>{b}</li>)}
+            {bullets.map(b => <li key={b} style={{ '--bcolor': c } as React.CSSProperties}>{b}</li>)}
           </ul>
-          <Link href={signupHref} className="flip-back-cta" onClick={e => e.stopPropagation()}>
+          <Link href={signupHref} className="flip-back-cta" style={{ background: `linear-gradient(135deg, ${c}, ${dk})`, boxShadow: `0 3px 10px ${c}55` }} onClick={e => e.stopPropagation()}>
             {ctaLabel}
           </Link>
         </div>
@@ -242,7 +250,7 @@ function LandingPage() {
         .flip-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.52s cubic-bezier(0.4,0,0.2,1); border-radius: 50%; }
         .flip-root.flipped .flip-inner { transform: rotateY(180deg); }
         .flip-front, .flip-back { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .flip-front { background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0) 48%), linear-gradient(160deg, rgba(240,72,78,0.95), rgba(200,10,18,0.92)); border: 1px solid rgba(255,255,255,0.45); box-shadow: inset 0 1px 1px rgba(255,255,255,0.55), inset 0 -10px 24px rgba(110,0,6,0.28), 0 18px 44px rgba(215,20,26,0.30); color: #fff; gap: 4%; text-align: center; }
+        .flip-front { border: 1px solid rgba(255,255,255,0.45); color: #fff; gap: 4%; text-align: center; }
         .flip-back { background: rgba(255,255,255,0.96); transform: rotateY(180deg); box-shadow: 0 18px 44px rgba(215,20,26,0.22); border: 1px solid rgba(255,255,255,0.9); padding: 6% 8%; flex-direction: column; justify-content: space-between; gap: 0; }
         .flip-front .n { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(12px, 2.6vw, 21px); letter-spacing: -0.5px; line-height: 1.15; padding: 0 10%; }
         .flip-front .s { font-size: clamp(10px, 1.9vw, 13.5px); font-weight: 600; opacity: .92; }
@@ -251,7 +259,7 @@ function LandingPage() {
         .flip-back-price { font-size: clamp(9px, 1.8vw, 14px); font-weight: 700; color: #D7141A; text-align: center; }
         .flip-back-bullets { list-style: none; display: flex; flex-direction: column; gap: clamp(2px, 0.5vw, 5px); flex: 1; justify-content: center; }
         .flip-back-bullets li { font-size: clamp(8px, 1.5vw, 12px); color: rgba(26,26,46,0.68); line-height: 1.35; display: flex; gap: 4px; }
-        .flip-back-bullets li::before { content: '✓'; color: #D7141A; font-weight: 700; flex-shrink: 0; }
+        .flip-back-bullets li::before { content: '✓'; color: var(--bcolor, #D7141A); font-weight: 700; flex-shrink: 0; }
         .flip-back-cta { display: flex; align-items: center; justify-content: center; width: 100%; padding: clamp(5px,1vw,9px) 0; border-radius: 100px; background: linear-gradient(135deg,#ff3b30,#D7141A); color: #fff; font-weight: 800; font-size: clamp(8px, 1.6vw, 13px); text-decoration: none; box-shadow: 0 3px 10px rgba(215,20,26,0.35); }
         .flip-close { position: absolute; top: 6%; right: 9%; background: none; border: none; cursor: pointer; color: rgba(26,26,46,0.35); font-size: clamp(10px, 2vw, 15px); line-height: 1; padding: 2px; }
         .lp-blurbs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
@@ -307,33 +315,51 @@ function LandingPage() {
             We help businesses navigate problems, understand change, and find solutions &mdash; through intelligent protection, smart tools, and technology that works for you.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.57, type: 'spring', stiffness: 120, damping: 22 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28 }}>
-            <button
-              onClick={() => setAudience('individual')}
-              style={{
-                padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-                background: audience === 'individual' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
-                color: audience === 'individual' ? '#fff' : 'rgba(28,28,30,0.52)',
-                transition: 'all 0.2s',
-              }}
-            >Individual</button>
-            <button
-              onClick={() => setAudience('business')}
-              style={{
-                padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-                background: audience === 'business' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
-                color: audience === 'business' ? '#fff' : 'rgba(28,28,30,0.52)',
-                transition: 'all 0.2s',
-              }}
-            >Business</button>
-            {audience === 'business' && (
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fff', background: '#D7141A', borderRadius: 999, padding: '3px 10px' }}>
-                Coming soon
-              </span>
-            )}
+            style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <button
+                onClick={() => setAudience('individual')}
+                style={{
+                  padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+                  background: audience === 'individual' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
+                  color: audience === 'individual' ? '#fff' : 'rgba(28,28,30,0.52)',
+                  transition: 'all 0.2s',
+                }}
+              >Individual</button>
+              <button
+                onClick={() => setAudience('business')}
+                style={{
+                  padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+                  background: audience === 'business' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
+                  color: audience === 'business' ? '#fff' : 'rgba(28,28,30,0.52)',
+                  transition: 'all 0.2s',
+                }}
+              >Business</button>
+              {audience === 'business' && (
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fff', background: '#D7141A', borderRadius: 999, padding: '3px 10px' }}>
+                  Coming soon
+                </span>
+              )}
+            </div>
+            <AnimatePresence mode="wait">
+              {audience === 'individual' ? (
+                <motion.p key="ind" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22 }}
+                  style={{ fontSize: 13, color: 'rgba(28,28,30,0.55)', lineHeight: 1.6, maxWidth: 400 }}>
+                  Freelancer, founder, or just someone with ideas worth protecting &mdash; Gratia Core works for you. Protect your data when using AI, vault your ideas before you share them, or swap services without cash changing hands.
+                </motion.p>
+              ) : (
+                <motion.p key="biz" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22 }}
+                  style={{ fontSize: 13, color: 'rgba(28,28,30,0.55)', lineHeight: 1.6, maxWidth: 400 }}>
+                  Multi-seat access, team vaults, compliance dashboards, and business-grade privacy tools are on the way. Join the waitlist and be first when the business tier launches.
+                </motion.p>
+              )}
+            </AnimatePresence>
           </motion.div>
           <motion.div className="hero-actions" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, type: 'spring', stiffness: 120, damping: 22 }}>
-            <Link href="/signup" className="btn-primary">Only pay for what you need <ChevronRight size={16} strokeWidth={2.5} /></Link>
+            {audience === 'individual'
+              ? <Link href="/signup" className="btn-primary">Only pay for what you need <ChevronRight size={16} strokeWidth={2.5} /></Link>
+              : <Link href="/contact?waitlist=business" className="btn-primary">Join the business waitlist <ChevronRight size={16} strokeWidth={2.5} /></Link>
+            }
           </motion.div>
         </div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 0.6 }}
@@ -367,13 +393,14 @@ function LandingPage() {
               }}>Join the waitlist →</Link>
             </div>
           )}
-          <div className="lp-orb" style={{ left: '5%', top: '5%', width: '60%', height: '75%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.30), rgba(215,20,26,0) 70%)' }} />
-          <div className="lp-orb" style={{ left: '40%', top: '35%', width: '55%', height: '64%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.34), rgba(255,120,126,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '5%', top: '5%', width: '50%', height: '65%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.28), rgba(215,20,26,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '50%', top: '0%', width: '45%', height: '55%', background: 'radial-gradient(circle at 50% 40%, rgba(191,90,242,0.28), rgba(191,90,242,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '42%', top: '45%', width: '50%', height: '55%', background: 'radial-gradient(circle at 50% 50%, rgba(48,209,88,0.24), rgba(48,209,88,0) 70%)' }} />
           {BUBBLES.map(b => (
             <FlipBubble key={b.id} bubble={b} />
           ))}
           {/* Dashed add bubble */}
-          <Link href="/signup" className="lp-add" style={{ left: '78%', top: '2%', width: '18%', flexDirection: 'column', gap: 3, padding: '0 4%' }}>
+          <Link href="/signup" className="lp-add" style={{ left: '5%', top: '68%', width: '18%', flexDirection: 'column', gap: 3, padding: '0 4%' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
             <span style={{ fontSize: 'clamp(9px,1.6vw,12px)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>Try today</span>
           </Link>

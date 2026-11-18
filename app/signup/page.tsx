@@ -17,11 +17,28 @@ function GCIcon({ size = 26 }: { size?: number }) {
   );
 }
 
+const AUDIENCE_INFO = {
+  individual: {
+    label: 'Individual',
+    emoji: '👤',
+    headline: 'For freelancers, founders & creators',
+    desc: 'Protect your data when using AI, vault your ideas before you share them, or swap services without cash. No monthly minimums — turn on what you need.',
+  },
+  business: {
+    label: 'Business',
+    emoji: '🏢',
+    headline: 'Team tools — coming soon',
+    desc: 'Multi-seat access, team vaults, compliance dashboards, and business-grade privacy. Join the waitlist and be first when the business tier launches.',
+    comingSoon: true,
+  },
+};
+
 function SignupPageInner() {
   const router = useRouter();
   const sp = useSearchParams();
-  const startModule = sp.get('module') || ''; // e.g. /signup?module=vault
+  const startModule = sp.get('module') || '';
 
+  const [audience, setAudience] = useState<'individual' | 'business'>('individual');
   const [firstName, setFirstName] = useState('');
   const [lastName,  setLastName]  = useState('');
   const [email,     setEmail]     = useState('');
@@ -32,7 +49,13 @@ function SignupPageInner() {
   const [exists,    setExists]    = useState(false);
   const [agree,     setAgree]     = useState(false);
 
+  const isBusiness = audience === 'business';
+
   const submit = async () => {
+    if (isBusiness) {
+      router.push('/contact?waitlist=business');
+      return;
+    }
     if (!firstName.trim())          { setError('Enter your first name.'); return; }
     if (!email.includes('@'))       { setError('Enter a valid email.'); return; }
     if (password.length < 8)        { setError('Password must be at least 8 characters.'); return; }
@@ -51,7 +74,6 @@ function SignupPageInner() {
         }
         throw e;
       }
-      // Supabase returns user with identities:[] when the email already exists
       if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
         setExists(true); setLoading(false); return;
       }
@@ -70,7 +92,6 @@ function SignupPageInner() {
           terms_version: '2026-10-10',
         }, { onConflict: 'id' });
       }
-      // Land on the bubbles, or straight into the module they clicked
       router.replace(startModule ? `/dashboard/modules?start=${startModule}` : '/dashboard');
     } catch (err: any) {
       setError(err.message || 'Something went wrong.');
@@ -89,6 +110,8 @@ function SignupPageInner() {
     color: 'rgba(26,26,46,0.5)', display: 'block', marginBottom: 5,
   };
 
+  const info = AUDIENCE_INFO[audience];
+
   return (
     <>
       <style>{`
@@ -96,75 +119,126 @@ function SignupPageInner() {
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
         @keyframes rainbowShift{to{background-position:200% center}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .aud-info{animation:fadeUp 0.22s ease}
       `}</style>
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans',sans-serif", background: 'radial-gradient(ellipse 70% 50% at 15% 5%,rgba(215,20,26,0.1) 0%,transparent 55%),linear-gradient(160deg,#f0eff4,#eae9f2 50%,#f2f0f7)' }}>
-        <div style={{ width: 'min(440px,100%)', background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(40px)', border: '0.5px solid rgba(255,255,255,0.92)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 'min(460px,100%)', background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(40px)', border: '0.5px solid rgba(255,255,255,0.92)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }}>
           <div style={{ height: 3, background: 'linear-gradient(90deg,#ff3b30,#ff9f0a,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff3b30)', backgroundSize: '200% auto', animation: 'rainbowShift 3s linear infinite' }} />
           <div style={{ padding: '28px 30px 26px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
               <GCIcon size={24} />
               <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 800, color: '#1a1a2e' }}>Gratia Core</span>
             </div>
-            <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', color: '#1a1a2e', marginBottom: 6 }}>Create your account</h1>
-            <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.55)', lineHeight: 1.6, marginBottom: 20 }}>
-              {startModule
-                ? `You're one step away from turning on ${startModule.charAt(0).toUpperCase() + startModule.slice(1)}.`
-                : 'Turn on only what you need. Cancel any module, any day.'}
-            </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={lbl}>First name</label>
-                <input value={firstName} onChange={e => { setFirstName(e.target.value); setError(''); }} placeholder="Jane" style={inp} />
+            {/* Audience toggle */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(26,26,46,0.4)', marginBottom: 8 }}>I am signing up as</p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                {(['individual', 'business'] as const).map(a => (
+                  <button key={a} onClick={() => { setAudience(a); setError(''); }} style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                    border: audience === a ? '1.5px solid #1c1c1e' : '1px solid rgba(0,0,0,0.1)',
+                    cursor: 'pointer', transition: 'all 0.18s',
+                    background: audience === a ? '#1c1c1e' : 'rgba(255,255,255,0.6)',
+                    color: audience === a ? '#fff' : 'rgba(26,26,46,0.6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}>
+                    <span>{AUDIENCE_INFO[a].emoji}</span>
+                    <span>{AUDIENCE_INFO[a].label}</span>
+                    {a === 'business' && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', background: '#D7141A', color: '#fff', borderRadius: 999, padding: '2px 6px', marginLeft: 2 }}>Soon</span>}
+                  </button>
+                ))}
               </div>
-              <div>
-                <label style={lbl}>Last name</label>
-                <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Doe" style={inp} />
+              {/* Context blurb */}
+              <div key={audience} className="aud-info" style={{ background: isBusiness ? 'rgba(215,20,26,0.04)' : 'rgba(28,28,30,0.03)', border: `0.5px solid ${isBusiness ? 'rgba(215,20,26,0.15)' : 'rgba(28,28,30,0.08)'}`, borderRadius: 12, padding: '12px 14px' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{info.headline}</p>
+                <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.6)', lineHeight: 1.6 }}>{info.desc}</p>
               </div>
             </div>
 
-            <label style={lbl}>Email</label>
-            <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setExists(false); }} placeholder="jane@company.com" style={inp} />
-
-            <label style={lbl}>Password</label>
-            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} placeholder="At least 8 characters" style={inp} />
-
-            <label style={lbl}>Confirm password</label>
-            <input type="password" value={confirm} onChange={e => { setConfirm(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="Re-enter your password" style={inp} />
-
-            {exists && (
-              <div style={{ background: 'rgba(10,132,255,0.06)', border: '0.5px solid rgba(10,132,255,0.2)', borderRadius: 12, padding: '14px 16px', marginBottom: 12 }}>
-                <p style={{ fontSize: 13, color: '#1a1a2e', fontWeight: 700, marginBottom: 4 }}>That email already has an account.</p>
-                <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.65)', lineHeight: 1.6, marginBottom: 8 }}>Just log in — you're already set up.</p>
-                <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#0a84ff', textDecoration: 'none' }}>Log in →</Link>
+            {isBusiness ? (
+              /* Business CTA — no form */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={submit}
+                  style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#ff3b30,#D7141A)', boxShadow: '0 6px 20px rgba(215,20,26,0.4)' }}
+                >
+                  Join the business waitlist →
+                </button>
+                <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.5)', textAlign: 'center' }}>
+                  Need it now?{' '}
+                  <button onClick={() => setAudience('individual')} style={{ color: '#D7141A', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, padding: 0 }}>
+                    Sign up as an individual
+                  </button>
+                </p>
               </div>
+            ) : (
+              /* Individual form */
+              <>
+                <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', color: '#1a1a2e', marginBottom: 6 }}>Create your account</h1>
+                <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.55)', lineHeight: 1.6, marginBottom: 18 }}>
+                  {startModule
+                    ? `One step away from turning on ${startModule.charAt(0).toUpperCase() + startModule.slice(1)}.`
+                    : 'Turn on only what you need. Cancel any module, any day.'}
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={lbl}>First name</label>
+                    <input value={firstName} onChange={e => { setFirstName(e.target.value); setError(''); }} placeholder="Jane" style={inp} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Last name</label>
+                    <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Doe" style={inp} />
+                  </div>
+                </div>
+
+                <label style={lbl}>Email</label>
+                <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setExists(false); }} placeholder="jane@company.com" style={inp} />
+
+                <label style={lbl}>Password</label>
+                <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} placeholder="At least 8 characters" style={inp} />
+
+                <label style={lbl}>Confirm password</label>
+                <input type="password" value={confirm} onChange={e => { setConfirm(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="Re-enter your password" style={inp} />
+
+                {exists && (
+                  <div style={{ background: 'rgba(10,132,255,0.06)', border: '0.5px solid rgba(10,132,255,0.2)', borderRadius: 12, padding: '14px 16px', marginBottom: 12 }}>
+                    <p style={{ fontSize: 13, color: '#1a1a2e', fontWeight: 700, marginBottom: 4 }}>That email already has an account.</p>
+                    <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.65)', lineHeight: 1.6, marginBottom: 8 }}>Just log in — you are already set up.</p>
+                    <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#0a84ff', textDecoration: 'none' }}>Log in</Link>
+                  </div>
+                )}
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, margin: '4px 0 2px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={agree} onChange={e => { setAgree(e.target.checked); setError(''); }} style={{ marginTop: 2, width: 16, height: 16, accentColor: '#D7141A', flexShrink: 0, cursor: 'pointer' }} />
+                  <span style={{ fontSize: 12, color: 'rgba(26,26,46,0.62)', lineHeight: 1.5 }}>
+                    I agree to the{' '}
+                    <Link href="/terms" target="_blank" style={{ color: '#D7141A', fontWeight: 600, textDecoration: 'none' }}>Terms of Service</Link>
+                    {' '}and{' '}
+                    <Link href="/privacy" target="_blank" style={{ color: '#D7141A', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</Link>
+                    , including the arbitration and class-action-waiver terms. I consent to receive account and service emails.
+                  </span>
+                </label>
+
+                {error && <p style={{ fontSize: 12, color: '#ff3b30', margin: '10px 0 4px' }}>{error}</p>}
+
+                <button
+                  onClick={submit}
+                  disabled={loading || !agree}
+                  style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: (loading || !agree) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#ff3b30,#D7141A)', boxShadow: '0 6px 20px rgba(215,20,26,0.4)', marginTop: 12, opacity: agree ? 1 : 0.55 }}
+                >
+                  {loading ? 'Creating account...' : 'Continue'}
+                </button>
+
+                <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.5)', textAlign: 'center', marginTop: 14 }}>
+                  Already have an account?{' '}
+                  <Link href="/login" style={{ color: '#D7141A', fontWeight: 600, textDecoration: 'none' }}>Log in</Link>
+                </p>
+              </>
             )}
-
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, margin: '4px 0 2px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={agree} onChange={e => { setAgree(e.target.checked); setError(''); }} style={{ marginTop: 2, width: 16, height: 16, accentColor: '#D7141A', flexShrink: 0, cursor: 'pointer' }} />
-              <span style={{ fontSize: 12, color: 'rgba(26,26,46,0.62)', lineHeight: 1.5 }}>
-                I agree to the{' '}
-                <Link href="/terms" target="_blank" style={{ color: '#D7141A', fontWeight: 600, textDecoration: 'none' }}>Terms of Service</Link>
-                {' '}and{' '}
-                <Link href="/privacy" target="_blank" style={{ color: '#D7141A', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</Link>
-                , including the arbitration and class-action-waiver terms. I consent to receive account and service emails.
-              </span>
-            </label>
-
-            {error && <p style={{ fontSize: 12, color: '#ff3b30', margin: '10px 0 4px' }}>{error}</p>}
-
-            <button
-              onClick={submit}
-              disabled={loading || !agree}
-              style={{ width: '100%', padding: 15, borderRadius: 100, border: 'none', cursor: (loading || !agree) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#ff3b30,#D7141A)', boxShadow: '0 6px 20px rgba(215,20,26,0.4)', marginTop: 12, opacity: agree ? 1 : 0.55 }}
-            >
-              {loading ? 'Creating account…' : 'Continue →'}
-            </button>
-
-            <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.5)', textAlign: 'center', marginTop: 14 }}>
-              Already have an account?{' '}
-              <Link href="/login" style={{ color: '#D7141A', fontWeight: 600, textDecoration: 'none' }}>Log in</Link>
-            </p>
           </div>
         </div>
       </div>
