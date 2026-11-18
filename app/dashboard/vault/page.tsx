@@ -1,927 +1,777 @@
-// @ts-nocheck
 'use client';
+// @ts-nocheck
+// app/dashboard/vault/page.tsx — Idea Vault
+// Red bubble aesthetic matching dashboard. SHA-256 seal, file attachments,
+// code hash, GitHub commit snapshot, canary mark checker.
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import Header from '@/components/Header';
-import ModuleGate from '@/components/ModuleGate';
+import { useModules } from '@/components/gc/useModules';
+import { Header, Icon, Modal, ModuleGate, fmtDate } from '@/components/gc/ui';
+import { readCanary } from '@/lib/canary';
 
-/* ─────────────────────────────────────────────
-   Types
-───────────────────────────────────────────── */
-type IdeaCategory = 'code' | 'product' | 'future';
-type IdeaStatus   = 'draft' | 'sealed';
+const BUCKET = 'vault-attachments';
+const MAX_FILE_MB = 20;
+const ACCEPT = 'image/*,.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,.heic,.svg,.ts,.tsx,.js,.jsx,.py,.sol,.go,.rs,.java,.swift,.kt,.rb,.php,.html,.css,.json,.md';
 
-interface VaultIdea {
-  id: string;
-  user_id: string;
-  title: string;
-  category: IdeaCategory;
-  problem: string;
-  solution: string;
-  key_claims: string;
-  tags: string[];
-  status: IdeaStatus;
-  created_at: string;
-  sealed_at: string | null;
-  seal_id: string | null;
-  expanded_doc: string | null;
-  seal_meta: {
-    code_hash?: string;
-    code_preview?: string;
-    github?: {
-      sha: string; tree_sha: string; message: string;
-      author: string; committed_at: string; html_url: string;
-    };
-  } | null;
-  files?: { name: string; size: number; path: string }[];
+const INDUSTRIES = ['Fintech', 'SaaS', 'Marketplace', 'Logistics', 'Healthcare', 'Education', 'Retail', 'Food & Bev', 'AI/ML', 'Hardware', 'Consumer', 'B2B', 'Fashion', 'Legal', 'Real Estate'];
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+function storagePath(userId: string, ideaId: string, fileName: string) {
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return `${userId}/${ideaId}/${Date.now()}_${safe}`;
+}
+async function uploadFile(userId: string, ideaId: string, file: File) {
+  const path = storagePath(userId, ideaId, file.name);
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+  if (error) throw error;
+  await supabase.from('vault_attachments').insert({
+    idea_id: ideaId, user_id: userId,
+    storage_path: path, file_name: file.name, file_type: file.type, file_size: file.size,
+  });
+  return path;
+}
+async function getSignedUrl(path: string) {
+  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
+  return data?.signedUrl || null;
+}
+async function deleteAttachment(id: string, path: string) {
+  await supabase.storage.from(BUCKET).remove([path]);
+  await supabase.from('vault_attachments').delete().eq('id', id);
+}
+function formatBytes(b: number) {
+  if (b < 1024) return `${b} B`;
+  if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / 1048576).toFixed(1)} MB`;
+}
+function fileIcon(type: string) {
+  if (type.startsWith('image/')) return '🖼';
+  if (type === 'application/pdf') return '📄';
+  if (type.includes('javascript') || type.includes('typescript') || type.includes('python') || type.includes('text/x-')) return '💻';
+  return '📎';
 }
 
-/* ─────────────────────────────────────────────
-   Constants
-───────────────────────────────────────────── */
-const CAT_LABELS: Record<IdeaCategory, string> = {
-  code:    '💻 Code',
-  product: '📦 Physical product',
-  future:  '💡 Future idea',
+// ── inline styles matching dashboard aesthetic ────────────────────────────────
+const inp: React.CSSProperties = {
+  width: '100%', padding: '13px 16px', borderRadius: 12, fontSize: 15,
+  fontFamily: 'inherit', outline: 'none', background: 'rgba(120,120,128,0.08)',
+  border: '1px solid rgba(0,0,0,0.1)', color: '#1c1c1e', boxSizing: 'border-box',
+};
+const ta: React.CSSProperties = { ...inp, resize: 'vertical', lineHeight: 1.6 };
+const sectionStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(40px)',
+  WebkitBackdropFilter: 'blur(40px)', borderRadius: 24,
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 32px rgba(0,0,0,0.08)',
+  padding: '22px 24px',
+};
+const primarySection: React.CSSProperties = {
+  ...sectionStyle,
+  boxShadow: 'inset 0 0 0 2px rgba(215,20,26,0.18), inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 32px rgba(215,20,26,0.08)',
+};
+const pinkSection: React.CSSProperties = {
+  ...sectionStyle,
+  background: 'rgba(255,59,48,0.07)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 16px rgba(215,20,26,0.06)',
 };
 
-const CAT_FIELDS: Record<IdeaCategory, { problem: string; solution: string; claims: string }> = {
-  code: {
-    problem:  'What problem does this software solve, and who has it?',
-    solution: 'How does it work technically? Language, stack, key algorithm.',
-    claims:   'What is novel? New algorithm, architecture, UX pattern — number each one.',
-  },
-  product: {
-    problem:  'What physical problem does this product solve?',
-    solution: 'How is it made, what materials, how does it work?',
-    claims:   'What makes it unique? Design, materials, mechanism — number each.',
-  },
-  future: {
-    problem:  'What gap or opportunity have you identified?',
-    solution: 'How would you approach building or executing this?',
-    claims:   'What is the core insight that makes this valuable? Number each point.',
-  },
-};
+// ── FileAttachments ───────────────────────────────────────────────────────────
 
-/* ─────────────────────────────────────────────
-   Styles (inline — no Tailwind, no CSS modules)
-───────────────────────────────────────────── */
-const S = {
-  page: { minHeight: '100vh', background: '#f2f2f7', fontFamily: "'DM Sans',system-ui,sans-serif", WebkitFontSmoothing: 'antialiased' as const, overflowX: 'hidden' as const },
-  orb1: { position: 'fixed' as const, top: '-12%', left: '-5%', width: '55vw', height: '55vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(255,59,48,0.08) 0%,rgba(255,255,255,0) 70%)', filter: 'blur(40px)', animation: 'meshFloat1 18s ease-in-out infinite', pointerEvents: 'none' as const, zIndex: 0 },
-  orb2: { position: 'fixed' as const, top: '25%', right: '-8%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(10,132,255,0.06) 0%,rgba(255,255,255,0) 70%)', filter: 'blur(50px)', animation: 'meshFloat2 22s ease-in-out infinite', pointerEvents: 'none' as const, zIndex: 0 },
-  shell: { maxWidth: 1080, margin: '0 auto', padding: '0 24px 80px', position: 'relative' as const, zIndex: 1 },
-  glass: (primary = false): React.CSSProperties => ({
-    background: 'rgba(255,255,255,0.82)',
-    backdropFilter: 'blur(40px)',
-    WebkitBackdropFilter: 'blur(40px)',
-    borderRadius: 20,
-    boxShadow: primary
-      ? 'inset 0 0 0 1.5px rgba(215,20,26,0.16),inset 0 1px 0 rgba(255,255,255,0.95),0 8px 32px rgba(215,20,26,0.07)'
-      : 'inset 0 1px 0 rgba(255,255,255,0.95),0 8px 32px rgba(0,0,0,0.07)',
-  }),
-  glassLight: { background: 'rgba(215,20,26,0.07)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)' } as React.CSSProperties,
-  btnRed: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit' } as React.CSSProperties,
-  btnGhost: { padding: '7px 13px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'rgba(120,120,128,0.1)', color: '#1c1c1e', border: 'none', cursor: 'pointer', fontFamily: 'inherit' } as React.CSSProperties,
-  inp: { width: '100%', padding: '12px 15px', borderRadius: 11, fontSize: 14, fontFamily: 'inherit', outline: 'none', background: 'rgba(120,120,128,0.09)', border: '1px solid rgba(0,0,0,0.09)', color: '#1c1c1e', boxSizing: 'border-box' as const },
-  ta:  { width: '100%', padding: '12px 15px', borderRadius: 11, fontSize: 14, fontFamily: 'inherit', outline: 'none', background: 'rgba(120,120,128,0.09)', border: '1px solid rgba(0,0,0,0.09)', color: '#1c1c1e', boxSizing: 'border-box' as const, resize: 'vertical' as const, lineHeight: 1.6 },
-};
+function FileAttachments({ ideaId, userId, sealed }: { ideaId: string; userId: string; sealed: boolean }) {
+  const [files, setFiles] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
-/* ─────────────────────────────────────────────
-   Badge
-───────────────────────────────────────────── */
-function Badge({ children, variant = 'default' }: { children: React.ReactNode; variant?: 'sealed' | 'draft' | 'tag' | 'mono' | 'default' }) {
-  const styles: Record<string, React.CSSProperties> = {
-    sealed:  { background: 'rgba(52,199,89,0.1)',  color: '#248A3D' },
-    draft:   { background: 'rgba(215,20,26,0.07)', color: '#D7141A' },
-    tag:     { background: 'rgba(215,20,26,0.07)', color: '#D7141A' },
-    mono:    { background: 'rgba(0,0,0,0.07)',      color: '#636366', fontFamily: 'ui-monospace,monospace' },
-    default: { background: 'rgba(120,120,128,0.1)', color: '#636366' },
+  const load = async () => {
+    const { data } = await supabase.from('vault_attachments').select('*').eq('idea_id', ideaId).order('created_at');
+    setFiles(data || []);
   };
-  return <span style={{ padding: '2px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, ...styles[variant] }}>{children}</span>;
-}
+  useEffect(() => { load(); }, [ideaId]);
 
-/* ─────────────────────────────────────────────
-   Canary watermark widget
-───────────────────────────────────────────── */
-function CanaryWidget({ sealedIdeas }: { sealedIdeas: VaultIdea[] }) {
-  const [tab, setTab]           = useState<'protect' | 'detect'>('protect');
-  const [assetType, setAsset]   = useState<'text' | 'image' | 'code'>('text');
-  const [checkAsset, setCheckA] = useState<'text' | 'image' | 'code'>('text');
-  const [markText, setMarkText] = useState('');
-  const [markedResult, setMarked] = useState('');
-  const [checkText, setCheckText] = useState('');
-  const [checkResult, setCheckR]  = useState<null | { found: boolean; idea?: VaultIdea }>(null);
-  const [copied, setCopied]       = useState(false);
-
-  if (sealedIdeas.length === 0) return null;
-
-  function embedMark(text: string, sealId: string): string {
-    // zero-width steganography: encode sealId bytes after every 5th word
-    const ZW0 = '​', ZW1 = '‌', SEP = '‍';
-    function encodeByte(b: number): string {
-      let s = '';
-      for (let i = 7; i >= 0; i--) s += (b >> i) & 1 ? ZW1 : ZW0;
-      return s + SEP;
+  const handleFiles = async (list: FileList | null) => {
+    if (!list || sealed) return;
+    setErr('');
+    for (const file of Array.from(list)) {
+      if (file.size > MAX_FILE_MB * 1048576) { setErr(`${file.name} is over ${MAX_FILE_MB} MB.`); continue; }
+      setUploading(true);
+      try { await uploadFile(userId, ideaId, file); }
+      catch (e: any) { setErr(`Could not upload ${file.name}.`); }
+      setUploading(false);
     }
-    const payload = Array.from(sealId).map(c => encodeByte(c.charCodeAt(0))).join('');
-    const words = text.split(' ');
-    return words.map((w, i) => ((i + 1) % 5 === 0 ? w + payload : w)).join(' ');
-  }
-
-  function detectMark(text: string): string | null {
-    const ZW0 = '​', ZW1 = '‌', SEP = '‍';
-    const hidden = text.split('').filter(c => c === ZW0 || c === ZW1 || c === SEP).join('');
-    if (!hidden) return null;
-    try {
-      const bytes = hidden.split(SEP).filter(Boolean);
-      return bytes.map(b => String.fromCharCode(parseInt(b.replace(new RegExp(ZW1, 'g'), '1').replace(new RegExp(ZW0, 'g'), '0'), 2))).join('');
-    } catch { return null; }
-  }
-
-  function doMark() {
-    if (!markText.trim() || !sealedIdeas[0]?.seal_id) return;
-    setMarked(embedMark(markText.trim(), sealedIdeas[0].seal_id));
-  }
-
-  function doCopy() {
-    navigator.clipboard.writeText(markedResult).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function doCheck() {
-    if (!checkText.trim()) return;
-    const found = detectMark(checkText);
-    if (!found) { setCheckR({ found: false }); return; }
-    const idea = sealedIdeas.find(i => i.seal_id && checkText.includes(i.seal_id.slice(0, 4)));
-    setCheckR({ found: true, idea: idea || sealedIdeas[0] });
-  }
-
-  const tabBtn = (active: boolean): React.CSSProperties => ({
-    flex: 1, padding: '6px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none',
-    cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
-    background: active ? '#fff' : 'transparent',
-    boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-    color: active ? '#1c1c1e' : '#636366',
-  });
-
-  const assetPill = (active: boolean): React.CSSProperties => ({
-    padding: '5px 12px', borderRadius: 99, fontSize: 12, fontWeight: 600,
-    border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-    background: active ? '#D7141A' : 'rgba(120,120,128,0.1)',
-    color: active ? '#fff' : '#1c1c1e',
-  });
+    load();
+  };
 
   return (
-    <div style={{ ...S.glass(), padding: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <div style={{ width: 30, height: 30, borderRadius: 15, background: 'rgba(215,20,26,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D7141A" strokeWidth="2.2" strokeLinecap="round"><path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6A5 5 0 0 1 6 7h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {!sealed && (
+        <div
+          onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+          onDragOver={e => e.preventDefault()}
+          onClick={() => inputRef.current?.click()}
+          style={{
+            border: '2px dashed rgba(215,20,26,0.3)', borderRadius: 14,
+            padding: '14px 16px', cursor: 'pointer', textAlign: 'center',
+            background: 'rgba(215,20,26,0.03)', transition: 'border-color .15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(215,20,26,0.65)')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(215,20,26,0.3)')}
+        >
+          <input ref={inputRef} type="file" multiple accept={ACCEPT} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
+          <span style={{ fontSize: 13, color: '#8e8e93' }}>
+            {uploading ? 'Uploading…' : 'Drop files or click · images, PDFs, code files · max 20 MB each'}
+          </span>
         </div>
-        <span style={{ fontSize: 15, fontWeight: 700 }}>Canary watermark</span>
-      </div>
-
-      {/* tabs */}
-      <div style={{ display: 'flex', gap: 4, background: 'rgba(120,120,128,0.09)', borderRadius: 10, padding: 3, marginBottom: 12 }}>
-        <button style={tabBtn(tab === 'protect')} onClick={() => setTab('protect')}>🔏 Protect</button>
-        <button style={tabBtn(tab === 'detect')}  onClick={() => setTab('detect')}>🔍 Detect</button>
-      </div>
-
-      {tab === 'protect' && (
-        <>
-          <p style={{ fontSize: 12.5, color: '#636366', lineHeight: 1.5, marginBottom: 10 }}>
-            Embed an invisible mark in your work. If someone steals it, the mark travels with it.
-          </p>
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginBottom: 12 }}>
-            {(['text','image','code'] as const).map(a => (
-              <button key={a} style={assetPill(assetType === a)} onClick={() => setAsset(a)}>
-                {a === 'text' ? '📝 Text' : a === 'image' ? '🖼 Image / video' : '💻 Code'}
-              </button>
-            ))}
-          </div>
-
-          {assetType === 'text' && (
-            <>
-              <textarea style={{ ...S.ta, fontSize: 13, marginBottom: 8, minHeight: 72 }} placeholder="Paste your idea text to watermark…" value={markText} onChange={e => { setMarkText(e.target.value); setMarked(''); }} rows={3} />
-              <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 11, minHeight: 40, fontSize: 13 }} onClick={doMark}>Embed invisible mark →</button>
-              {markedResult && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase' as const, color: '#D7141A', marginBottom: 5 }}>Marked — Seal: {sealedIdeas[0].seal_id}</div>
-                  <div style={{ background: 'rgba(120,120,128,0.09)', borderRadius: 10, padding: '10px 12px', fontSize: 13, lineHeight: 1.6, position: 'relative' as const }}>
-                    {markedResult}
-                    <button onClick={doCopy} style={{ position: 'absolute' as const, top: 7, right: 8, background: '#D7141A', color: '#fff', border: 'none', borderRadius: 7, fontSize: 11, fontWeight: 700, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {copied ? '✓ Copied' : 'Copy'}
-                    </button>
-                  </div>
-                  <p style={{ fontSize: 11, color: '#8e8e93', marginTop: 5, lineHeight: 1.5 }}>Share this version. The mark is invisible — if someone copies it, it travels with the text.</p>
-                </div>
-              )}
-              <p style={{ fontSize: 11, color: '#8e8e93', marginTop: 6, lineHeight: 1.5 }}>Zero-width characters inserted every 5 words. Survives copy-paste on most platforms (not Twitter/X).</p>
-            </>
-          )}
-
-          {assetType === 'image' && (
-            <>
-              <div style={{ border: '2px dashed rgba(215,20,26,0.28)', borderRadius: 12, padding: 16, textAlign: 'center' as const, background: 'rgba(215,20,26,0.03)', cursor: 'pointer', marginBottom: 8 }}>
-                <div style={{ fontSize: 24, marginBottom: 4 }}>🖼</div>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>Drop image or video</div>
-                <div style={{ fontSize: 12, color: '#8e8e93' }}>PNG, JPG, MP4 · max 50 MB</div>
-              </div>
-              <div style={{ background: 'rgba(215,20,26,0.07)', borderRadius: 11, padding: '10px 13px', fontSize: 12.5, color: '#636366', lineHeight: 1.6, marginBottom: 8 }}>
-                <strong style={{ color: '#D7141A' }}>Two protection layers:</strong><br />
-                ① <strong>LSB steganography</strong> — Seal ID encoded in pixel data. Survives compression, cropping, screenshots.<br />
-                ② <strong>Adversarial perturbation</strong> — microscopic pixel noise that poisons AI training. Invisible to the human eye.
-              </div>
-              <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 11, minHeight: 40, fontSize: 13 }}>Mark this image →</button>
-            </>
-          )}
-
-          {assetType === 'code' && (
-            <>
-              <textarea style={{ ...S.ta, fontFamily: 'ui-monospace,monospace', fontSize: 12, marginBottom: 8, minHeight: 80 }} placeholder="Paste your code to watermark…" rows={4} />
-              <div style={{ background: 'rgba(215,20,26,0.07)', borderRadius: 11, padding: '10px 13px', fontSize: 12.5, color: '#636366', lineHeight: 1.6, marginBottom: 8 }}>
-                <strong style={{ color: '#D7141A' }}>Three layers for code:</strong><br />
-                ① Variable casing fingerprint unique to your Seal ID<br />
-                ② Whitespace signature — trailing spaces encode your ID<br />
-                ③ Hidden hash comment buried in the logic
-              </div>
-              <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 11, minHeight: 40, fontSize: 13 }}>Embed code mark →</button>
-            </>
-          )}
-        </>
       )}
-
-      {tab === 'detect' && (
-        <>
-          <p style={{ fontSize: 12.5, color: '#636366', lineHeight: 1.5, marginBottom: 10 }}>
-            Found your work somewhere it shouldn't be? Check if it carries your mark.
-          </p>
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginBottom: 12 }}>
-            {(['text','image','code'] as const).map(a => (
-              <button key={a} style={assetPill(checkAsset === a)} onClick={() => { setCheckA(a); setCheckR(null); }}>
-                {a === 'text' ? '📝 Text' : a === 'image' ? '🖼 Image / video' : '💻 Code'}
-              </button>
-            ))}
-          </div>
-
-          {(checkAsset === 'text' || checkAsset === 'code') && (
-            <>
-              <textarea
-                style={{ ...S.ta, fontSize: checkAsset === 'code' ? 12 : 13, fontFamily: checkAsset === 'code' ? 'ui-monospace,monospace' : 'inherit', marginBottom: 8, minHeight: 72 }}
-                placeholder={checkAsset === 'code' ? 'Paste suspicious code here…' : 'Paste suspicious text here…'}
-                value={checkText} onChange={e => { setCheckText(e.target.value); setCheckR(null); }} rows={3}
-              />
-              <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 11, minHeight: 40, fontSize: 13 }} onClick={doCheck}>Check for mark</button>
-              {checkResult !== null && (
-                checkResult.found ? (
-                  <div style={{ background: 'rgba(215,20,26,0.07)', borderRadius: 12, padding: '11px 14px', marginTop: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#D7141A', fontWeight: 700, fontSize: 13, marginBottom: 4 }}>✓ Canary found — {checkResult.idea?.seal_id}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3 }}>"{checkResult.idea?.title}"</div>
-                    <div style={{ fontSize: 13, color: '#636366', lineHeight: 1.5 }}>This text carries your hidden mark. Use your seal certificate + this match as evidence of theft.</div>
-                  </div>
-                ) : (
-                  <p style={{ fontSize: 12, color: '#8e8e93', marginTop: 8, lineHeight: 1.5 }}>No canary mark found. This text wasn't shared from a watermarked copy, or the platform stripped invisible characters (Twitter/X does this — most others don't).</p>
-                )
-              )}
-            </>
+      {err && <p style={{ fontSize: 13, color: '#D7141A', margin: 0 }}>{err}</p>}
+      {files.map(f => (
+        <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(0,0,0,0.04)', borderRadius: 10 }}>
+          <span style={{ fontSize: 18 }}>{fileIcon(f.file_type)}</span>
+          <button onClick={async () => { const url = await getSignedUrl(f.storage_path); if (url) window.open(url, '_blank', 'noopener'); }}
+            style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, display: 'block', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.file_name}</span>
+            <span style={{ fontSize: 11, color: '#8e8e93' }}>{formatBytes(f.file_size)}</span>
+          </button>
+          {!sealed && (
+            <button onClick={() => deleteAttachment(f.id, f.storage_path).then(load)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8e8e93', padding: 4 }}>
+              <Icon.close size={14} />
+            </button>
           )}
-
-          {checkAsset === 'image' && (
-            <>
-              <div style={{ border: '2px dashed rgba(215,20,26,0.28)', borderRadius: 12, padding: 16, textAlign: 'center' as const, background: 'rgba(215,20,26,0.03)', cursor: 'pointer', marginBottom: 8 }}>
-                <div style={{ fontSize: 24, marginBottom: 4 }}>🖼</div>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>Upload suspected stolen image</div>
-                <div style={{ fontSize: 12, color: '#8e8e93' }}>We'll extract the LSB layer and match it to your seals</div>
-              </div>
-              <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 11, minHeight: 40, fontSize: 13 }}>Scan for mark</button>
-            </>
-          )}
-        </>
-      )}
+        </div>
+      ))}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   New Idea Modal
-───────────────────────────────────────────── */
-function NewIdeaModal({ onClose, onSaved }: { onClose: () => void; onSaved: (idea: VaultIdea) => void }) {
-  const [step, setStep]         = useState(0);
-  const [category, setCat]      = useState<IdeaCategory>('code');
-  const [title, setTitle]       = useState('');
-  const [problem, setProblem]   = useState('');
+// ── NewIdeaModal ──────────────────────────────────────────────────────────────
+
+function NewIdeaModal({ onClose, onCreated, userId }) {
+  const [step, setStep] = useState<'write' | 'code' | 'files'>('write');
+  const [title, setTitle] = useState('');
+  const [problem, setProblem] = useState('');
   const [solution, setSolution] = useState('');
-  const [claims, setClaims]     = useState('');
-  const [tags, setTags]         = useState<string[]>([]);
-  const [codeMode, setCodeMode] = useState<'paste' | 'github' | 'skip'>('paste');
-  const [codeSnippet, setCode]  = useState('');
-  const [githubUrl, setGithub]  = useState('');
-  const [files, setFiles]       = useState<File[]>([]);
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [claims, setClaims] = useState('');
+  const [users2, setUsers2] = useState('');
+  const [diff, setDiff] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  // code/repo step
+  const [codeType, setCodeType] = useState<'none' | 'paste' | 'github'>('none');
+  const [codeSnippet, setCodeSnippet] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [savedIdea, setSavedIdea] = useState<any>(null);
 
-  const ALL_TAGS = ['SaaS', 'Fintech', 'Fashion', 'AI/ML', 'Marketplace', 'Hardware', 'B2B', 'Consumer', 'Open source'];
-  const fields = CAT_FIELDS[category];
-
-  const steps = [
-    { label: 'Step 1 of 3', title: 'Write it down.', desc: 'The more detail, the stronger your record. Choose a category — it tailors the prompts.' },
-    { label: 'Step 2 of 3', title: 'Add code or a repo.', desc: category === 'code' ? 'Prove you wrote it. Paste a snippet to hash it, or point to a GitHub commit.' : 'Have code or a prototype? Add it. Skip if not.' },
-    { label: 'Step 3 of 3', title: 'Supporting files.', desc: 'Sketches, photos, mockups, design files — anything that proves you had this idea today.' },
+  const FIELDS = [
+    { label: 'Problem', hint: 'What problem does this solve, and who has it?', value: problem, set: setProblem, ph: 'e.g. Night-market food vendors lose sales to long lines…', rows: 3 },
+    { label: 'Solution', hint: 'How does it work when someone uses it?', value: solution, set: setSolution, ph: 'e.g. Customers pre-order and pay from a QR code at the stall…', rows: 3 },
+    { label: 'Key claims', hint: '3–5 things that are new or different. Number them.', value: claims, set: setClaims, ph: '1. …\n2. …\n3. …', rows: 4 },
+    { label: 'Intended users', hint: 'Who exactly would use this?', value: users2, set: setUsers2, ph: 'e.g. Street-food vendors doing 100+ orders a night…', rows: 2 },
+    { label: 'How it differs', hint: 'What exists today and how is yours different?', value: diff, set: setDiff, ph: 'e.g. Square handles payment but not the queue…', rows: 3 },
   ];
 
-  async function save() {
-    if (!title.trim()) { setError('Add a title first.'); return; }
-    setSaving(true); setError('');
+  const complete = title.trim() && problem.trim() && solution.trim() && claims.trim() && users2.trim() && diff.trim();
+  const buildDoc = () => `PRIOR ART DISCLOSURE\n\nTitle: ${title}\n\nPROBLEM:\n${problem}\n\nSOLUTION:\n${solution}\n\nKEY CLAIMS:\n${claims}\n\nINTENDED USERS:\n${users2}\n\nDIFFERENTIATION:\n${diff}`;
+
+  const saveIdea = async () => {
+    if (!complete) { setError('Fill in every section before saving.'); return; }
+    setLoading(true); setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not signed in');
       const { data, error: dbErr } = await supabase.from('vault_ideas').insert({
-        user_id: user.id,
-        title: title.trim(),
-        category,
-        problem: problem.trim(),
-        solution: solution.trim(),
-        key_claims: claims.trim(),
-        tags,
-        status: 'draft',
+        user_id: user.id, title: title.trim(), description: problem.trim(),
+        expanded_doc: buildDoc(), tags, status: 'draft',
       }).select().single();
       if (dbErr) throw dbErr;
+      setSavedIdea(data);
+      setStep('code');
+    } catch { setError('Could not save that. Try again.'); }
+    setLoading(false);
+  };
 
-      // upload files if any
-      if (files.length && data) {
-        for (const file of files) {
-          const path = `${user.id}/${data.id}/${file.name}`;
-          await supabase.storage.from('vault-attachments').upload(path, file, { upsert: true });
-        }
-      }
-      onSaved(data as VaultIdea);
-      onClose();
-    } catch (e: any) {
-      setError(e.message || 'Something went wrong.');
-    } finally {
-      setSaving(false);
-    }
-  }
+  const done = () => { onCreated(savedIdea); onClose(); };
 
-  const stepSeg = (i: number): React.CSSProperties => ({
-    height: 4, flex: 1, borderRadius: 99,
-    background: i < step ? 'rgba(215,20,26,0.3)' : i === step ? '#D7141A' : 'rgba(0,0,0,0.1)',
-    transition: 'background .2s',
-  });
-
-  const catBtn = (c: IdeaCategory): React.CSSProperties => ({
-    padding: '8px 16px', borderRadius: 99, fontSize: 13, fontWeight: 600, border: 'none',
-    cursor: 'pointer', fontFamily: 'inherit',
-    background: category === c ? '#D7141A' : 'rgba(120,120,128,0.1)',
-    color: category === c ? '#fff' : '#1c1c1e',
-  });
-
-  const codeModeBtn = (m: typeof codeMode): React.CSSProperties => ({
-    padding: '8px 14px', borderRadius: 99, fontSize: 13, fontWeight: 600, border: 'none',
-    cursor: 'pointer', fontFamily: 'inherit',
-    background: codeMode === m ? '#D7141A' : 'rgba(120,120,128,0.1)',
-    color: codeMode === m ? '#fff' : '#1c1c1e',
-  });
-
-  const tagBtn = (t: string): React.CSSProperties => ({
-    padding: '5px 13px', borderRadius: 99, fontSize: 12, fontWeight: 600, border: 'none',
-    cursor: 'pointer', fontFamily: 'inherit',
-    background: tags.includes(t) ? '#D7141A' : 'rgba(120,120,128,0.09)',
-    color: tags.includes(t) ? '#fff' : '#1c1c1e',
-  });
+  const stepLabel = step === 'write' ? 'Step 1 of 3' : step === 'code' ? 'Step 2 of 3' : 'Step 3 of 3';
+  const stepTitle = step === 'write' ? 'Write it down, then seal it.'
+    : step === 'code' ? 'Add code or a GitHub repo'
+    : 'Add supporting files';
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.42)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: 'rgba(255,255,255,0.97)', borderRadius: 28, boxShadow: 'inset 0 0 0 1.5px rgba(215,20,26,0.16),inset 0 1px 0 rgba(255,255,255,0.98),0 40px 100px rgba(0,0,0,0.18)', width: 'min(540px,100%)', maxHeight: '90vh', overflowY: 'auto', padding: '28px 28px 24px', position: 'relative' }}
-        onClick={e => e.stopPropagation()}>
+    <Modal onClose={onClose}>
+      {/* Step indicator */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
+        {['write', 'code', 'files'].map((s, i) => (
+          <div key={s} style={{
+            height: 4, flex: 1, borderRadius: 99,
+            background: step === s ? '#D7141A' : ((['write','code','files'].indexOf(step) > i) ? 'rgba(215,20,26,0.35)' : 'rgba(0,0,0,0.1)'),
+            transition: 'background .2s',
+          }} />
+        ))}
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#D7141A' }}>{stepLabel}</span>
+      <h2 style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 0', fontFamily: 'Sora, sans-serif' }}>{stepTitle}</h2>
 
-        {/* step bar */}
-        <div style={{ display: 'flex', gap: 5, marginBottom: 4 }}>
-          {[0,1,2].map(i => <div key={i} style={stepSeg(i)} />)}
-        </div>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#D7141A', marginBottom: 2 }}>{steps[step].label}</div>
-        <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 21, fontWeight: 700, marginBottom: 4, color: '#1c1c1e' }}>{steps[step].title}</h2>
-        <p style={{ fontSize: 14, color: '#636366', marginBottom: 16, lineHeight: 1.5 }}>{steps[step].desc}</p>
-
-        {/* ── Step 0: write ── */}
-        {step === 0 && (
-          <>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 16 }}>
-              {(['code','product','future'] as IdeaCategory[]).map(c => (
-                <button key={c} style={catBtn(c)} onClick={() => setCat(c)}>{CAT_LABELS[c]}</button>
-              ))}
+      {/* ── Step 1: write the idea ── */}
+      {step === 'write' && (
+        <>
+          <p style={{ fontSize: 14, color: '#636366', margin: '6px 0 0' }}>The more detail, the stronger your record. Saved as a draft — sealing locks the timestamp.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 6 }}>Title</label>
+              <input style={inp} value={title} onChange={e => setTitle(e.target.value)} placeholder="A short, clear name for the idea" />
             </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 5 }}>Title</label>
-              <input style={S.inp} placeholder="A short, clear name for the idea" value={title} onChange={e => setTitle(e.target.value)} />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 5 }}>Problem</label>
-              <p style={{ fontSize: 11, color: '#8e8e93', marginBottom: 4 }}>{fields.problem}</p>
-              <textarea style={{ ...S.ta, minHeight: 72 }} value={problem} onChange={e => setProblem(e.target.value)} rows={3} />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 5 }}>Solution</label>
-              <p style={{ fontSize: 11, color: '#8e8e93', marginBottom: 4 }}>{fields.solution}</p>
-              <textarea style={{ ...S.ta, minHeight: 72 }} value={solution} onChange={e => setSolution(e.target.value)} rows={3} />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 5 }}>Key claims</label>
-              <p style={{ fontSize: 11, color: '#8e8e93', marginBottom: 4 }}>{fields.claims}</p>
-              <textarea style={{ ...S.ta, minHeight: 72 }} placeholder={'1. …\n2. …\n3. …'} value={claims} onChange={e => setClaims(e.target.value)} rows={4} />
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 6 }}>Tags <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500, color: '#8e8e93' }}>(optional)</span></label>
+            {FIELDS.map(f => (
+              <div key={f.label}>
+                <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 2 }}>
+                  {f.label} <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#8e8e93' }}>— {f.hint}</span>
+                </label>
+                <textarea style={{ ...ta, minHeight: f.rows * 24 + 26 }} value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.ph} />
+              </div>
+            ))}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 6 }}>
+                Tags <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#8e8e93' }}>(optional)</span>
+              </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {ALL_TAGS.map(t => (
-                  <button key={t} style={tagBtn(t)} onClick={() => setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}>{t}</button>
+                {INDUSTRIES.map(t => (
+                  <button key={t} type="button"
+                    onClick={() => setTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t])}
+                    style={{
+                      padding: '6px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                      background: tags.includes(t) ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                      color: tags.includes(t) ? '#fff' : '#1c1c1e',
+                      transition: 'background .15s, color .15s',
+                    }}
+                  >{t}</button>
                 ))}
               </div>
             </div>
+          </div>
+          {error && <p style={{ fontSize: 13, color: '#D7141A', margin: '8px 0 0' }}>{error}</p>}
+          <button
+            disabled={loading || !complete}
+            onClick={saveIdea}
+            style={{
+              width: '100%', minHeight: 52, borderRadius: 14, fontWeight: 700, fontSize: 16,
+              background: complete ? '#D7141A' : 'rgba(0,0,0,0.1)', color: complete ? '#fff' : '#8e8e93',
+              border: 'none', cursor: complete ? 'pointer' : 'default', marginTop: 8, transition: 'background .2s',
+            }}
+          >
+            {loading ? 'Saving…' : complete ? 'Save and continue →' : 'Complete all sections to continue'}
+          </button>
+        </>
+      )}
 
-            {error && <p style={{ fontSize: 12, color: '#D7141A', marginBottom: 8 }}>{error}</p>}
-            <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 13, minHeight: 50, fontSize: 15 }} onClick={() => { if (!title.trim()) { setError('Add a title first.'); return; } setError(''); setStep(1); }}>
-              Save and continue →
-            </button>
-          </>
-        )}
+      {/* ── Step 2: code or repo ── */}
+      {step === 'code' && (
+        <>
+          <p style={{ fontSize: 14, color: '#636366', margin: '6px 0 12px' }}>
+            Prove you wrote the code. Paste a snippet to hash it, or point to a GitHub repo to snapshot the latest commit.
+            Both get included in the seal. Skip if this is not a code idea.
+          </p>
 
-        {/* ── Step 1: code / github ── */}
-        {step === 1 && (
-          <>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 16 }}>
-              {(['paste','github','skip'] as const).map(m => (
-                <button key={m} style={codeModeBtn(m)} onClick={() => setCodeMode(m)}>
-                  {m === 'paste' ? 'Paste code' : m === 'github' ? 'GitHub repo / commit' : 'Skip'}
-                </button>
-              ))}
-            </div>
-
-            {codeMode === 'paste' && (
-              <>
-                <textarea style={{ ...S.ta, fontFamily: 'ui-monospace,monospace', fontSize: 13, minHeight: 120, marginBottom: 8 }} placeholder="Paste your code, algorithm, or key implementation…" value={codeSnippet} onChange={e => setCode(e.target.value)} rows={6} />
-                <div style={{ background: 'rgba(215,20,26,0.07)', borderRadius: 12, padding: '11px 14px', fontSize: 13, color: '#636366', lineHeight: 1.5 }}>
-                  The code is SHA-256 hashed and included in the seal certificate. The hash proves this exact code existed on the seal date.
-                </div>
-              </>
-            )}
-
-            {codeMode === 'github' && (
-              <>
-                <input style={{ ...S.inp, marginBottom: 8 }} placeholder="github.com/you/repo  or  github.com/you/repo/commit/abc123" value={githubUrl} onChange={e => setGithub(e.target.value)} />
-                <div style={{ background: 'rgba(215,20,26,0.07)', borderRadius: 12, padding: '11px 14px', fontSize: 13, color: '#636366', lineHeight: 1.5 }}>
-                  <strong style={{ color: '#D7141A' }}>What gets recorded:</strong> commit SHA, tree SHA, message, timestamp — fetched from GitHub when you seal. Works with public repos; private repos need a GITHUB_TOKEN.
-                </div>
-              </>
-            )}
-
-            {codeMode === 'skip' && (
-              <p style={{ fontSize: 14, color: '#636366', lineHeight: 1.6, padding: '8px 0' }}>No code this time — that's fine. You can always seal without it.</p>
-            )}
-
-            <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 13, minHeight: 50, fontSize: 15, marginTop: 14 }} onClick={() => setStep(2)}>
-              Continue →
-            </button>
-            <button style={{ ...S.btnGhost, width: '100%', marginTop: 8, borderRadius: 12, minHeight: 44, fontSize: 14 }} onClick={() => setStep(0)}>← Back</button>
-          </>
-        )}
-
-        {/* ── Step 2: files ── */}
-        {step === 2 && (
-          <>
-            <div
-              style={{ border: '2px dashed rgba(215,20,26,0.28)', borderRadius: 14, padding: 18, textAlign: 'center', background: 'rgba(215,20,26,0.03)', cursor: 'pointer', marginBottom: 12 }}
-              onClick={() => fileRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); setFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]); }}
-            >
-              <div style={{ fontSize: 22, marginBottom: 4 }}>📎</div>
-              <div style={{ fontSize: 13, color: '#8e8e93' }}>Drop files or click · images, PDFs, code files · max 20 MB each</div>
-              <input ref={fileRef} type="file" multiple style={{ display: 'none' }} onChange={e => setFiles(prev => [...prev, ...Array.from(e.target.files || [])])} />
-            </div>
-
-            {files.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(0,0,0,0.04)', borderRadius: 10, marginBottom: 6 }}>
-                <span style={{ fontSize: 18 }}>{f.type.startsWith('image') ? '🖼' : f.name.endsWith('.pdf') ? '📄' : '📁'}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{f.name}</div>
-                  <div style={{ fontSize: 11, color: '#8e8e93' }}>{(f.size / 1024).toFixed(0)} KB</div>
-                </div>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8e8e93', fontSize: 14 }} onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>✕</button>
-              </div>
+          {/* Choice pills */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[['none', 'Skip this step'], ['paste', 'Paste code'], ['github', 'GitHub repo / commit']].map(([v, l]) => (
+              <button key={v} type="button" onClick={() => setCodeType(v as any)}
+                style={{
+                  padding: '8px 16px', borderRadius: 99, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', border: 'none', transition: 'background .15s, color .15s',
+                  background: codeType === v ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                  color: codeType === v ? '#fff' : '#1c1c1e',
+                }}>{l}</button>
             ))}
+          </div>
 
-            {error && <p style={{ fontSize: 12, color: '#D7141A', marginBottom: 8 }}>{error}</p>}
+          {codeType === 'paste' && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#636366' }}>Paste your code</label>
+              <textarea
+                value={codeSnippet}
+                onChange={e => setCodeSnippet(e.target.value)}
+                placeholder="Paste your code, algorithm, or key implementation here…"
+                style={{ ...ta, fontFamily: 'ui-monospace, monospace', fontSize: 13, minHeight: 160 }}
+              />
+              <div style={{ ...pinkSection, padding: '12px 14px' }}>
+                <span style={{ fontSize: 13, color: '#636366' }}>
+                  The code will be SHA-256 hashed separately and included in the seal certificate.
+                  The hash proves this exact code existed on the seal date.
+                </span>
+              </div>
+            </div>
+          )}
 
-            <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 13, minHeight: 50, fontSize: 15, opacity: saving ? 0.7 : 1 }} onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : 'Save idea as draft ✓'}
+          {codeType === 'github' && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#636366' }}>GitHub URL</label>
+              <input
+                style={inp}
+                value={githubUrl}
+                onChange={e => setGithubUrl(e.target.value)}
+                placeholder="github.com/you/your-repo  or  github.com/you/repo/commit/abc123"
+              />
+              <div style={{ ...pinkSection, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#D7141A' }}>What gets recorded</span>
+                <span style={{ fontSize: 13, color: '#636366', lineHeight: 1.5 }}>
+                  The commit SHA, tree SHA, commit message, and timestamp — fetched from GitHub at the moment you seal.
+                  Anyone can verify the commit still exists on GitHub. Works with public repos; private repos need a
+                  <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>GITHUB_TOKEN</code> env var.
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+            <button onClick={() => setStep('files')}
+              style={{
+                flex: 1, minHeight: 52, borderRadius: 14, fontWeight: 700, fontSize: 15,
+                background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer',
+              }}>
+              {codeType === 'none' ? 'Skip → add files' : 'Save and continue →'}
             </button>
-            <button style={{ ...S.btnGhost, width: '100%', marginTop: 8, borderRadius: 12, minHeight: 44, fontSize: 14 }} onClick={() => { setFiles([]); save(); }} disabled={saving}>
-              Skip files
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Step 3: files ── */}
+      {step === 'files' && savedIdea && (
+        <>
+          <p style={{ fontSize: 14, color: '#636366', margin: '6px 0 12px' }}>
+            Sketches, photos, mockups, design files — anything that proves you had this idea today.
+            Only you can see these. Skip if you have nothing to add right now; you can add files before sealing.
+          </p>
+          <FileAttachments ideaId={savedIdea.id} userId={userId} sealed={false} />
+          <button onClick={done}
+            style={{
+              width: '100%', minHeight: 52, borderRadius: 14, fontWeight: 700, fontSize: 16,
+              background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer', marginTop: 8,
+            }}>
+            Done — idea saved ✓
+          </button>
+          <p style={{ fontSize: 12, color: '#8e8e93', textAlign: 'center', margin: '6px 0 0' }}>
+            You can add more files and seal from your vault list.
+          </p>
+        </>
+      )}
+    </Modal>
   );
 }
 
-/* ─────────────────────────────────────────────
-   Seal Modal
-───────────────────────────────────────────── */
-function SealModal({ idea, onClose, onSealed }: { idea: VaultIdea; onClose: () => void; onSealed: (updated: VaultIdea) => void }) {
-  const [phase, setPhase] = useState<'confirm' | 'sealing' | 'done'>('confirm');
-  const [result, setResult] = useState<VaultIdea | null>(null);
-  const [error, setError]   = useState('');
+// ── SealModal ─────────────────────────────────────────────────────────────────
 
-  async function doSeal() {
-    setPhase('sealing');
+function SealModal({ idea, ownerName, onClose, onSealed }) {
+  const [step, setStep] = useState<'confirm' | 'sealing' | 'done'>('confirm');
+  const [sealed, setSealed] = useState<any>(null);
+  const [githubRes, setGithubRes] = useState<any>(null);
+  const [codeHash, setCodeHash] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  // Pull code/github from the idea's draft state if it had them added
+  // (they come from the new-idea flow's step 2 — stored in seal_meta on the idea row if partially saved)
+  // For sealing an existing draft, the user just presses Seal — no re-entry needed.
+
+  const doSeal = async () => {
+    setStep('sealing'); setError('');
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/vault/seal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
         body: JSON.stringify({ ideaId: idea.id }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Seal failed');
-      setResult(json.idea);
-      setPhase('done');
-    } catch (e: any) {
-      setError(e.message);
-      setPhase('confirm');
-    }
-  }
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Seal failed');
+      setSealed(data.idea);
+      setGithubRes(data.github_snapshot);
+      setCodeHash(data.code_hash);
+      setStep('done');
+      onSealed(data.idea);
+    } catch (e: any) { setError(e?.message || 'Sealing did not go through. Nothing changed — try again.'); setStep('confirm'); }
+  };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.42)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: 'rgba(255,255,255,0.97)', borderRadius: 28, boxShadow: 'inset 0 0 0 1.5px rgba(215,20,26,0.16),0 40px 100px rgba(0,0,0,0.18)', width: 'min(480px,100%)', padding: '32px 28px 28px' }}
-        onClick={e => e.stopPropagation()}>
-
-        {phase === 'confirm' && (
-          <>
-            <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>🔒</div>
-            <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 700, textAlign: 'center', marginBottom: 6 }}>Seal "{idea.title}"?</h2>
-            <p style={{ fontSize: 14, color: '#636366', textAlign: 'center', lineHeight: 1.6, marginBottom: 20 }}>
-              This creates a SHA-256 hash and UTC timestamp of your idea. The seal is permanent — you can read and share it, but not change the content.
-            </p>
-            <div style={{ background: 'rgba(215,20,26,0.07)', borderRadius: 12, padding: '11px 14px', fontSize: 13, color: '#636366', lineHeight: 1.5, marginBottom: 20 }}>
-              <strong style={{ color: '#D7141A' }}>What gets recorded:</strong> full idea text, category, tags, timestamp (UTC), your user ID, any attached files, code hash and GitHub snapshot if added.
-            </div>
-            {error && <p style={{ fontSize: 12, color: '#D7141A', marginBottom: 8 }}>{error}</p>}
-            <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 13, minHeight: 50, fontSize: 15 }} onClick={doSeal}>Yes, seal it →</button>
-            <button style={{ ...S.btnGhost, width: '100%', marginTop: 8, borderRadius: 12, minHeight: 44, fontSize: 14 }} onClick={onClose}>Cancel</button>
-          </>
-        )}
-
-        {phase === 'sealing' && (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>⏳</div>
-            <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Sealing…</h2>
-            <p style={{ fontSize: 14, color: '#636366' }}>Hashing content and locking the timestamp.</p>
+    <Modal onClose={onClose} maxWidth={480}>
+      {step === 'confirm' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#D7141A' }}>Seal this idea</span>
+          <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, fontFamily: 'Sora, sans-serif' }}>{idea.title}</h2>
+          <p style={{ fontSize: 14, color: '#636366', margin: 0, lineHeight: 1.6 }}>
+            Sealing hashes the exact text (SHA-256) and records the UTC time. Any later change would break the fingerprint.
+            An invisible canary mark is woven into the text — if someone copy-pastes your idea, you can prove where it came from.
+            <strong style={{ color: '#1c1c1e' }}> Sealing is permanent.</strong>
+          </p>
+          <div style={{ ...pinkSection, padding: '12px 16px', fontSize: 14 }}>
+            Certificate issued to <strong style={{ color: '#D7141A' }}>{ownerName}</strong> · UTC timestamp · SHA-256 · canary mark
           </div>
-        )}
+          {error && <p style={{ fontSize: 13, color: '#D7141A', margin: 0 }}>{error}</p>}
+          <button onClick={doSeal}
+            style={{ width: '100%', minHeight: 52, borderRadius: 14, fontWeight: 700, fontSize: 16, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
+            Seal it
+          </button>
+        </div>
+      )}
 
-        {phase === 'done' && result && (
-          <>
-            <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>✅</div>
-            <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 700, textAlign: 'center', marginBottom: 6 }}>Sealed.</h2>
-            <div style={{ background: 'rgba(52,199,89,0.08)', borderRadius: 12, padding: '12px 14px', marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#248A3D', marginBottom: 4 }}>Your seal ID</div>
-              <div style={{ fontFamily: 'ui-monospace,monospace', fontSize: 15, fontWeight: 700, color: '#1c1c1e' }}>{result.seal_id}</div>
-              <div style={{ fontSize: 12, color: '#636366', marginTop: 2 }}>{result.sealed_at ? new Date(result.sealed_at).toUTCString() : ''}</div>
+      {step === 'sealing' && (
+        <div style={{ textAlign: 'center', padding: '32px 0', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 24, background: 'rgba(215,20,26,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon.vault size={24} style={{ color: '#D7141A' }} />
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Sealing…</h2>
+          <p style={{ fontSize: 14, color: '#636366', margin: 0 }}>Hashing, timestamping, weaving canary mark.</p>
+        </div>
+      )}
+
+      {step === 'done' && sealed && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 99, background: 'rgba(52,199,89,0.12)', color: '#248A3D', fontSize: 12, fontWeight: 700, alignSelf: 'flex-start' }}>
+            <Icon.check size={14} /> Sealed
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, fontFamily: 'Sora, sans-serif' }}>Done. It existed today, and you can prove it.</h2>
+          <div style={sectionStyle}>
+            <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.9, wordBreak: 'break-all', color: '#1c1c1e' }}>
+              ID: {sealed.seal_id}<br />
+              SHA-256: {sealed.seal_hash}<br />
+              Sealed: {sealed.sealed_at ? new Date(sealed.sealed_at).toUTCString() : ''}
+              {codeHash && <><br />Code hash: {codeHash.slice(0, 16)}…</>}
+              {githubRes && <><br />GitHub: {githubRes.owner}/{githubRes.repo} @ {githubRes.sha?.slice(0, 10)}</>}
             </div>
-            <button style={{ ...S.btnRed, width: '100%', justifyContent: 'center', borderRadius: 13, minHeight: 50, fontSize: 15 }} onClick={() => { onSealed(result); onClose(); }}>
-              View sealed idea →
-            </button>
-          </>
-        )}
+          </div>
+          <button onClick={onClose}
+            style={{ width: '100%', minHeight: 48, borderRadius: 14, fontWeight: 700, fontSize: 15, background: 'rgba(0,0,0,0.07)', color: '#1c1c1e', border: 'none', cursor: 'pointer' }}>
+            Close
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── CanaryChecker ─────────────────────────────────────────────────────────────
+
+function CanaryChecker({ ideas }: { ideas: any[] }) {
+  const [text, setText] = useState('');
+  const [result, setResult] = useState<null | { found: boolean; sealId?: string; idea?: any }>(null);
+
+  const check = () => {
+    const decoded = readCanary(text);
+    if (!decoded) { setResult({ found: false }); return; }
+    const match = ideas.find(i => i.seal_id === decoded);
+    setResult({ found: true, sealId: decoded, idea: match || null });
+  };
+
+  return (
+    <div style={{ ...sectionStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 16, background: 'rgba(215,20,26,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon.bulb size={16} style={{ color: '#D7141A' }} />
+        </div>
+        <span style={{ fontSize: 16, fontWeight: 700 }}>Canary checker</span>
       </div>
+      <p style={{ fontSize: 13, color: '#636366', margin: 0, lineHeight: 1.5 }}>
+        Paste text you found online. If it was copy-pasted from one of your sealed ideas, the hidden zero-width mark will still be there — this will tell you which idea it came from.
+      </p>
+      <textarea
+        value={text}
+        onChange={e => { setText(e.target.value); setResult(null); }}
+        placeholder="Paste suspicious text here…"
+        style={{ ...ta, minHeight: 90 }}
+      />
+      <button
+        disabled={!text.trim()}
+        onClick={check}
+        style={{
+          minHeight: 44, borderRadius: 12, fontWeight: 700, fontSize: 14, border: 'none', cursor: text.trim() ? 'pointer' : 'default',
+          background: text.trim() ? '#D7141A' : 'rgba(0,0,0,0.07)', color: text.trim() ? '#fff' : '#8e8e93',
+        }}>
+        Check for canary mark
+      </button>
+      {result && (
+        result.found ? (
+          <div style={{ ...pinkSection, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#D7141A', fontWeight: 700, fontSize: 13 }}>
+              <Icon.check size={14} /> Canary found — Seal ID: {result.sealId}
+            </div>
+            {result.idea && <span style={{ fontSize: 14, fontWeight: 600 }}>"{result.idea.title}"</span>}
+            <span style={{ fontSize: 13, color: '#636366', lineHeight: 1.5 }}>
+              This text contains a hidden mark from your vault. Use your certificate and this match as evidence the content originated from your sealed idea.
+            </span>
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: '#8e8e93', margin: 0 }}>No canary mark found. It may not have come from your vault, or the platform stripped invisible characters (Twitter/X does this — most others don't).</p>
+        )
+      )}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   Main page
-───────────────────────────────────────────── */
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function VaultPage() {
-  const [ideas, setIdeas]           = useState<VaultIdea[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [filterCat, setFilterCat]   = useState<IdeaCategory | 'all'>('all');
-  const [filterStatus, setStatus]   = useState<'all' | 'sealed' | 'draft'>('all');
-  const [showNew, setShowNew]       = useState(false);
-  const [sealTarget, setSealTarget] = useState<VaultIdea | null>(null);
-  const [openFiles, setOpenFiles]   = useState<string | null>(null);
+  const m = useModules();
+  const [ideas, setIdeas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showNew, setShowNew] = useState(false);
+  const [sealTarget, setSealTarget] = useState<any>(null);
+  const [filter, setFilter] = useState('all');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const sealedIdeas = ideas.filter(i => i.status === 'sealed');
+  useEffect(() => {
+    if (!m.user) return;
+    supabase.from('vault_ideas').select('*').eq('user_id', m.user.id).is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setIdeas(data || []); setLoading(false); });
+  }, [m.user]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-    const { data } = await supabase
-      .from('vault_ideas')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    setIdeas((data as VaultIdea[]) || []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = ideas.filter(i => {
-    if (filterCat !== 'all' && i.category !== filterCat) return false;
-    if (filterStatus !== 'all' && i.status !== filterStatus) return false;
-    return true;
-  });
-
-  function downloadCert(idea: VaultIdea) {
+  const downloadCert = (idea: any) => {
+    const body = idea.expanded_doc || idea.description || '';
+    const sealedUtc = idea.sealed_at ? new Date(idea.sealed_at).toUTCString() : '';
+    const ownerName = m.name || 'the account holder';
+    const meta = idea.seal_meta || {};
+    const div = '═'.repeat(60), thin = '─'.repeat(60);
     const lines = [
-      '═══════════════════════════════════════════════════',
-      '             GRATIA CORE — SEAL CERTIFICATE',
-      '═══════════════════════════════════════════════════',
-      '',
-      `Idea title : ${idea.title}`,
-      `Seal ID    : ${idea.seal_id}`,
-      `Sealed at  : ${idea.sealed_at ? new Date(idea.sealed_at).toUTCString() : 'N/A'}`,
-      `Category   : ${idea.category}`,
-      '',
-      '───────────────────────────────────────────────────',
-      'CONTENT SUMMARY',
-      '───────────────────────────────────────────────────',
-      '',
-      'Problem:',
-      idea.problem || '(none)',
-      '',
-      'Solution:',
-      idea.solution || '(none)',
-      '',
-      'Key claims:',
-      idea.key_claims || '(none)',
-      '',
-      idea.seal_meta?.code_hash ? `Code hash  : ${idea.seal_meta.code_hash}` : '',
-      idea.seal_meta?.github ? `GitHub SHA : ${idea.seal_meta.github.sha}` : '',
-      idea.seal_meta?.github ? `Committed  : ${idea.seal_meta.github.committed_at}` : '',
-      '',
-      '───────────────────────────────────────────────────',
-      'This certificate records that the above content',
-      'existed under the account holder\'s name at the',
-      'timestamp shown. This is not a patent, trademark,',
-      'or legal title. Consult an IP attorney for formal',
-      'intellectual property protection.',
-      '═══════════════════════════════════════════════════',
-    ].filter(l => l !== undefined).join('\n');
-    const blob = new Blob([lines], { type: 'text/plain' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `seal-${idea.seal_id}.txt`;
-    a.click(); URL.revokeObjectURL(url);
-  }
+      div, '        GRATIA CORE — IDEA VAULT', '        CERTIFICATE OF SEALED RECORD', div, '',
+      'This certifies that the idea and details below were recorded and',
+      'cryptographically sealed in Gratia Core on the date and time shown.', '',
+      `Certified to:   ${ownerName}`,
+      `Account email:  ${m.user?.email || '—'}`,
+      `Title:          ${idea.title}`,
+      `Seal ID:        ${idea.seal_id}`,
+      `Sealed (UTC):   ${sealedUtc}`,
+      `SHA-256:        ${idea.seal_hash}`,
+    ];
+    if (meta.code_hash) {
+      lines.push('', thin, 'CODE FINGERPRINT', thin, '');
+      lines.push(`Code SHA-256:   ${meta.code_hash}`);
+      if (meta.code_preview) lines.push(`Code preview:   ${meta.code_preview}`);
+    }
+    if (meta.github) {
+      lines.push('', thin, 'GITHUB SNAPSHOT', thin, '');
+      lines.push(`Repository:     ${meta.github.owner}/${meta.github.repo}`);
+      lines.push(`Commit SHA:     ${meta.github.sha}`);
+      lines.push(`Tree SHA:       ${meta.github.tree_sha}`);
+      lines.push(`Committed at:   ${meta.github.committed_at}`);
+      lines.push(`Commit message: ${meta.github.message}`);
+      lines.push(`GitHub URL:     ${meta.github.html_url}`);
+    }
+    lines.push(
+      '', thin, 'SEALED DETAILS — the exact content this certificate covers', thin, '', body, '',
+      thin, 'WHAT THIS PROVES', thin, '',
+      'The SHA-256 value above is a unique fingerprint of the sealed record.',
+      'Any change to a single character of the details would produce a',
+      'different fingerprint. Because the fingerprint matches, this document',
+      'proves the details existed in exactly this form, under this account,',
+      'on the date and time recorded above.', '',
+      'CANARY MARK: An invisible zero-width character watermark was woven into',
+      'the sealed text. If this idea\'s text appears elsewhere, paste it into',
+      'the Canary Checker in your Gratia Core vault to confirm it came from here.', '',
+      thin, 'ATTESTATION', thin, '',
+      `Sealed by:  ${ownerName}`, '',
+      'Signature:  __________________________________    Date: ____________', '',
+      'Issued by Gratia Core — gratiacore.com',
+      `Verification reference: ${idea.seal_id}`, '',
+      thin,
+      'This is a record of prior existence and authorship on the recorded date.',
+      'It is NOT a patent, copyright, trademark, or government registration, and',
+      'it is not legal advice. Gratia Core is not a law firm. For legal protection',
+      'of an idea, consult a licensed attorney.',
+      div,
+    );
+    const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `GC-${idea.seal_id}-certificate.txt`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  const catTabStyle = (c: IdeaCategory | 'all'): React.CSSProperties => ({
-    padding: '7px 16px', borderRadius: 99, fontSize: 13, fontWeight: 600, border: 'none',
-    cursor: 'pointer', fontFamily: 'inherit',
-    background: filterCat === c ? '#D7141A' : 'rgba(120,120,128,0.1)',
-    color: filterCat === c ? '#fff' : '#1c1c1e',
+  const toggleExpand = (id: string) => setExpanded(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
   });
 
-  const filterPill = (s: typeof filterStatus): React.CSSProperties => ({
-    padding: '4px 13px', borderRadius: 99, fontSize: 12, fontWeight: 600, border: 'none',
-    cursor: 'pointer', fontFamily: 'inherit',
-    background: filterStatus === s ? '#D7141A' : 'rgba(120,120,128,0.09)',
-    color: filterStatus === s ? '#fff' : '#1c1c1e',
-  });
+  const sealedCount = ideas.filter(i => i.status === 'sealed').length;
+  const shown = ideas.filter(i => filter === 'all' || i.status === filter);
 
   return (
-    <ModuleGate moduleId="vault">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
-        @keyframes meshFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(4%,6%) scale(1.08)}}
-        @keyframes meshFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-3%,4%) scale(1.12)}}
-        * { box-sizing: border-box; }
-        textarea:focus, input:focus { border-color: rgba(215,20,26,0.4) !important; }
-      `}</style>
+    <div className="gc-wrap">
+      <Header back right={
+        <span className="gc-pill gc-glass gc-glass--pink" style={{ borderRadius: 999 }}>
+          <span className="gc-dot" />{m.loading ? '…' : m.access.vault ? 'On · $5/mo' : 'Off'}
+        </span>
+      } />
 
-      <div style={S.page}>
-        <div style={S.orb1} />
-        <div style={S.orb2} />
+      <ModuleGate id="vault" state={m.stateOf('vault')} busy={m.busy === 'vault'} onTurnOn={() => m.toggle('vault', true)}>
 
-        <Header back="/dashboard" />
+        {showNew && m.user && (
+          <NewIdeaModal userId={m.user.id} onClose={() => setShowNew(false)} onCreated={i => setIdeas(p => [i, ...p])} />
+        )}
+        {sealTarget && (
+          <SealModal idea={sealTarget} ownerName={m.name} onClose={() => setSealTarget(null)}
+            onSealed={u => setIdeas(p => p.map(i => i.id === u.id ? u : i))} />
+        )}
 
-        <div style={S.shell}>
+        {/* ── header ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <h1 style={{ fontSize: 'clamp(28px,5vw,38px)', fontWeight: 500, lineHeight: 1.12, margin: 0, fontFamily: 'Sora, sans-serif' }}>
+            Idea Vault
+          </h1>
+          <p style={{ fontSize: 16, color: '#636366', margin: 0 }}>
+            Seal an idea. Timestamped proof it existed today — yours to show anyone.
+          </p>
+        </div>
 
-          {/* ── hero ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24, margin: '28px 0 24px', flexWrap: 'wrap' }}>
-            <div style={{
-              width: 112, height: 112, borderRadius: '50%', flexShrink: 0,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-              background: 'linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0) 48%),linear-gradient(160deg,rgba(240,72,78,0.95),rgba(200,10,18,0.92))',
-              border: '1px solid rgba(255,255,255,0.45)',
-              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.55),inset 0 -10px 24px rgba(110,0,6,0.28),0 20px 48px rgba(215,20,26,0.32)',
-              color: '#fff', textAlign: 'center',
-            }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-              <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: '-0.3px', lineHeight: 1.2, padding: '0 10%' }}>Idea<br/>Vault</span>
-              <span style={{ fontSize: 10, fontWeight: 600, opacity: .88 }}>$5/mo</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 'clamp(28px,5vw,42px)', fontWeight: 900, letterSpacing: '-1.5px', lineHeight: 1.05, color: '#1c1c1e', margin: '0 0 8px' }}>
-                Seal your ideas.
-              </h1>
-              <p style={{ fontSize: 15, color: '#636366', lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
-                Timestamped proof it existed today — yours to show anyone. Only you can read it.
-              </p>
-            </div>
-          </div>
+        {/* ── two-column layout ── */}
+        <div className="gc-two" style={{ gap: 32 }}>
 
-          {/* ── category filter ── */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-            <button style={catTabStyle('all')}    onClick={() => setFilterCat('all')}>All ideas</button>
-            <button style={catTabStyle('code')}   onClick={() => setFilterCat('code')}>💻 Code</button>
-            <button style={catTabStyle('product')} onClick={() => setFilterCat('product')}>📦 Physical product</button>
-            <button style={catTabStyle('future')} onClick={() => setFilterCat('future')}>💡 Future idea</button>
-          </div>
+          {/* left: seal CTA + idea list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-          {/* ── two-col layout ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: 28, alignItems: 'start' }}>
-
-            {/* ── LEFT: list ── */}
-            <div>
-
-              {/* CTA card */}
-              <div style={{ ...S.glass(true), padding: 0, overflow: 'hidden', marginBottom: 20 }}>
-                <div style={{ height: 68, position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: '5%', top: -30, width: '55%', height: '150%', background: 'radial-gradient(circle at 50% 50%,rgba(215,20,26,0.18),transparent 70%)', borderRadius: '50%' }} />
-                  <div style={{ position: 'absolute', left: '48%', top: -10, width: '48%', height: '130%', background: 'radial-gradient(circle at 50% 50%,rgba(255,120,126,0.22),transparent 70%)', borderRadius: '50%' }} />
-                </div>
-                <div style={{ padding: '16px 22px 20px' }}>
-                  <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 17, fontWeight: 700, marginBottom: 5 }}>Seal something new</h2>
-                  <p style={{ fontSize: 13.5, color: '#636366', lineHeight: 1.55, marginBottom: 14 }}>Write it in your own words, attach sketches or code, link a GitHub repo. Everything gets hashed and timestamped.</p>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                    <span style={{ fontSize: 12, color: '#636366' }}>UTC · SHA-256 · canary · <strong style={{ color: '#D7141A' }}>private to you</strong></span>
-                    <button style={S.btnRed} onClick={() => setShowNew(true)}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                      New idea
-                    </button>
-                  </div>
-                </div>
+            {/* seal CTA card */}
+            <div style={{ ...primarySection, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* orb */}
+              <div style={{ position: 'relative', overflow: 'hidden', margin: '-22px -24px 0', height: 80, borderRadius: '24px 24px 0 0' }}>
+                <div style={{ position: 'absolute', left: '10%', top: '-20px', width: '60%', height: '120%', background: 'radial-gradient(circle at 50% 50%, rgba(215,20,26,0.22), rgba(215,20,26,0) 70%)', borderRadius: '50%' }} />
+                <div style={{ position: 'absolute', left: '50%', top: '-10px', width: '50%', height: '100%', background: 'radial-gradient(circle at 50% 50%, rgba(255,120,126,0.28), rgba(255,120,126,0) 70%)', borderRadius: '50%' }} />
               </div>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px' }}>Seal something new</h2>
+                <p style={{ fontSize: 14, color: '#636366', margin: 0, lineHeight: 1.5 }}>
+                  Write the idea in your own words, attach sketches or code, link a GitHub repo.
+                  Everything gets hashed and timestamped. Only you can read it.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <span style={{ fontSize: 13, color: '#636366' }}>
+                  Issued to <strong style={{ color: '#D7141A' }}>{m.name || '…'}</strong> · UTC · SHA-256 · canary
+                </span>
+                <button onClick={() => setShowNew(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                  <Icon.plus size={16} /> New idea
+                </button>
+              </div>
+            </div>
 
-              {/* filter row */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <h2 style={{ fontSize: 17, fontWeight: 700 }}>Your seals</h2>
-                  <span style={{ fontSize: 13, color: '#8e8e93' }}>{sealedIdeas.length} sealed · {ideas.filter(i => i.status === 'draft').length} draft{ideas.filter(i => i.status === 'draft').length !== 1 ? 's' : ''}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 5 }}>
-                  {(['all','sealed','draft'] as const).map(s => (
-                    <button key={s} style={filterPill(s)} onClick={() => setStatus(s)}>{s.charAt(0).toUpperCase() + s.slice(1)}</button>
+            {/* filter + list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your seals</h2>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: '#8e8e93', marginRight: 4 }}>
+                    {sealedCount} sealed · {ideas.length - sealedCount} draft{ideas.length - sealedCount === 1 ? '' : 's'}
+                  </span>
+                  {[['all', 'All'], ['sealed', 'Sealed'], ['draft', 'Drafts']].map(([v, l]) => (
+                    <button key={v} type="button" onClick={() => setFilter(v)}
+                      style={{
+                        padding: '5px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', border: 'none', transition: 'background .15s, color .15s',
+                        background: filter === v ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                        color: filter === v ? '#fff' : '#1c1c1e',
+                      }}>{l}</button>
                   ))}
                 </div>
               </div>
 
-              {/* loading */}
-              {loading && <p style={{ fontSize: 14, color: '#8e8e93', padding: '20px 0' }}>Loading…</p>}
-
-              {/* empty */}
-              {!loading && filtered.length === 0 && (
-                <div style={{ padding: '40px 24px', textAlign: 'center', border: '2px dashed rgba(215,20,26,0.25)', borderRadius: 20 }}>
-                  <div style={{ fontSize: 32, marginBottom: 10, opacity: .4 }}>🔒</div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>No ideas yet</h3>
-                  <p style={{ fontSize: 14, color: '#8e8e93', maxWidth: 300, margin: '0 auto 16px', lineHeight: 1.5 }}>
-                    Seal your first idea — write it down, attach files, and get a timestamped certificate.
-                  </p>
-                  <button style={S.btnRed} onClick={() => setShowNew(true)}>New idea →</button>
-                </div>
-              )}
-
-              {/* idea cards */}
-              {filtered.map(idea => (
-                <div key={idea.id} style={{ ...S.glass(idea.status === 'sealed'), padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3 }}>{idea.title}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        {idea.status === 'sealed'
-                          ? <Badge variant="sealed">✓ Sealed</Badge>
-                          : <Badge variant="draft">Draft</Badge>}
-                        <Badge variant="tag">{CAT_LABELS[idea.category]}</Badge>
-                        {idea.tags?.map(t => <Badge key={t} variant="tag">{t}</Badge>)}
-                        {idea.seal_meta?.code_hash && <Badge variant="mono">💻 code hash</Badge>}
-                        {idea.seal_meta?.github && <Badge variant="mono">⬡ github</Badge>}
-                      </div>
-                      {idea.status === 'sealed'
-                        ? <div style={{ fontFamily: 'ui-monospace,monospace', fontSize: 11, color: '#636366', lineHeight: 1.7 }}>
-                            {idea.sealed_at ? new Date(idea.sealed_at).toUTCString() : ''} · {idea.seal_id}
-                          </div>
-                        : <div style={{ fontSize: 13, color: '#8e8e93' }}>
-                            Created {new Date(idea.created_at).toLocaleDateString()} · not timestamped until sealed
-                          </div>}
-                    </div>
-                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0 }}>
-                      <button style={S.btnGhost} onClick={() => setOpenFiles(openFiles === idea.id ? null : idea.id)}>
-                        {openFiles === idea.id ? 'Hide' : 'Files'}
+              {loading
+                ? <p style={{ fontSize: 14, color: '#8e8e93', textAlign: 'center', padding: 40 }}>Loading your vault…</p>
+                : ideas.length === 0
+                  ? (
+                    <div style={{ ...sectionStyle, textAlign: 'center', padding: 36, border: '2px dashed rgba(215,20,26,0.3)' }}>
+                      <Icon.vault size={32} style={{ color: 'rgba(215,20,26,0.4)', marginBottom: 10 }} />
+                      <p style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px' }}>Nothing sealed yet</p>
+                      <p style={{ fontSize: 14, color: '#8e8e93', maxWidth: 380, margin: '0 auto 16px' }}>Document it before you share it. Write the idea, attach your sketches or code, seal it.</p>
+                      <button onClick={() => setShowNew(true)}
+                        style={{ padding: '10px 24px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                        Write your first idea
                       </button>
-                      {idea.status === 'sealed'
-                        ? <button style={{ ...S.btnRed, padding: '7px 13px', borderRadius: 9, fontSize: 12 }} onClick={() => downloadCert(idea)}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                            Certificate
-                          </button>
-                        : <button style={{ ...S.btnRed, padding: '7px 13px', borderRadius: 9, fontSize: 12 }} onClick={() => setSealTarget(idea)}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
-                            Seal now
-                          </button>}
                     </div>
-                  </div>
-
-                  {/* files drawer */}
-                  {openFiles === idea.id && (
-                    <div style={{ paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
-                      {idea.files?.length
-                        ? idea.files.map((f, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 11px', background: 'rgba(0,0,0,0.04)', borderRadius: 9, marginBottom: 4 }}>
-                              <span style={{ fontSize: 18 }}>📎</span>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 600 }}>{f.name}</div>
-                                <div style={{ fontSize: 11, color: '#8e8e93' }}>{(f.size / 1024).toFixed(0)} KB</div>
+                  )
+                  : shown.length === 0
+                    ? <p style={{ fontSize: 14, color: '#8e8e93', textAlign: 'center', padding: 24 }}>No {filter} ideas.</p>
+                    : shown.map((idea, i) => {
+                      const sealed = idea.status === 'sealed';
+                      const isOpen = expanded.has(idea.id);
+                      const meta = idea.seal_meta || {};
+                      return (
+                        <article key={idea.id} style={{
+                          ...(sealed ? primarySection : sectionStyle),
+                          animationDelay: `${i * 0.04}s`,
+                          display: 'flex', flexDirection: 'column', gap: 10,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0, flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 700, fontSize: 16 }}>{idea.title}</span>
+                                {sealed
+                                  ? <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: 'rgba(52,199,89,0.12)', color: '#248A3D', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon.check size={11} /> Sealed</span>
+                                  : <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: 'rgba(215,20,26,0.1)', color: '#D7141A' }}>Draft</span>}
+                                {(idea.tags || []).slice(0, 3).map((t: string) => (
+                                  <span key={t} style={{ padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: 'rgba(215,20,26,0.07)', color: '#D7141A' }}>{t}</span>
+                                ))}
                               </div>
+                              {sealed
+                                ? <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11, color: '#636366', lineHeight: 1.6 }}>
+                                    {idea.sealed_at ? new Date(idea.sealed_at).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : ''} · {idea.seal_id} · sha256 {idea.seal_hash?.slice(0, 4)}…{idea.seal_hash?.slice(-4)}
+                                    {meta.github && <> · <Icon.globe size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> github</>}
+                                    {meta.code_hash && <> · 💻 code hash</>}
+                                  </span>
+                                : <span style={{ fontSize: 13, color: '#8e8e93' }}>Created {fmtDate(idea.created_at)} · not timestamped until you seal it</span>}
                             </div>
-                          ))
-                        : <p style={{ fontSize: 13, color: '#8e8e93', padding: '4px 0' }}>No files attached.</p>}
-                    </div>
-                  )}
-                </div>
-              ))}
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <button onClick={() => toggleExpand(idea.id)}
+                                style={{ padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'rgba(0,0,0,0.07)', color: '#1c1c1e', border: 'none', cursor: 'pointer' }}>
+                                {isOpen ? 'Hide files' : 'Files'}
+                              </button>
+                              {sealed
+                                ? <button onClick={() => downloadCert(idea)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                                    <Icon.download size={15} /> Certificate
+                                  </button>
+                                : <button onClick={() => setSealTarget(idea)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                                    <Icon.vault size={15} /> Seal now
+                                  </button>}
+                            </div>
+                          </div>
 
-              {/* compliance disclaimer */}
-              <div style={{ marginTop: 24, padding: '14px 18px', background: 'rgba(120,120,128,0.06)', borderRadius: 14, fontSize: 12, color: '#8e8e93', lineHeight: 1.6 }}>
-                <strong style={{ color: '#636366' }}>Not legal advice.</strong> A seal records prior existence and content integrity using cryptographic hashing and timestamping. It is not a patent, copyright registration, trademark, or formal IP filing. For legal protection of intellectual property, consult a qualified IP attorney. Gratia Core makes no representations regarding the legal enforceability of any seal in any jurisdiction.
-              </div>
-            </div>
-
-            {/* ── RIGHT RAIL ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* what a seal proves */}
-              <div style={{ ...S.glassLight, padding: 18 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#D7141A', marginBottom: 8 }}>What a seal proves</div>
-                <div style={{ fontSize: 13, color: '#636366', lineHeight: 1.6 }}>
-                  That this exact content — text, code hash, GitHub commit, and files — existed under your name at this exact time.
-                  <ul style={{ paddingLeft: 16, marginTop: 8, lineHeight: 1.9, fontSize: 13 }}>
-                    <li>Clothing / product designers → certificate + sketches to small claims</li>
-                    <li>Developers → code hash + GitHub commit proves authorship</li>
-                    <li>Anyone → canary marks catch copy-paste theft</li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* canary widget — only shows if sealed ideas exist */}
-              <CanaryWidget sealedIdeas={sealedIdeas} />
-
-              {/* billing note */}
-              <div style={{ ...S.glass(), padding: '14px 18px', fontSize: 13, color: '#636366', lineHeight: 1.6 }}>
-                <div style={{ fontWeight: 700, color: '#1c1c1e', marginBottom: 4 }}>Billing</div>
-                Turn this module off any time — you keep access through the end of the period you paid for. No proration.
-              </div>
-
-              <p style={{ fontSize: 12, color: '#8e8e93', textAlign: 'center', lineHeight: 1.5 }}>
-                Not legal advice. Not a patent. Consult an IP attorney for formal protection.
-              </p>
+                          {isOpen && m.user && (
+                            <div style={{ marginTop: 6, paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+                              {sealed && <p style={{ fontSize: 12, color: '#8e8e93', margin: '0 0 8px' }}>Files attached at sealing — read only.</p>}
+                              <FileAttachments ideaId={idea.id} userId={m.user.id} sealed={sealed} />
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
             </div>
           </div>
 
-        </div>
-      </div>
+          {/* right rail */}
+          <aside style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* modals */}
-      {showNew && (
-        <NewIdeaModal
-          onClose={() => setShowNew(false)}
-          onSaved={idea => setIdeas(prev => [idea, ...prev])}
-        />
-      )}
-      {sealTarget && (
-        <SealModal
-          idea={sealTarget}
-          onClose={() => setSealTarget(null)}
-          onSealed={updated => {
-            setIdeas(prev => prev.map(i => i.id === updated.id ? updated : i));
-            setSealTarget(null);
-          }}
-        />
-      )}
-    </ModuleGate>
+            {/* what a seal proves */}
+            <div style={{ ...pinkSection, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#D7141A' }}>What a seal proves</span>
+              <p style={{ fontSize: 14, color: '#636366', margin: 0, lineHeight: 1.5 }}>
+                That this exact content — text, code hash, GitHub commit, and files — existed under your name at this exact time.
+                Useful for small claims court, IP disputes, or showing a client you created it first.
+                It is not a patent — it is evidence you can bring to one.
+              </p>
+              <ul style={{ fontSize: 13, color: '#636366', margin: 0, paddingLeft: 18, lineHeight: 1.8 }}>
+                <li>Clothing or product designers → bring the certificate + sealed sketches to small claims</li>
+                <li>Developers → code hash + GitHub snapshot proves the commit was yours</li>
+                <li>Anyone → canary marks let you catch copy-paste theft</li>
+              </ul>
+            </div>
+
+            {/* canary checker */}
+            <CanaryChecker ideas={ideas} />
+
+            {/* disclaimer */}
+            <p style={{ fontSize: 12, color: '#8e8e93', textAlign: 'center', lineHeight: 1.5 }}>
+              A seal records prior existence and integrity. It is not a patent and not legal advice — for full protection, talk to a licensed IP attorney.
+            </p>
+          </aside>
+        </div>
+      </ModuleGate>
+    </div>
   );
 }
