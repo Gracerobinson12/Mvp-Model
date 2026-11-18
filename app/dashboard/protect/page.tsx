@@ -60,7 +60,7 @@ export default function ProtectPage() {
               className="gc-btn gc-btn--red gc-btn--big gc-btn--block" style={{ minHeight: 56 }}>
               Open GC Protect <ExternalIcon size={18} />
             </a>
-            <p className="gc-note" style={{ textAlign: ‘center’ }}>{‘Opens gcprotect.tech in a new tab.’}</p>
+            <p className="gc-note" style={{ textAlign: ‘center’ }}>Opens in a new tab</p>
             <div className="gc-glass gc-pad gc-stack" style={{ gap: 12 }}>
               <span className="gc-h2" style={{ fontSize: 16 }}>What gets caught</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
