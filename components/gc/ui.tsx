@@ -32,6 +32,11 @@ export const Icon = {
 };
 export const MODULE_ICON = { protect: Icon.shield, vault: Icon.vault, barter: Icon.barter, advisory: Icon.advisory };
 
+// Named consts so Turbopack doesn't choke on Icon.xxx dot-notation in JSX
+const BackIcon = Icon.back;
+const UserIcon = Icon.user;
+const CloseIcon = Icon.close;
+
 export function GCMark({ size = 34 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
@@ -47,7 +52,7 @@ export function Header({ back = false, right = null }) {
     <header className="gc-row" style={{ minHeight: 48 }}>
       {back ? (
         <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, textDecoration: 'none', fontWeight: 600, fontSize: 15 }}>
-          <Icon.back size={20} /> Gratia Core
+          <BackIcon size={20} /> Gratia Core
         </Link>
       ) : (
         <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
@@ -56,7 +61,7 @@ export function Header({ back = false, right = null }) {
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {right}
-        <Link href="/dashboard/account" aria-label="Account" className="gc-btn gc-btn--outline gc-icon-btn"><Icon.user size={22} /></Link>
+        <Link href="/dashboard/account" aria-label="Account" className="gc-btn gc-btn--outline gc-icon-btn"><UserIcon size={22} /></Link>
       </div>
     </header>
   );
@@ -74,7 +79,7 @@ export function Modal({ onClose, children, maxWidth = 560 }) {
   return (
     <div className="gc-modal-bg" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="gc-glass gc-modal" style={{ maxWidth }}>
-        <button type="button" onClick={onClose} aria-label="Close" className="gc-btn gc-btn--outline gc-icon-btn gc-close"><Icon.close size={18} /></button>
+        <button type="button" onClick={onClose} aria-label="Close" className="gc-btn gc-btn--outline gc-icon-btn gc-close"><CloseIcon size={18} /></button>
         {children}
       </div>
     </div>
