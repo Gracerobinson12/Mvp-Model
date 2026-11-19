@@ -15,14 +15,22 @@ const BRANCHES = [
     hook: 'Sensitive details become tokens before any AI sees them.',
     desc: 'Names, SSNs, cards, API keys caught on every prompt. Works with any AI you use. Audit log you can export.',
     cta: 'Explore GC Protect →' },
+  { n: '02', id: 'vault', name: 'Idea Vault', icon: '💡', color: '#D7141A', ink: '#9E0B10', live: false, href: '/contact?waitlist=vault', badge: 'Coming soon',
+    hook: 'Timestamped proof that your idea existed today.',
+    desc: 'Seal ideas with a SHA-256 hash and UTC timestamp. Download a signed certificate. Only you can read what you sealed.',
+    cta: 'Join the waitlist →' },
+  { n: '03', id: 'barter', name: 'Barter', icon: '🤝', color: '#D7141A', ink: '#9E0B10', live: false, href: '/contact?waitlist=barter', badge: 'Coming soon',
+    hook: 'Trade services with another founder — no cash, no lawyers.',
+    desc: 'Write a barter agreement, both parties confirm by link. No account needed to sign. Edit and resend anytime.',
+    cta: 'Join the waitlist →' },
 ];
 
 const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
 
 const BUBBLES = [
-  { id: 'protect', name: 'GC Protect', sub: 'Live · $5/mo', href: '/signup?module=protect', pos: { left: '8%', top: '8%', width: '38%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
-  { id: 'vault', name: 'Idea Vault', sub: 'Coming soon', href: '/contact?waitlist=vault', pos: { left: '55%', top: '5%', width: '32%' }, color: '#bf5af2', dark: '#8c35c9', svg: svgP('<path d="M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3c1.8-1.2 3-3.3 3-5.7a7 7 0 0 0-7-7z"/>') },
-  { id: 'barter', name: 'Barter', sub: 'Coming soon', href: '/contact?waitlist=barter', pos: { left: '48%', top: '52%', width: '28%' }, color: '#30d158', dark: '#1a8c36', svg: svgP('<path d="M7 16l-4-4 4-4"/><path d="M3 12h18"/><path d="M17 8l4 4-4 4"/>') },
+  { id: 'protect', name: 'GC Protect', sub: 'Live · $5/mo', href: '/signup?module=protect', pos: { left: '6%', top: '6%', width: '40%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
+  { id: 'vault', name: 'Idea Vault', sub: 'Coming soon', href: '/contact?waitlist=vault', pos: { left: '52%', top: '4%', width: '34%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>') },
+  { id: 'barter', name: 'Barter', sub: 'Coming soon', href: '/contact?waitlist=barter', pos: { left: '44%', top: '54%', width: '30%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M7 16l-4-4 4-4"/><path d="M3 12h18"/><path d="M17 8l4 4-4 4"/>') },
 ];
 
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
@@ -206,6 +214,7 @@ function LandingPage() {
         @keyframes meshFloat1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4%,6%) scale(1.08); } }
         @keyframes meshFloat2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-3%,4%) scale(1.12); } }
         @keyframes gcTickerScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        @keyframes rainbowShift { to { background-position: 200% center; } }
         .gc-ticker-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; height: 34px; background: rgba(255,255,255,0.55); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); border-bottom: 1px solid rgba(255,255,255,0.8); box-shadow: 0 2px 0 rgba(255,255,255,0.9) inset, 0 4px 20px rgba(0,0,0,0.06); display: flex; align-items: center; overflow: hidden; }
         .gc-ticker-label { flex-shrink: 0; padding: 0 12px 0 14px; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #ff3b30; border-right: 1px solid rgba(255,59,48,0.2); height: 100%; display: flex; align-items: center; white-space: nowrap; background: rgba(255,255,255,0.3); }
         .gc-ticker-track { display: flex; align-items: center; animation: gcTickerScroll 30s linear infinite; white-space: nowrap; }
@@ -314,47 +323,59 @@ function LandingPage() {
           <motion.p className="hero-subtitle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 0.5 }}>
             We help businesses navigate problems, understand change, and find solutions &mdash; through intelligent protection, smart tools, and technology that works for you.
           </motion.p>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.57, type: 'spring', stiffness: 120, damping: 22 }}
-            style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-              <button
-                onClick={() => setAudience('individual')}
-                style={{
-                  padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-                  background: audience === 'individual' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
-                  color: audience === 'individual' ? '#fff' : 'rgba(28,28,30,0.52)',
-                  transition: 'all 0.2s',
-                }}
-              >Individual</button>
-              <button
-                onClick={() => setAudience('business')}
-                style={{
-                  padding: '7px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
-                  background: audience === 'business' ? '#1c1c1e' : 'rgba(28,28,30,0.07)',
-                  color: audience === 'business' ? '#fff' : 'rgba(28,28,30,0.52)',
-                  transition: 'all 0.2s',
-                }}
-              >Business</button>
-              {audience === 'business' && (
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#fff', background: '#D7141A', borderRadius: 999, padding: '3px 10px' }}>
-                  Coming soon
-                </span>
-              )}
+
+          {/* Audience toggle card — centered, rainbow border */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.57, type: 'spring', stiffness: 120, damping: 22 }}
+            style={{ margin: '0 auto 28px', maxWidth: 460, width: '100%' }}>
+            <div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(40px)', border: '0.5px solid rgba(255,255,255,0.9)' }}>
+              {/* Rainbow top bar */}
+              <div style={{ height: 3, background: 'linear-gradient(90deg,#ff3b30,#ff9f0a,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff3b30)', backgroundSize: '200% auto', animation: 'rainbowShift 3s linear infinite' }} />
+              <div style={{ padding: '16px 18px' }}>
+                {/* Toggle buttons */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                  <button
+                    onClick={() => setAudience('individual')}
+                    style={{
+                      flex: 1, padding: '9px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                      border: audience === 'individual' ? '1.5px solid #1c1c1e' : '1px solid rgba(0,0,0,0.1)',
+                      cursor: 'pointer', transition: 'all 0.18s',
+                      background: audience === 'individual' ? '#1c1c1e' : 'rgba(28,28,30,0.04)',
+                      color: audience === 'individual' ? '#fff' : 'rgba(28,28,30,0.55)',
+                    }}
+                  >Individual</button>
+                  <button
+                    onClick={() => setAudience('business')}
+                    style={{
+                      flex: 1, padding: '9px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                      border: audience === 'business' ? '1.5px solid #1c1c1e' : '1px solid rgba(0,0,0,0.1)',
+                      cursor: 'pointer', transition: 'all 0.18s',
+                      background: audience === 'business' ? '#1c1c1e' : 'rgba(28,28,30,0.04)',
+                      color: audience === 'business' ? '#fff' : 'rgba(28,28,30,0.55)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  >
+                    Business
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', background: '#D7141A', color: '#fff', borderRadius: 999, padding: '2px 6px' }}>Soon</span>
+                  </button>
+                </div>
+                {/* Context blurb */}
+                <AnimatePresence mode="wait">
+                  {audience === 'individual' ? (
+                    <motion.p key="ind" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }}
+                      style={{ fontSize: 13, color: 'rgba(28,28,30,0.6)', lineHeight: 1.65, margin: 0, textAlign: 'center' }}>
+                      Freelancer, founder, or just someone with ideas worth protecting &mdash; Gratia Core works for you. Protect your data when using AI, vault your ideas, or swap services without cash.
+                    </motion.p>
+                  ) : (
+                    <motion.p key="biz" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }}
+                      style={{ fontSize: 13, color: 'rgba(28,28,30,0.6)', lineHeight: 1.65, margin: 0, textAlign: 'center' }}>
+                      Multi-seat access, team vaults, compliance dashboards, and business-grade privacy are on the way. Join the waitlist to be first.
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-            <AnimatePresence mode="wait">
-              {audience === 'individual' ? (
-                <motion.p key="ind" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22 }}
-                  style={{ fontSize: 13, color: 'rgba(28,28,30,0.55)', lineHeight: 1.6, maxWidth: 400 }}>
-                  Freelancer, founder, or just someone with ideas worth protecting &mdash; Gratia Core works for you. Protect your data when using AI, vault your ideas before you share them, or swap services without cash changing hands.
-                </motion.p>
-              ) : (
-                <motion.p key="biz" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22 }}
-                  style={{ fontSize: 13, color: 'rgba(28,28,30,0.55)', lineHeight: 1.6, maxWidth: 400 }}>
-                  Multi-seat access, team vaults, compliance dashboards, and business-grade privacy tools are on the way. Join the waitlist and be first when the business tier launches.
-                </motion.p>
-              )}
-            </AnimatePresence>
           </motion.div>
+
           <motion.div className="hero-actions" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, type: 'spring', stiffness: 120, damping: 22 }}>
             {audience === 'individual'
               ? <Link href="/signup" className="btn-primary">Only pay for what you need <ChevronRight size={16} strokeWidth={2.5} /></Link>
@@ -393,9 +414,9 @@ function LandingPage() {
               }}>Join the waitlist →</Link>
             </div>
           )}
-          <div className="lp-orb" style={{ left: '5%', top: '5%', width: '50%', height: '65%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.28), rgba(215,20,26,0) 70%)' }} />
-          <div className="lp-orb" style={{ left: '50%', top: '0%', width: '45%', height: '55%', background: 'radial-gradient(circle at 50% 40%, rgba(191,90,242,0.28), rgba(191,90,242,0) 70%)' }} />
-          <div className="lp-orb" style={{ left: '42%', top: '45%', width: '50%', height: '55%', background: 'radial-gradient(circle at 50% 50%, rgba(48,209,88,0.24), rgba(48,209,88,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '0%', top: '0%', width: '56%', height: '65%', background: 'radial-gradient(circle at 45% 40%, rgba(215,20,26,0.30), rgba(215,20,26,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '46%', top: '0%', width: '50%', height: '58%', background: 'radial-gradient(circle at 50% 40%, rgba(215,20,26,0.22), rgba(215,20,26,0) 70%)' }} />
+          <div className="lp-orb" style={{ left: '38%', top: '46%', width: '55%', height: '55%', background: 'radial-gradient(circle at 50% 50%, rgba(215,20,26,0.20), rgba(215,20,26,0) 70%)' }} />
           {BUBBLES.map(b => (
             <FlipBubble key={b.id} bubble={b} />
           ))}
