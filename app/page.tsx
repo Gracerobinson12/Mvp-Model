@@ -11,26 +11,26 @@ const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect
 
 // Active modules.
 const BRANCHES = [
-  { n: '01', id: 'protect', name: 'GC Protect', icon: '🛡️', color: '#D7141A', ink: '#9E0B10', live: false, href: '/contact?waitlist=protect', badge: 'Link coming soon',
+  { n: '01', id: 'protect', name: 'GC Protect', icon: '🛡️', color: '#D7141A', ink: '#9E0B10', live: true, href: 'https://gcprotect.tech', badge: 'Live',
     hook: 'Sensitive details become tokens before any AI sees them.',
     desc: 'Names, SSNs, cards, API keys caught on every prompt. Works with any AI you use. Audit log you can export.',
-    cta: 'Join the waitlist →' },
+    cta: 'Go to site →' },
   { n: '02', id: 'vault', name: 'Idea Vault', icon: '💡', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=vault', badge: 'Live · $8/mo',
     hook: 'Timestamped proof that your idea existed today.',
     desc: 'Seal ideas with a SHA-256 hash and UTC timestamp. Download a signed certificate. Only you can read what you sealed.',
     cta: 'Seal your first idea →' },
-  { n: '03', id: 'barter', name: 'Barter', icon: '🤝', color: '#D7141A', ink: '#9E0B10', live: false, href: '/contact?waitlist=barter', badge: 'Coming soon',
+  { n: '03', id: 'barter', name: 'Barter', icon: '🤝', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=barter', badge: 'Live · $5/mo',
     hook: 'Trade services with another founder — no cash, no lawyers.',
     desc: 'Write a barter agreement, both parties confirm by link. No account needed to sign. Edit and resend anytime.',
-    cta: 'Join the waitlist →' },
+    cta: 'Get started →' },
 ];
 
 const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
 
 const BUBBLES = [
-  { id: 'protect', name: 'GC Protect', sub: 'Coming soon', href: '/contact?waitlist=protect', pos: { left: '6%', top: '6%', width: '40%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
+  { id: 'protect', name: 'GC Protect', sub: 'Live', href: 'https://gcprotect.tech', pos: { left: '6%', top: '6%', width: '40%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
   { id: 'vault', name: 'Idea Vault', sub: 'Live · $8/mo', href: '/signup?module=vault', pos: { left: '52%', top: '4%', width: '34%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>') },
-  { id: 'barter', name: 'Barter', sub: 'Coming soon', href: '/contact?waitlist=barter', pos: { left: '44%', top: '54%', width: '30%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M7 16l-4-4 4-4"/><path d="M3 12h18"/><path d="M17 8l4 4-4 4"/>') },
+  { id: 'barter', name: 'Barter', sub: 'Live · $5/mo', href: '/signup?module=barter', pos: { left: '44%', top: '54%', width: '30%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M7 16l-4-4 4-4"/><path d="M3 12h18"/><path d="M17 8l4 4-4 4"/>') },
 ];
 
 function LetterReveal({ text, delay = 0, color = 'inherit' }: { text: string; delay?: number; color?: string; }) {
@@ -132,8 +132,8 @@ function FlipBubble({ bubble }: { bubble: BubbleDef }) {
   }, [flipped]);
 
   const isLive    = bubble.sub.startsWith('Live');
-  const signupHref = isLive ? `/signup?module=${bubble.id}` : `/contact?waitlist=${bubble.id}`;
-  const ctaLabel   = isLive ? 'Try today →' : 'Join waitlist →';
+  const signupHref = bubble.href || (isLive ? `/signup?module=${bubble.id}` : `/contact?waitlist=${bubble.id}`);
+  const ctaLabel   = bubble.id === 'protect' ? 'Go to site →' : (isLive ? 'Try today →' : 'Join waitlist →');
   const priceStr   = mod && mod.price > 0 ? `$${mod.price}/mo` : (mod ? 'Free' : 'Coming soon');
   const bullets: string[] = mod?.bullets || [];
   const c = bubble.color || '#D7141A';
@@ -433,13 +433,6 @@ function LandingPage() {
         </div>
       </section>
 
-      <section className="content-section" style={{ paddingTop: 0 }}>
-        <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.48)', textAlign: 'center', lineHeight: 1.7 }}>
-          Idea Vault, Barter, and more modules are coming &mdash;{' '}
-          <Link href="/contact?waitlist=1" style={{ color: '#ff3b30', fontWeight: 700, textDecoration: 'none' }}>join the waitlist</Link>.
-        </p>
-      </section>
-
       <footer className="gc-footer">
         <div style={{ height: '0.5px', background: 'rgba(28,28,30,0.1)', marginBottom: 40 }} />
         <div className="gc-footer-grid">
@@ -449,7 +442,7 @@ function LandingPage() {
           </div>
           <div>
             <p className="gc-footer-col-label">Services</p>
-            <Link href="/contact?waitlist=protect" className="gc-footer-link">GC Protect · coming soon</Link>
+            <Link href="https://gcprotect.tech" className="gc-footer-link">GC Protect · live now</Link>
             <Link href="/signup?module=vault" className="gc-footer-link">Idea Vault · $8/mo</Link>
             <Link href="/pricing" className="gc-footer-link">See all pricing →</Link>
           </div>
