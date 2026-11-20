@@ -178,7 +178,7 @@ export default function BarterPage() {
     <div className="gc-wrap">
       <Header back right={<span className="gc-pill gc-glass gc-glass--pink" style={{ borderRadius: 999 }}><span className="gc-dot" />{m.loading ? '…' : m.access.barter ? 'On · $5/mo' : 'Off'}</span>} />
 
-      <ModuleGate id="barter" state={m.stateOf('barter')} busy={m.busy === 'barter'} onTurnOn={() => m.toggle('barter', true)}>
+      <ModuleGate id="barter" state={m.stateOf('barter')} busy={m.busy === 'barter'} onTurnOn={() => m.toggle('barter', true)} error={m.declined === 'barter' ? m.error : ''}>
         {showNew && <AgreementModal onClose={() => setShowNew(false)} onSaved={a => setAgs(p => [a, ...p])} />}
         {editing && <AgreementModal existing={editing} onClose={() => setEditing(null)} onSaved={upd} />}
 

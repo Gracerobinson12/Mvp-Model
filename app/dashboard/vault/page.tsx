@@ -677,7 +677,7 @@ export default function VaultPage() {
         </span>
       } />
 
-      <ModuleGate id="vault" state={m.stateOf('vault')} busy={m.busy === 'vault'} onTurnOn={() => m.toggle('vault', true)}>
+      <ModuleGate id="vault" state={m.stateOf('vault')} busy={m.busy === 'vault'} onTurnOn={() => m.toggle('vault', true)} error={m.declined === 'vault' ? m.error : ''}>
 
         {showNew && m.user && (
           <NewIdeaModal userId={m.user.id} onClose={() => setShowNew(false)} onCreated={i => setIdeas(p => [i, ...p])} />

@@ -87,14 +87,24 @@ export async function POST(req: NextRequest) {
       const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
       const pm = customer.invoice_settings?.default_payment_method;
       if (pm) {
-        const created = await stripe.subscriptions.create({
-          customer: customerId, items: [{ price: priceId, quantity: 1 }],
-          default_payment_method: typeof pm === 'string' ? pm : pm.id,
-          metadata: { user_id: user.id }, payment_behavior: 'error_if_incomplete',
-        });
-        await admin.from('profiles').update({ stripe_subscription_id: created.id, plan_status: created.status }).eq('id', user.id);
-        await setAccess(user.id, module, true);
-        return NextResponse.json({ ok: true, mode: 'created' });
+        try {
+          const created = await stripe.subscriptions.create({
+            customer: customerId, items: [{ price: priceId, quantity: 1 }],
+            default_payment_method: typeof pm === 'string' ? pm : pm.id,
+            metadata: { user_id: user.id }, payment_behavior: 'error_if_incomplete',
+          });
+          await admin.from('profiles').update({ stripe_subscription_id: created.id, plan_status: created.status }).eq('id', user.id);
+          await setAccess(user.id, module, true);
+          return NextResponse.json({ ok: true, mode: 'created' });
+        } catch (stripeErr: any) {
+          // Card declined or payment failed — return a typed error so the client can surface it
+          const code = stripeErr?.code || stripeErr?.decline_code || '';
+          const isDecline = stripeErr?.type === 'StripeCardError' || /card_declined|insufficient_funds|card_error/.test(code);
+          if (isDecline) {
+            return NextResponse.json({ ok: false, error: 'Your card was declined. Please update your payment method and try again.', code: 'card_declined' }, { status: 402 });
+          }
+          throw stripeErr;
+        }
       }
       // First purchase: hosted Checkout collects the card and starts the subscription.
       const session = await stripe.checkout.sessions.create({

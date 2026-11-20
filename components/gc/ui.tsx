@@ -87,18 +87,42 @@ export function Modal({ onClose, children, maxWidth = 560 }) {
 }
 
 /* ── module gate: wraps a module page; if the module is off, shows the turn-on card instead ── */
-export function ModuleGate({ id, state, onTurnOn, busy, children }) {
+export function ModuleGate({ id, state, onTurnOn, busy, error, children }) {
   const m = MODULES[id];
   if (state === 'loading') return <div style={{ padding: 60, textAlign: 'center' }} className="gc-muted">Loading…</div>;
   if (state === 'on' || m.price === 0) return children;
+  // Activating: Stripe checkout just completed — waiting for webhook to confirm
+  if (state === 'activating') {
+    const Ico = MODULE_ICON[id];
+    return (
+      <div className="gc-glass gc-glass--primary gc-pad gc-fade" style={{ maxWidth: 560, margin: '24px auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+        <span className="gc-glass gc-glass--red" style={{ width: 64, height: 64, borderRadius: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ico size={30} /></span>
+        <h2 className="gc-display" style={{ fontSize: 24 }}>Activating {m.name}…</h2>
+        <p className="gc-sub" style={{ fontSize: 15 }}>Payment confirmed — just a moment while we turn it on.</p>
+        <div style={{ width: 36, height: 36, border: '3px solid rgba(215,20,26,0.18)', borderTopColor: '#D7141A', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
   const Ico = MODULE_ICON[id];
+  const isDeclined = error && /decline|card|payment/i.test(error);
   return (
     <div className="gc-glass gc-glass--primary gc-pad gc-fade" style={{ maxWidth: 560, margin: '24px auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
       <span className="gc-glass gc-glass--red" style={{ width: 64, height: 64, borderRadius: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ico size={30} /></span>
       <h2 className="gc-display" style={{ fontSize: 24 }}>{m.name} is off</h2>
       <p className="gc-sub" style={{ fontSize: 15 }}>{m.tagline}</p>
       <ul className="gc-list" style={{ textAlign: 'left' }}>{m.bullets.map(b => <li key={b}>{b}</li>)}</ul>
-      <button className="gc-btn gc-btn--red gc-btn--big" disabled={busy} onClick={onTurnOn}>{busy ? 'One moment…' : `Turn on · ${money(m.price)}/mo`}</button>
+      {isDeclined && (
+        <div style={{ background: 'rgba(215,20,26,0.08)', border: '1px solid rgba(215,20,26,0.22)', borderRadius: 10, padding: '12px 16px', fontSize: 14, color: '#9E0B10', lineHeight: 1.5, textAlign: 'left', width: '100%' }}>
+          <strong>Card declined.</strong> Your payment method didn't go through. Please{' '}
+          <Link href="/dashboard/billing" style={{ color: '#D7141A', fontWeight: 700, textDecoration: 'underline' }}>update your card</Link>
+          {' '}and try again.
+        </div>
+      )}
+      {error && !isDeclined && (
+        <p style={{ fontSize: 13, color: '#9E0B10', margin: 0 }}>{error}</p>
+      )}
+      <button className="gc-btn gc-btn--red gc-btn--big" disabled={!!busy} onClick={onTurnOn}>{busy ? 'One moment…' : `Turn on · ${money(m.price)}/mo`}</button>
       <p className="gc-note">Prorated from today. Turn it off any day and the rest of the month comes off your bill.</p>
       <Link href="/dashboard" style={{ fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>← Back to your bubbles</Link>
     </div>
