@@ -68,15 +68,18 @@ function HomePage() {
   }, [sp, m.loading]); // eslint-disable-line
 
   const sub = (id) => {
+    if (id === 'protect') return 'Link coming soon';
     const on = m.access[id];
     if (MODULES[id].price === 0) return 'Free to ask';
     if (!on) return `Off · ${money(MODULES[id].price)}/mo`;
-    if (id === 'protect') return 'Tokens on';
     if (id === 'vault') return counts.sealed === 1 ? '1 sealed' : `${counts.sealed} sealed`;
     if (id === 'barter') return counts.waiting ? `${counts.waiting} waiting on them` : 'On';
     return 'On';
   };
-  const cls = (id) => MODULES[id].price === 0 ? 'gc-bubble--free' : (m.access[id] ? 'gc-bubble--on' : 'gc-bubble--off');
+  const cls = (id) => {
+    if (id === 'protect') return 'gc-bubble--off'; // styled as off/inactive until link is live
+    return MODULES[id].price === 0 ? 'gc-bubble--free' : (m.access[id] ? 'gc-bubble--on' : 'gc-bubble--off');
+  };
 
   const needs = [];
   if (m.access.vault && counts.drafts) needs.push({ href: '/dashboard/vault', t: `${counts.drafts} draft${counts.drafts > 1 ? 's' : ''} not sealed yet`, s: 'Idea Vault · seal to lock the timestamp', a: 'Seal →' });
@@ -104,6 +107,13 @@ function HomePage() {
 
           {(['protect', 'vault', 'barter']).map(id => {
             const Ico = MODULE_ICON[id];
+            if (id === 'protect') return (
+              <div key={id} className={`gc-bubble ${cls(id)}`} style={{ ...POS[id], cursor: 'default', opacity: 0.55 }}>
+                <Ico />
+                <span className="gc-bubble-name">{MODULES[id].name}</span>
+                <span className="gc-bubble-sub">Coming soon</span>
+              </div>
+            );
             return (
               <Link key={id} href={MODULES[id].href} className={`gc-bubble ${cls(id)}`} style={POS[id]}>
                 <Ico />
@@ -124,7 +134,7 @@ function HomePage() {
               <span className="gc-small">{nextInvoice ? `Billed ${nextInvoice}` : 'Nothing billed yet'}</span>
             </div>
             <div className="gc-stack" style={{ fontSize: 15 }}>
-              {PAID_MODULES.map(id => (
+              {(['vault', 'barter'] as const).map(id => (
                 <div key={id} className="gc-row" style={{ color: m.access[id] ? undefined : 'var(--gc-red-dark)' }}>
                   <span style={{ fontWeight: m.access[id] ? 600 : 400 }}>{MODULES[id].name}</span>
                   <span>{m.access[id] ? money(MODULES[id].price) : 'off'}</span>

@@ -11,14 +11,14 @@ const GC_PROTECT_URL = process.env.NEXT_PUBLIC_PROTECT_URL || 'https://gcprotect
 
 // Active modules.
 const BRANCHES = [
-  { n: '01', id: 'protect', name: 'GC Protect', icon: '🛡️', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=protect', badge: 'Live · $5/mo',
+  { n: '01', id: 'protect', name: 'GC Protect', icon: '🛡️', color: '#D7141A', ink: '#9E0B10', live: false, href: '/contact?waitlist=protect', badge: 'Link coming soon',
     hook: 'Sensitive details become tokens before any AI sees them.',
     desc: 'Names, SSNs, cards, API keys caught on every prompt. Works with any AI you use. Audit log you can export.',
-    cta: 'Explore GC Protect →' },
-  { n: '02', id: 'vault', name: 'Idea Vault', icon: '💡', color: '#D7141A', ink: '#9E0B10', live: false, href: '/contact?waitlist=vault', badge: 'Coming soon',
+    cta: 'Join the waitlist →' },
+  { n: '02', id: 'vault', name: 'Idea Vault', icon: '💡', color: '#D7141A', ink: '#9E0B10', live: true, href: '/signup?module=vault', badge: 'Live · $8/mo',
     hook: 'Timestamped proof that your idea existed today.',
     desc: 'Seal ideas with a SHA-256 hash and UTC timestamp. Download a signed certificate. Only you can read what you sealed.',
-    cta: 'Join the waitlist →' },
+    cta: 'Seal your first idea →' },
   { n: '03', id: 'barter', name: 'Barter', icon: '🤝', color: '#D7141A', ink: '#9E0B10', live: false, href: '/contact?waitlist=barter', badge: 'Coming soon',
     hook: 'Trade services with another founder — no cash, no lawyers.',
     desc: 'Write a barter agreement, both parties confirm by link. No account needed to sign. Edit and resend anytime.',
@@ -28,8 +28,8 @@ const BRANCHES = [
 const svgP = (d: string) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
 
 const BUBBLES = [
-  { id: 'protect', name: 'GC Protect', sub: 'Live · $5/mo', href: '/signup?module=protect', pos: { left: '6%', top: '6%', width: '40%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
-  { id: 'vault', name: 'Idea Vault', sub: 'Coming soon', href: '/contact?waitlist=vault', pos: { left: '52%', top: '4%', width: '34%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>') },
+  { id: 'protect', name: 'GC Protect', sub: 'Coming soon', href: '/contact?waitlist=protect', pos: { left: '6%', top: '6%', width: '40%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
+  { id: 'vault', name: 'Idea Vault', sub: 'Live · $8/mo', href: '/signup?module=vault', pos: { left: '52%', top: '4%', width: '34%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>') },
   { id: 'barter', name: 'Barter', sub: 'Coming soon', href: '/contact?waitlist=barter', pos: { left: '44%', top: '54%', width: '30%' }, color: '#D7141A', dark: '#9E0B10', svg: svgP('<path d="M7 16l-4-4 4-4"/><path d="M3 12h18"/><path d="M17 8l4 4-4 4"/>') },
 ];
 
@@ -449,8 +449,8 @@ function LandingPage() {
           </div>
           <div>
             <p className="gc-footer-col-label">Services</p>
-            <Link href="/signup?module=protect" className="gc-footer-link">GC Protect · $5/mo</Link>
-            <Link href="/contact?waitlist=1" className="gc-footer-link">Idea Vault · waitlist</Link>
+            <Link href="/contact?waitlist=protect" className="gc-footer-link">GC Protect · coming soon</Link>
+            <Link href="/signup?module=vault" className="gc-footer-link">Idea Vault · $8/mo</Link>
             <Link href="/pricing" className="gc-footer-link">See all pricing →</Link>
           </div>
           <div>

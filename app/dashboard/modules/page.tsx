@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { MODULES, MODULE_ORDER, PAID_MODULES, COMING_SOON, money } from '@/lib/modules';
 import { useModules } from '@/components/gc/useModules';
 import { Header, Icon, MODULE_ICON } from '@/components/gc/ui';
+const ShieldIcon = Icon.shield;
+const AdvisoryIcon = Icon.advisory;
 
 // ── Slide toggle ────────────────────────────────────────────────────────────
 function SlideToggle({ on, busy, onChange }: { on: boolean; busy: boolean; onChange: (v: boolean) => void }) {
@@ -34,124 +36,28 @@ function SlideToggle({ on, busy, onChange }: { on: boolean; busy: boolean; onCha
   );
 }
 
-// ── GC Protect special card ─────────────────────────────────────────────────
-function ProtectCard({ on, busy, toggle, loading }: { on: boolean; busy: boolean; toggle: Function; loading: boolean }) {
-  const [open, setOpen] = useState(false);
+// ── GC Protect card — link coming soon, no purchase here ────────────────────
+function ProtectCard() {
   const mod = MODULES.protect;
-
   return (
-    <>
-      <article
-        className={`gc-glass gc-pad gc-stack ${on ? 'gc-glass--primary' : ''}`}
-        style={{ gap: 14, padding: 22, position: 'relative', overflow: 'hidden' }}
-      >
-        {/* Shield watermark */}
-        <span style={{ position: 'absolute', right: -8, top: -8, fontSize: 80, opacity: 0.04, pointerEvents: 'none', userSelect: 'none' }}>🛡</span>
-
-        <div className="gc-row" style={{ alignItems: 'flex-start' }}>
-          <span
-            className="gc-glass"
-            style={{ width: 48, height: 48, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: on ? undefined : 'inset 0 0 0 2px rgba(215,20,26,0.38)', cursor: 'pointer' }}
-            onClick={() => setOpen(true)}
-          >
-            <Icon.shield size={24} />
-          </span>
-          <SlideToggle on={on} busy={busy || loading} onChange={v => toggle('protect', v)} />
+    <article
+      className="gc-glass gc-pad gc-stack"
+      style={{ gap: 14, padding: 22, position: 'relative', overflow: 'hidden', maxWidth: 480 }}
+    >
+      <span style={{ position: 'absolute', right: -8, top: -8, fontSize: 80, opacity: 0.04, pointerEvents: 'none', userSelect: 'none' }}>🛡</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className="gc-glass" style={{ width: 48, height: 48, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <ShieldIcon size={24} />
+        </span>
+        <div>
+          <h3 className="gc-display" style={{ fontSize: 18, margin: 0 }}>GC Protect</h3>
+          <p className="gc-small" style={{ fontWeight: 600, margin: 0 }}>Link coming soon</p>
         </div>
-
-        <div className="gc-stack" style={{ gap: 4 }}>
-          <h3 className="gc-display" style={{ fontSize: 18 }}>GC Protect</h3>
-          <p className="gc-small" style={{ fontWeight: 600 }}>{money(mod.price)} / month · {loading ? '…' : on ? 'active' : 'off'}</p>
-        </div>
-
-        <p className="gc-small" style={{ fontSize: 14 }}>{mod.tagline}</p>
-
-        <ul className="gc-list">{mod.bullets.map(b => <li key={b}>{b}</li>)}</ul>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 'auto', flexWrap: 'wrap' }}>
-          {on
-            ? <Link href="/dashboard/protect" className="gc-btn gc-btn--red" style={{ flex: 1, textAlign: 'center' }}>Open GC Protect</Link>
-            : <button className="gc-btn gc-btn--red" style={{ flex: 1 }} disabled={busy} onClick={() => toggle('protect', true)}>
-                {busy ? 'One moment…' : `Turn on · ${money(mod.price)}/mo`}
-              </button>}
-          <button
-            onClick={() => setOpen(true)}
-            className="gc-btn gc-btn--outline"
-            style={{ flexShrink: 0 }}
-          >What is this?</button>
-        </div>
-      </article>
-
-      {/* GC Protect popup */}
-      {open && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={() => setOpen(false)}
-        >
-          <div
-            style={{ width: 'min(480px,100%)', background: 'rgba(255,255,255,0.96)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.25)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ height: 4, background: 'linear-gradient(90deg,#D7141A,#ff6b35)' }} />
-            <div style={{ padding: '28px 28px 24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                <span style={{ width: 52, height: 52, borderRadius: 26, background: 'rgba(215,20,26,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon.shield size={28} />
-                </span>
-                <div>
-                  <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>GC Protect</h2>
-                  <p style={{ fontSize: 13, color: 'rgba(26,26,46,0.55)', margin: 0 }}>{money(mod.price)} / month · billed today, then monthly</p>
-                </div>
-              </div>
-
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: 'rgba(26,26,46,0.8)', marginBottom: 16 }}>
-                GC Protect is a Chrome extension that monitors every form on every site you visit — capturing what fields are present, what you typed, and what happened to that data. It builds a private audit log of your digital paper trail.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                {[
-                  ['🔍', 'Detects forms on any site automatically'],
-                  ['📋', 'Logs field names, submission events, and page URLs'],
-                  ['🔒', 'Audit log is private — only you can see it'],
-                  ['⚡', 'Runs silently in the background, zero setup'],
-                  ['📊', 'Dashboard shows your full activity history'],
-                ].map(([icon, text]) => (
-                  <div key={text} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 14 }}>
-                    <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{icon}</span>
-                    <span style={{ color: 'rgba(26,26,46,0.75)', lineHeight: 1.55 }}>{text}</span>
-                  </div>
-                ))}
-              </div>
-
-              <p style={{ fontSize: 12, color: 'rgba(26,26,46,0.4)', marginBottom: 20, lineHeight: 1.6 }}>
-                After turning on, you'll install the Chrome extension from the GC Protect dashboard. The extension and this platform share one account — no separate login.
-              </p>
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                {!on && (
-                  <button
-                    className="gc-btn gc-btn--red"
-                    style={{ flex: 1 }}
-                    disabled={busy}
-                    onClick={() => { setOpen(false); toggle('protect', true); }}
-                  >
-                    {busy ? 'One moment…' : `Turn on · ${money(mod.price)}/mo`}
-                  </button>
-                )}
-                {on && (
-                  <Link href="/dashboard/protect" className="gc-btn gc-btn--red" style={{ flex: 1, textAlign: 'center' }}>
-                    Open GC Protect
-                  </Link>
-                )}
-                <button onClick={() => setOpen(false)} className="gc-btn gc-btn--outline" style={{ flexShrink: 0 }}>
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      </div>
+      <p className="gc-small" style={{ fontSize: 14 }}>{mod.tagline}</p>
+      <ul className="gc-list">{mod.bullets.map(b => <li key={b}>{b}</li>)}</ul>
+      <p className="gc-note" style={{ marginTop: 'auto' }}>GC Protect lives at its own link — we'll add it here shortly.</p>
+    </article>
   );
 }
 
@@ -257,10 +163,10 @@ function ModulesPage() {
 
       {m.error && <p className="gc-error">{m.error}</p>}
 
-      {/* GC Protect — special card with popup */}
+      {/* GC Protect — link coming soon */}
       <section className="gc-stack" style={{ gap: 14 }}>
         <h2 className="gc-h2">GC Protect</h2>
-        <ProtectCard on={!!m.access.protect} busy={m.busy === 'protect'} toggle={m.toggle} loading={m.loading} />
+        <ProtectCard />
       </section>
 
       {/* Other paid modules */}
@@ -308,7 +214,7 @@ function ModulesPage() {
         <div className="gc-glass gc-glass--pink gc-row" style={{ padding: '20px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <span className="gc-glass" style={{ width: 48, height: 48, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gc-red)' }}>
-              <Icon.advisory size={24} />
+              <AdvisoryIcon size={24} />
             </span>
             <span className="gc-stack" style={{ gap: 2 }}>
               <span className="gc-display" style={{ fontSize: 16, color: 'var(--gc-red)' }}>Advisory</span>

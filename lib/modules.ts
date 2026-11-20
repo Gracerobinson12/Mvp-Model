@@ -17,13 +17,14 @@ export type ModuleDef = {
 
 export const MODULES: Record<ModuleId, ModuleDef> = {
   protect: {
-    id: 'protect', name: 'GC Protect', price: 5, href: '/dashboard/protect',
+    id: 'protect', name: 'GC Protect', price: 0, href: '/dashboard/protect',
+    external: true,
     tagline: 'Sensitive details become tokens before any AI sees them.',
     bullets: ['Names, SSNs, cards, keys caught', 'Works with any AI you use', 'Audit log you can export'],
-    priceEnv: 'STRIPE_PRICE_PROTECT',
+    priceEnv: '',
   },
   vault: {
-    id: 'vault', name: 'Idea Vault', price: 5, href: '/dashboard/vault',
+    id: 'vault', name: 'Idea Vault', price: 8, href: '/dashboard/vault',
     tagline: 'Timestamped proof that your idea existed today.',
     bullets: ['Seal ideas with SHA-256 + UTC timestamp', 'Signed certificate you can download', 'Only you can read what you sealed'],
     priceEnv: 'STRIPE_PRICE_VAULT',
