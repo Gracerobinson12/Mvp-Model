@@ -103,8 +103,8 @@ export async function POST(req: NextRequest) {
         subscription_data: { metadata: { user_id: user.id } },
         metadata: { user_id: user.id, module },
         payment_method_collection: 'always',
-        success_url: `${base}/dashboard?on=${module}`,
-        cancel_url: `${base}/dashboard/modules`,
+        success_url: `${base}${def.href}?on=${module}`,
+        cancel_url: `${base}/dashboard`,
         allow_promotion_codes: true,
       });
       return NextResponse.json({ ok: true, mode: 'checkout', url: session.url });

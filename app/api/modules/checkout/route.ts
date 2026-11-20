@@ -77,8 +77,10 @@ export async function POST(req: NextRequest) {
       subscription_data: { metadata: { user_id: user.id } },
       metadata: { user_id: user.id, modules: picks.join(',') },
       payment_method_collection: 'always',
-      success_url: `${base}/dashboard?on=${picks.join(',')}`,
-      cancel_url: `${base}/dashboard/modules`,
+      success_url: picks.length === 1
+          ? `${base}${MODULES[picks[0]].href}?on=${picks[0]}`
+          : `${base}/dashboard?on=${picks.join(',')}`,
+      cancel_url: `${base}/dashboard`,
       allow_promotion_codes: true,
     });
     return NextResponse.json({ ok: true, mode: 'checkout', url: session.url });

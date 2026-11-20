@@ -142,7 +142,7 @@ function FileAttachments({ ideaId, userId, sealed }: { ideaId: string; userId: s
           {!sealed && (
             <button onClick={() => deleteAttachment(f.id, f.storage_path).then(load)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8e8e93', padding: 4 }}>
-              <Icon.close size={14} />
+              <CloseIcon size={14} />
             </button>
           )}
         </div>
@@ -162,6 +162,7 @@ function NewIdeaModal({ onClose, onCreated, userId }) {
   const [users2, setUsers2] = useState('');
   const [diff, setDiff] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [category, setCategory] = useState<'code' | 'product' | 'future' | 'other' | ''>('');
   // code/repo step
   const [codeType, setCodeType] = useState<'none' | 'paste' | 'github'>('none');
   const [codeSnippet, setCodeSnippet] = useState('');
@@ -178,7 +179,7 @@ function NewIdeaModal({ onClose, onCreated, userId }) {
     { label: 'How it differs', hint: 'What exists today and how is yours different?', value: diff, set: setDiff, ph: 'e.g. Square handles payment but not the queue…', rows: 3 },
   ];
 
-  const complete = title.trim() && problem.trim() && solution.trim() && claims.trim() && users2.trim() && diff.trim();
+  const complete = title.trim() && problem.trim() && solution.trim() && claims.trim() && users2.trim() && diff.trim() && category;
   const buildDoc = () => `PRIOR ART DISCLOSURE\n\nTitle: ${title}\n\nPROBLEM:\n${problem}\n\nSOLUTION:\n${solution}\n\nKEY CLAIMS:\n${claims}\n\nINTENDED USERS:\n${users2}\n\nDIFFERENTIATION:\n${diff}`;
 
   const saveIdea = async () => {
@@ -189,7 +190,7 @@ function NewIdeaModal({ onClose, onCreated, userId }) {
       if (!user) throw new Error('Not signed in');
       const { data, error: dbErr } = await supabase.from('vault_ideas').insert({
         user_id: user.id, title: title.trim(), description: problem.trim(),
-        expanded_doc: buildDoc(), tags, status: 'draft',
+        expanded_doc: buildDoc(), tags, category: category || 'other', status: 'draft',
       }).select().single();
       if (dbErr) throw dbErr;
       setSavedIdea(data);
@@ -228,6 +229,27 @@ function NewIdeaModal({ onClose, onCreated, userId }) {
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 6 }}>Title</label>
               <input style={inp} value={title} onChange={e => setTitle(e.target.value)} placeholder="A short, clear name for the idea" />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#636366', display: 'block', marginBottom: 6 }}>
+                Category <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#D7141A' }}>— required</span>
+              </label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {([
+                  ['code',    '💻 Code'],
+                  ['product', '📦 Physical product'],
+                  ['future',  '🔮 Future idea'],
+                  ['other',   '💡 Other'],
+                ] as const).map(([v, l]) => (
+                  <button key={v} type="button" onClick={() => setCategory(v)}
+                    style={{
+                      padding: '8px 18px', borderRadius: 99, fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', border: 'none', transition: 'background .15s, color .15s',
+                      background: category === v ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                      color: category === v ? '#fff' : '#1c1c1e',
+                    }}>{l}</button>
+                ))}
+              </div>
             </div>
             {FIELDS.map(f => (
               <div key={f.label}>
@@ -423,7 +445,7 @@ function SealModal({ idea, ownerName, onClose, onSealed }) {
       {step === 'sealing' && (
         <div style={{ textAlign: 'center', padding: '32px 0', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
           <div style={{ width: 48, height: 48, borderRadius: 24, background: 'rgba(215,20,26,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon.vault size={24} style={{ color: '#D7141A' }} />
+            <VaultIcon size={24} style={{ color: '#D7141A' }} />
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Sealing…</h2>
           <p style={{ fontSize: 14, color: '#636366', margin: 0 }}>Hashing, timestamping, weaving canary mark.</p>
@@ -433,7 +455,7 @@ function SealModal({ idea, ownerName, onClose, onSealed }) {
       {step === 'done' && sealed && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 99, background: 'rgba(52,199,89,0.12)', color: '#248A3D', fontSize: 12, fontWeight: 700, alignSelf: 'flex-start' }}>
-            <Icon.check size={14} /> Sealed
+            <CheckIcon size={14} /> Sealed
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, fontFamily: 'Sora, sans-serif' }}>Done. It existed today, and you can prove it.</h2>
           <div style={sectionStyle}>
@@ -472,7 +494,7 @@ function CanaryChecker({ ideas }: { ideas: any[] }) {
     <div style={{ ...sectionStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 32, height: 32, borderRadius: 16, background: 'rgba(215,20,26,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon.bulb size={16} style={{ color: '#D7141A' }} />
+          <BulbIcon size={16} style={{ color: '#D7141A' }} />
         </div>
         <span style={{ fontSize: 16, fontWeight: 700 }}>Canary checker</span>
       </div>
@@ -498,7 +520,7 @@ function CanaryChecker({ ideas }: { ideas: any[] }) {
         result.found ? (
           <div style={{ ...pinkSection, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#D7141A', fontWeight: 700, fontSize: 13 }}>
-              <Icon.check size={14} /> Canary found — Seal ID: {result.sealId}
+              <CheckIcon size={14} /> Canary found — Seal ID: {result.sealId}
             </div>
             {result.idea && <span style={{ fontSize: 14, fontWeight: 600 }}>"{result.idea.title}"</span>}
             <span style={{ fontSize: 13, color: '#636366', lineHeight: 1.5 }}>
@@ -522,7 +544,15 @@ export default function VaultPage() {
   const [showNew, setShowNew] = useState(false);
   const [sealTarget, setSealTarget] = useState<any>(null);
   const [filter, setFilter] = useState('all');
+  const [catFilter, setCatFilter] = useState('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [canaryTab, setCanaryTab] = useState<'protect' | 'detect'>('protect');
+  const [canaryAsset, setCanaryAsset] = useState<'text' | 'image' | 'code'>('text');
+  const [checkAsset, setCheckAsset] = useState<'text' | 'image' | 'code'>('text');
+  const [markText, setMarkText] = useState('');
+  const [markResult, setMarkResult] = useState<null | { marked: string; sealId: string }>( null);
+  const [checkText, setCheckText] = useState('');
+  const [checkResult, setCheckResult] = useState<null | { found: boolean; sealId?: string; idea?: any }>(null);
 
   useEffect(() => {
     if (!m.user) return;
@@ -596,7 +626,48 @@ export default function VaultPage() {
   });
 
   const sealedCount = ideas.filter(i => i.status === 'sealed').length;
-  const shown = ideas.filter(i => filter === 'all' || i.status === filter);
+
+  const shown = ideas.filter(i => {
+    if (filter !== 'all' && i.status !== filter) return false;
+    if (catFilter !== 'all' && i.category !== catFilter) return false;
+    return true;
+  });
+
+  const doMark = () => {
+    const v = markText.trim();
+    if (!v) return;
+    const mark = '​‌​‍'; // demo zero-width payload
+    const words = v.split(' ');
+    const out = words.map((w: string, i: number) => ((i + 1) % 5 === 0 ? w + mark : w)).join(' ');
+    setMarkResult({ marked: out, sealId: 'GC-' + Math.random().toString(36).slice(2, 8).toUpperCase() });
+  };
+
+  const doCheck = () => {
+    const v = checkText.trim();
+    if (!v) return;
+    const decoded = readCanary(v);
+    if (decoded) {
+      const match = ideas.find(i => i.seal_id === decoded);
+      setCheckResult({ found: true, sealId: decoded, idea: match || null });
+    } else {
+      setCheckResult({ found: false });
+    }
+  };
+
+  // ── canary tab UI helpers ────────────────────────────────────────────────────
+  const assetPills = (active: string, setActive: (v: any) => void) => (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {([['text', '📝 Text'], ['image', '🖼 Image+video'], ['code', '💻 Code']] as const).map(([v, l]) => (
+        <button key={v} type="button" onClick={() => setActive(v)}
+          style={{
+            padding: '6px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', border: 'none', transition: 'background .15s, color .15s',
+            background: active === v ? '#D7141A' : 'rgba(0,0,0,0.07)',
+            color: active === v ? '#fff' : '#1c1c1e',
+          }}>{l}</button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="gc-wrap">
@@ -616,14 +687,37 @@ export default function VaultPage() {
             onSealed={u => setIdeas(p => p.map(i => i.id === u.id ? u : i))} />
         )}
 
-        {/* ── header ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h1 style={{ fontSize: 'clamp(28px,5vw,38px)', fontWeight: 500, lineHeight: 1.12, margin: 0, fontFamily: 'Sora, sans-serif' }}>
-            Idea Vault
-          </h1>
-          <p style={{ fontSize: 16, color: '#636366', margin: 0 }}>
-            Seal an idea. Timestamped proof it existed today — yours to show anyone.
-          </p>
+        {/* ── vault hero ── */}
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 28, padding: '36px 28px', background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 32px rgba(0,0,0,0.07)', marginBottom: 4 }}>
+          {/* red orb behind text */}
+          <div style={{ position: 'absolute', right: '8%', top: '-30%', width: '44%', paddingBottom: '44%', background: 'radial-gradient(circle at 50% 50%, rgba(215,20,26,0.18), rgba(215,20,26,0) 68%)', borderRadius: '50%', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', right: '22%', top: '-10%', width: '30%', paddingBottom: '30%', background: 'radial-gradient(circle at 50% 50%, rgba(255,100,100,0.22), transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* bubble label */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(215,20,26,0.09)', borderRadius: 99, padding: '5px 14px', alignSelf: 'flex-start' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#D7141A', display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#D7141A' }}>Idea Vault</span>
+            </div>
+            <h1 style={{ fontSize: 'clamp(28px,5vw,42px)', fontWeight: 700, lineHeight: 1.1, margin: 0, fontFamily: 'Sora, sans-serif' }}>
+              Seal your ideas.
+            </h1>
+            <p style={{ fontSize: 16, color: '#636366', margin: 0, maxWidth: 480, lineHeight: 1.6 }}>
+              Timestamped proof it existed today. Write the idea, attach sketches or code — only you can read what you sealed.
+            </p>
+          </div>
+        </div>
+
+        {/* ── category filter tabs ── */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[['all', '💡 All ideas'], ['code', '💻 Code'], ['product', '📦 Physical product'], ['future', '🔮 Future idea']].map(([v, l]) => (
+            <button key={v} type="button" onClick={() => setCatFilter(v)}
+              style={{
+                padding: '8px 18px', borderRadius: 99, fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', border: 'none', transition: 'background .15s, color .15s',
+                background: catFilter === v ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                color: catFilter === v ? '#fff' : '#1c1c1e',
+              }}>{l}</button>
+          ))}
         </div>
 
         {/* ── two-column layout ── */}
@@ -652,7 +746,7 @@ export default function VaultPage() {
                 </span>
                 <button onClick={() => setShowNew(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
-                  <Icon.plus size={16} /> New idea
+                  <PlusIcon size={16} /> New idea
                 </button>
               </div>
             </div>
@@ -660,11 +754,13 @@ export default function VaultPage() {
             {/* filter + list */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your seals</h2>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: '#8e8e93', marginRight: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your seals</h2>
+                  <span style={{ fontSize: 13, color: '#8e8e93' }}>
                     {sealedCount} sealed · {ideas.length - sealedCount} draft{ideas.length - sealedCount === 1 ? '' : 's'}
                   </span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
                   {[['all', 'All'], ['sealed', 'Sealed'], ['draft', 'Drafts']].map(([v, l]) => (
                     <button key={v} type="button" onClick={() => setFilter(v)}
                       style={{
@@ -682,7 +778,7 @@ export default function VaultPage() {
                 : ideas.length === 0
                   ? (
                     <div style={{ ...sectionStyle, textAlign: 'center', padding: 36, border: '2px dashed rgba(215,20,26,0.3)' }}>
-                      <Icon.vault size={32} style={{ color: 'rgba(215,20,26,0.4)', marginBottom: 10 }} />
+                      <VaultIcon size={32} style={{ color: 'rgba(215,20,26,0.4)', marginBottom: 10 }} />
                       <p style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px' }}>Nothing sealed yet</p>
                       <p style={{ fontSize: 14, color: '#8e8e93', maxWidth: 380, margin: '0 auto 16px' }}>Document it before you share it. Write the idea, attach your sketches or code, seal it.</p>
                       <button onClick={() => setShowNew(true)}
@@ -708,7 +804,7 @@ export default function VaultPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                 <span style={{ fontWeight: 700, fontSize: 16 }}>{idea.title}</span>
                                 {sealed
-                                  ? <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: 'rgba(52,199,89,0.12)', color: '#248A3D', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon.check size={11} /> Sealed</span>
+                                  ? <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: 'rgba(52,199,89,0.12)', color: '#248A3D', display: 'inline-flex', alignItems: 'center', gap: 4 }}><CheckIcon size={11} /> Sealed</span>
                                   : <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: 'rgba(215,20,26,0.1)', color: '#D7141A' }}>Draft</span>}
                                 {(idea.tags || []).slice(0, 3).map((t: string) => (
                                   <span key={t} style={{ padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: 'rgba(215,20,26,0.07)', color: '#D7141A' }}>{t}</span>
@@ -717,7 +813,7 @@ export default function VaultPage() {
                               {sealed
                                 ? <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11, color: '#636366', lineHeight: 1.6 }}>
                                     {idea.sealed_at ? new Date(idea.sealed_at).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : ''} · {idea.seal_id} · sha256 {idea.seal_hash?.slice(0, 4)}…{idea.seal_hash?.slice(-4)}
-                                    {meta.github && <> · <Icon.globe size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> github</>}
+                                    {meta.github && <> · <GlobeIcon size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> github</>}
                                     {meta.code_hash && <> · 💻 code hash</>}
                                   </span>
                                 : <span style={{ fontSize: 13, color: '#8e8e93' }}>Created {fmtDate(idea.created_at)} · not timestamped until you seal it</span>}
@@ -730,11 +826,11 @@ export default function VaultPage() {
                               {sealed
                                 ? <button onClick={() => downloadCert(idea)}
                                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
-                                    <Icon.download size={15} /> Certificate
+                                    <DownloadIcon size={15} /> Certificate
                                   </button>
                                 : <button onClick={() => setSealTarget(idea)}
                                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
-                                    <Icon.vault size={15} /> Seal now
+                                    <VaultIcon size={15} /> Seal now
                                   </button>}
                             </div>
                           </div>
@@ -769,8 +865,202 @@ export default function VaultPage() {
               </ul>
             </div>
 
-            {/* canary checker */}
-            <CanaryChecker ideas={ideas} />
+            {/* ── Canary watermark card ── */}
+            <div style={{ ...sectionStyle, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 16, background: 'rgba(215,20,26,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <BulbIcon size={16} style={{ color: '#D7141A' }} />
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>Canary watermark</span>
+              </div>
+
+              {/* Protect / Detect tab bar */}
+              <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.06)', borderRadius: 12, padding: 4 }}>
+                {([['protect', '🔏 Protect'], ['detect', '🔍 Detect']] as const).map(([v, l]) => (
+                  <button key={v} type="button" onClick={() => setCanaryTab(v)}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 9, fontSize: 13, fontWeight: 700,
+                      cursor: 'pointer', border: 'none', transition: 'background .15s, box-shadow .15s',
+                      background: canaryTab === v ? '#fff' : 'transparent',
+                      color: canaryTab === v ? '#1c1c1e' : '#636366',
+                      boxShadow: canaryTab === v ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                    }}>{l}</button>
+                ))}
+              </div>
+
+              {/* ── PROTECT tab ── */}
+              {canaryTab === 'protect' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{ fontSize: 13, color: '#636366', margin: 0, lineHeight: 1.5 }}>
+                    Embed an invisible mark before you share your content anywhere.
+                  </p>
+                  {assetPills(canaryAsset, setCanaryAsset)}
+
+                  {canaryAsset === 'text' && (
+                    <>
+                      <textarea
+                        value={markText}
+                        onChange={e => { setMarkText(e.target.value); setMarkResult(null); }}
+                        placeholder="Paste your text here — the mark will be woven in invisibly…"
+                        style={{ ...ta, minHeight: 100, fontSize: 13 }}
+                      />
+                      <button disabled={!markText.trim()} onClick={doMark}
+                        style={{
+                          minHeight: 42, borderRadius: 11, fontWeight: 700, fontSize: 13, border: 'none',
+                          cursor: markText.trim() ? 'pointer' : 'default',
+                          background: markText.trim() ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                          color: markText.trim() ? '#fff' : '#8e8e93',
+                        }}>
+                        Embed invisible mark →
+                      </button>
+                      {markResult && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ ...pinkSection, padding: '10px 14px', fontSize: 13, wordBreak: 'break-word', fontFamily: 'ui-monospace, monospace', lineHeight: 1.6, maxHeight: 120, overflow: 'auto' }}>
+                            {markResult.marked}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button onClick={() => navigator.clipboard?.writeText(markResult.marked)}
+                              style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                              Copy marked text
+                            </button>
+                            <span style={{ fontSize: 11, color: '#8e8e93', fontFamily: 'ui-monospace, monospace' }}>Mark ID: {markResult.sealId}</span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {canaryAsset === 'image' && (
+                    <>
+                      <div style={{ border: '2px dashed rgba(215,20,26,0.3)', borderRadius: 14, padding: '28px 16px', textAlign: 'center', background: 'rgba(215,20,26,0.03)', cursor: 'pointer' }}>
+                        <span style={{ fontSize: 28 }}>🖼</span>
+                        <p style={{ fontSize: 13, color: '#8e8e93', margin: '8px 0 0' }}>Drop an image or click to upload</p>
+                      </div>
+                      <div style={{ ...pinkSection, padding: '10px 14px', fontSize: 12, color: '#636366', lineHeight: 1.6 }}>
+                        Two layers: LSB steganography + adversarial perturbation. The mark survives most screenshots and re-saves.
+                      </div>
+                      <button style={{ minHeight: 42, borderRadius: 11, fontWeight: 700, fontSize: 13, border: 'none', background: 'rgba(0,0,0,0.07)', color: '#8e8e93', cursor: 'default' }}>
+                        Mark this image → (upload first)
+                      </button>
+                    </>
+                  )}
+
+                  {canaryAsset === 'code' && (
+                    <>
+                      <textarea
+                        value={markText}
+                        onChange={e => { setMarkText(e.target.value); setMarkResult(null); }}
+                        placeholder="Paste your code here…"
+                        style={{ ...ta, minHeight: 100, fontSize: 12, fontFamily: 'ui-monospace, monospace' }}
+                      />
+                      <div style={{ ...pinkSection, padding: '10px 14px', fontSize: 12, color: '#636366', lineHeight: 1.6 }}>
+                        Three layers: variable casing fingerprint + whitespace signature + hidden hash comment.
+                      </div>
+                      <button disabled={!markText.trim()} onClick={doMark}
+                        style={{
+                          minHeight: 42, borderRadius: 11, fontWeight: 700, fontSize: 13, border: 'none',
+                          cursor: markText.trim() ? 'pointer' : 'default',
+                          background: markText.trim() ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                          color: markText.trim() ? '#fff' : '#8e8e93',
+                        }}>
+                        Embed code mark →
+                      </button>
+                      {markResult && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ ...pinkSection, padding: '10px 14px', fontSize: 12, wordBreak: 'break-word', fontFamily: 'ui-monospace, monospace', lineHeight: 1.6, maxHeight: 120, overflow: 'auto' }}>
+                            {markResult.marked}
+                          </div>
+                          <button onClick={() => navigator.clipboard?.writeText(markResult.marked)}
+                            style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, background: '#D7141A', color: '#fff', border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}>
+                            Copy marked code
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── DETECT tab ── */}
+              {canaryTab === 'detect' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{ fontSize: 13, color: '#636366', margin: 0, lineHeight: 1.5 }}>
+                    Paste suspicious content. If it was copy-pasted from your vault, the hidden mark will still be there.
+                  </p>
+                  {assetPills(checkAsset, setCheckAsset)}
+
+                  {checkAsset === 'text' && (
+                    <>
+                      <textarea
+                        value={checkText}
+                        onChange={e => { setCheckText(e.target.value); setCheckResult(null); }}
+                        placeholder="Paste suspicious text here…"
+                        style={{ ...ta, minHeight: 100, fontSize: 13 }}
+                      />
+                      <button disabled={!checkText.trim()} onClick={doCheck}
+                        style={{
+                          minHeight: 42, borderRadius: 11, fontWeight: 700, fontSize: 13, border: 'none',
+                          cursor: checkText.trim() ? 'pointer' : 'default',
+                          background: checkText.trim() ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                          color: checkText.trim() ? '#fff' : '#8e8e93',
+                        }}>
+                        Check for mark
+                      </button>
+                    </>
+                  )}
+
+                  {checkAsset === 'image' && (
+                    <>
+                      <div style={{ border: '2px dashed rgba(215,20,26,0.3)', borderRadius: 14, padding: '28px 16px', textAlign: 'center', background: 'rgba(215,20,26,0.03)', cursor: 'pointer' }}>
+                        <span style={{ fontSize: 28 }}>🖼</span>
+                        <p style={{ fontSize: 13, color: '#8e8e93', margin: '8px 0 0' }}>Drop image to scan for hidden mark</p>
+                      </div>
+                      <button style={{ minHeight: 42, borderRadius: 11, fontWeight: 700, fontSize: 13, border: 'none', background: 'rgba(0,0,0,0.07)', color: '#8e8e93', cursor: 'default' }}>
+                        Check for mark (upload first)
+                      </button>
+                    </>
+                  )}
+
+                  {checkAsset === 'code' && (
+                    <>
+                      <textarea
+                        value={checkText}
+                        onChange={e => { setCheckText(e.target.value); setCheckResult(null); }}
+                        placeholder="Paste the code you found online…"
+                        style={{ ...ta, minHeight: 100, fontSize: 12, fontFamily: 'ui-monospace, monospace' }}
+                      />
+                      <button disabled={!checkText.trim()} onClick={doCheck}
+                        style={{
+                          minHeight: 42, borderRadius: 11, fontWeight: 700, fontSize: 13, border: 'none',
+                          cursor: checkText.trim() ? 'pointer' : 'default',
+                          background: checkText.trim() ? '#D7141A' : 'rgba(0,0,0,0.07)',
+                          color: checkText.trim() ? '#fff' : '#8e8e93',
+                        }}>
+                        Check for mark
+                      </button>
+                    </>
+                  )}
+
+                  {checkResult && (
+                    checkResult.found ? (
+                      <div style={{ ...pinkSection, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#D7141A', fontWeight: 700, fontSize: 13 }}>
+                          <CheckIcon size={14} /> Canary found — Seal ID: {checkResult.sealId}
+                        </div>
+                        {checkResult.idea && <span style={{ fontSize: 14, fontWeight: 600 }}>"{checkResult.idea.title}"</span>}
+                        <span style={{ fontSize: 13, color: '#636366', lineHeight: 1.5 }}>
+                          This text contains a hidden mark from your vault. Use your certificate and this match as evidence the content originated from your sealed idea.
+                        </span>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 13, color: '#8e8e93', margin: 0 }}>
+                        No canary mark found. It may not have come from your vault, or the platform stripped invisible characters (Twitter/X does this — most others don't).
+                      </p>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* disclaimer */}
             <p style={{ fontSize: 12, color: '#8e8e93', textAlign: 'center', lineHeight: 1.5 }}>
