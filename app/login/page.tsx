@@ -196,7 +196,7 @@ export default function LoginPage() {
 
             <div style={{textAlign:'center',fontSize:13,color:'rgba(26,26,46,.5)'}}>
               New here?{' '}
-              <Link href="/pricing" style={{color:'#ff3b30',fontWeight:600,
+              <Link href="/signup" style={{color:'#ff3b30',fontWeight:600,
                 textDecoration:'none'}}>
                 Start free trial →
               </Link>
